@@ -1,0 +1,25 @@
+Name     AY_Map;
+PartNo   00;
+Date     05/03/2016;
+Revision 01;
+Designer Duncan;
+Company  Home;
+Assembly None;
+Location ;
+Device   g22v10;
+
+
+ORDER: A0, !IOSEL, !SEL, RWB, BC1, BDIR, PHI2; 
+
+
+VECTORS:
+1000**1
+0000**1
+1001**1
+0001**1
+1100**1
+0100**1
+1001**0
+0001**0
+1010**1
+0010**1

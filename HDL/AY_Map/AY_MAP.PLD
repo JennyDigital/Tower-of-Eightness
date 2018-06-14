@@ -1,0 +1,30 @@
+Name     AY_Map ;
+PartNo   00 ;
+Date     05/03/2016 ;
+Revision 01 ;
+Designer Duncan ;
+Company  Home ;
+Assembly None
+Location ;
+Device   g22v10 ;
+
+/* *************** INPUT PINS *********************/
+PIN   1 = PHI2                    ; /* Represents valid data on the bus  */ 
+PIN   2 = A0                      ; /* Used to select between registers  */ 
+PIN   3 = RWB                     ; /* Read/!Write                       */ 
+PIN   4 = !SEL                    ; /* Don't do anything unless selected */ 
+PIN   5 = !IOSEL                  ; /* Make sure we are addressing IO    */ 
+
+
+/* *************** OUTPUT PINS *********************/
+PIN  14 = BC1                     ; /* Bus Control 1 (see the datasheet) */ 
+PIN  15 = BDIR                    ; /* Bus Direction (see the datasheet) */ 
+
+
+/* Logic for the AY soundcard */
+
+AYSEL = PHI2 & SEL & IOSEL;
+
+BDIR = AYSEL & !RWB;
+
+BC1  = ( A0 $ RWB ) & AYSEL;

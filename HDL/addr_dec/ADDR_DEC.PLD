@@ -1,0 +1,37 @@
+Name     addr_dec ;
+PartNo   1 ;
+Date     26/02/2016 ;
+Revision 01 ;
+Designer Duncan ;
+Company  Home ;
+Assembly None ;
+Location  ;
+Device   g22v10 ;
+
+/* *************** INPUT PINS *********************/
+/* PIN   1 = !OSC                    can't remember why I needed this   */ 
+PIN   2 = A8                      ; /*                                  */ 
+PIN   3 = A9                      ; /*                                  */ 
+PIN   4 = A10                     ; /*                                  */ 
+PIN   5 = A11                     ; /*                                  */ 
+PIN   6 = A12                     ; /*                                  */ 
+PIN   7 = A13                     ; /*                                  */ 
+PIN   8 = A14                     ; /*                                  */ 
+PIN   9 = A15                     ; /*                                  */ 
+
+/* *************** OUTPUT PINS *********************/
+PIN  14 = !BANK0                  ; /* Low bank for stack etc           */ 
+PIN  15 = !BANK1                  ; /* a handy bank for general purpose */ 
+PIN  16 = !BANK2                  ; /* video ram bank. Otherwise as B2  */ 
+PIN  17 = !BANK3                  ; /* ROM bank where the firmware is.  */ 
+PIN  18 = !IOSEL                  ; /* Memory mapped IO address page.   */ 
+
+
+/* ********** code to generate outputs *********** */
+
+IOSEL = !A8 & !A9 & !A10 & !A11 & !A12 & !A13 & A14 & A15;
+BANK0 = !A14 & !A15;
+BANK1 = A14 & !A15;
+BANK2 = !A14 & A15;
+BANK3 = A14 & A15 & ( A8 # A9 # A10 # A11 # A12 # A13 );
+

@@ -1,0 +1,46 @@
+CSIM(WM): CUPL Simulation Program
+Version 5.0a Serial# 
+Copyright (c) 1983, 1998 Logical Devices, Inc.
+CREATED Sat Mar 05 17:00:01 2016
+
+LISTING FOR SIMULATION FILE: AY_MAP.si
+
+   1: Name     AY_Map;
+   2: PartNo   00;
+   3: Date     05/03/2016;
+   4: Revision 01;
+   5: Designer Duncan;
+   6: Company  Home;
+   7: Assembly None;
+                   ^
+[0025sa] Please note: inconsistent header information
+
+   8: Location ;
+               ^
+[0025sa] Please note: inconsistent header information
+
+   9: Device   g22v10;
+  10: 
+  11: 
+  12: ORDER: A0, !IOSEL, !SEL, RWB, BC1, BDIR, PHI2; 
+  13: 
+  14: 
+
+================
+       !        
+       I        
+       O!  BP   
+       SSRBDH   
+      AEEWCII   
+      0LLB1R2   
+================
+0001: 1000HH1
+0002: 0000LH1
+0003: 1001LL1
+0004: 0001HL1
+0005: 1100LL1
+0006: 0100LL1
+0007: 1001LL0
+0008: 0001LL0
+0009: 1010LL1
+0010: 0010LL1

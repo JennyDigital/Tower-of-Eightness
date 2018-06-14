@@ -1,0 +1,23 @@
+Name     BK_MGR;
+PartNo   1;
+Date     02/11/2017;
+Revision 01;
+Designer Engineer;
+Company  Home;
+Assembly None;
+Location ;
+Device   G22V10;
+
+
+ORDER: A0, A1, A2, A3, A4, A5, A6, A7, !IOSEL, LE, !OE, PHI2, RWB, !WE; 
+
+
+VECTORS:
+111111110**10*
+111111111**10*
+111111110**00*
+111111111**00*
+111111110**11*
+111111111**11*
+111111110**10*
+011111110**11*

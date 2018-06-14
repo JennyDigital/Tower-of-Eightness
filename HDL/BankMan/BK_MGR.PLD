@@ -1,0 +1,35 @@
+Name     BK_MGR ;
+PartNo   1 ;
+Date     02/11/2017 ;
+Revision 01 ;
+Designer Engineer ;
+Company  Home ;
+Assembly None ;
+Location  ;
+Device   G22V10;
+
+/* *************** INPUT PINS *********************/
+PIN   1 = PHI2                    ; /* System Clock Phase 2            */ 
+PIN   2 = A0                      ; /* Address Line 0                  */ 
+PIN   3 = A1                      ; /* .                               */ 
+PIN   4 = A2                      ; /* .                               */ 
+PIN   5 = A3                      ; /* .                               */ 
+PIN   6 = A4                      ; /* .                               */ 
+PIN   7 = A5                      ; /* .                               */ 
+PIN   8 = A6                      ; /* .                               */ 
+PIN   9 = A7                      ; /* Address Line 7                  */ 
+PIN  10 = RWB                     ; /* Read not Write                  */ 
+PIN  11 = !IOSEL                  ; /* not IO Selected.                */
+
+/* *************** OUTPUT PINS *********************/
+PIN  21 = !OE                     ; /* not Output Enable               */ 
+PIN  22 = LE                      ; /* Latch Enable                    */ 
+PIN  23 = !WE                     ; /* not Write Enable                */
+
+LAT_ADDR = A0 & A1 & A2 & A3 & A4 & A5 & A6 & A7;
+
+WE = (!RWB) & PHI2;
+
+LE = !(PHI2 # RWB) & LAT_ADDR & IOSEL;
+
+OE = PHI2 & RWB; /* & !IOSEL; */

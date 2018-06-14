@@ -1,0 +1,31 @@
+%SIGNAL
+PIN   2 =  A0 
+PIN  14 =  BC1 
+PIN  15 =  BDIR 
+PIN   5 = !IOSEL 
+PIN   1 =  PHI2 
+PIN   3 =  RWB 
+PIN   4 = !SEL 
+%END
+
+%FIELD
+%END
+
+%EQUATION
+AYSEL =>
+    IOSEL & PHI2 & SEL
+
+BC1 =>
+    !A0 & !IOSEL & PHI2 & RWB & !SEL
+  # A0 & !IOSEL & PHI2 & !RWB & !SEL
+
+BDIR =>
+    !IOSEL & PHI2 & !RWB & !SEL
+
+BC1.oe  =>
+    1 
+
+BDIR.oe  =>
+    1 
+
+%END

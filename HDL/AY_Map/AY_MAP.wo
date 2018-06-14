@@ -1,0 +1,29 @@
+#WAVEFORM
+#H Name     AY_Map;
+#H PartNo   00;
+#H Date     05/03/2016;
+#H Revision 01;
+#H Designer Duncan;
+#H Company  Home;
+#H Assembly None;
+#E 0025 
+
+#H Location ;
+#E 0025 
+
+#H Device   g22v10;
+#H 
+#H 
+#H ORDER: A0, !IOSEL, !SEL, RWB, BC1, BDIR, PHI2; 
+#H 
+#H 
+#V 0001 1000HH1
+#V 0002 0000LH1
+#V 0003 1001LL1
+#V 0004 0001HL1
+#V 0005 1100LL1
+#V 0006 0100LL1
+#V 0007 1001LL0
+#V 0008 0001LL0
+#V 0009 1010LL1
+#V 0010 0010LL1
