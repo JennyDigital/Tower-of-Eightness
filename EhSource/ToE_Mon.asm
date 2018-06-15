@@ -166,7 +166,7 @@ END_CODE
 LAB_mess
                                       ; sign on string
 
-  .byte $0C,$0D,$0A,"Tower of Eightness OS 13.6.2018.1",$0D,$0A,$0D,$0A
+  .byte $0C,$18,$02,$0D,$0A,"Tower of Eightness OS 13.6.2018.1",$0D,$0A,$0D,$0A
   .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
 
   *= $FFD0
