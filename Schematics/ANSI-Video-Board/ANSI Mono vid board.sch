@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="6.5.0">
+<eagle version="6.6.0">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -15440,7 +15440,7 @@ Farnell 219-423</description>
 <text x="167.64" y="198.12" size="5.08" layer="91">Card Bus</text>
 <text x="266.7" y="195.58" size="5.08" layer="91">Decoupling and
 Reservoir Caps</text>
-<text x="292.1" y="15.24" size="1.27" layer="91">JP1 closed for NTSC
+<text x="292.1" y="15.24" size="1.27" layer="91">JP2 closed for NTSC
 or open for PAL</text>
 <text x="66.04" y="198.12" size="5.08" layer="91">Address Select</text>
 <text x="55.88" y="134.62" size="5.08" layer="91">Address Decoder</text>
