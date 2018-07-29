@@ -95,6 +95,7 @@ INI_ACIA                          ; As required for a 6551 ACIA
   STA ACIA_cmd                    ; Set the command reg for specified baud rate
   LDA #ACIA_CTRL_LISTEN
   STA ACIA_ctrl                   ; Set the control reg for correct operation
+  JSR ACIAin                      ; Swallow the first byte (experimental fix)
   RTS	
 
 
