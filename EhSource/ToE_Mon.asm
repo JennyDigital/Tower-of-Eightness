@@ -13,6 +13,7 @@ NMI_vec       = IRQ_vec+$0A           ; NMI code vector
 
 MON_sysvars   = $5E0                  ; base address of the 16 bytes of memory reserved
 os_outsel     = MON_sysvars           ; output selection variable
+os_infilt     = os_outsel+1           ; Filter switches for character input filtering.
 
 
 ; OS Bit Definitions
@@ -45,6 +46,8 @@ RES_vec
   
   LDA #ANSI_out_sw                    ; Set our default output options
   STA os_outsel                       ; to the ANSI card only.
+  LDA #LF_filt_sw
+  STA os_infilt                       ; Switch on $A filtering on the ACIA.
   
   JSR INI_ACIA                        ; Init ACIA
   JSR ANSI_init_vec

@@ -88,6 +88,12 @@ ACIA_DSR      = @01000000
 ACIA_INT      = @10000000
 
 
+; Filter Switch
+
+LF_filt_sw    = @00000001
+
+
+
 ; Tower of Eightness Specific serial routines.
 	
 INI_ACIA                          ; As required for a 6551 ACIA
@@ -127,6 +133,19 @@ ACIAin
 
   LDA ACIA_rx                     ; Get byte sent.
   SEC                             ; flag byte received
+  
+  PHA
+  LDA #LF_filt_sw
+  BIT os_infilt
+  BEQ filter_inp
+  PLA
+  RTS
+
+filter_inp  
+  PLA
+  CMP #$A
+  BEQ LAB_nobyw
+  SEC
   RTS
   
 LAB_nobyw
