@@ -45,6 +45,7 @@ RES_vec
   JSR TPB_delay
   
   LDA #ANSI_out_sw                    ; Set our default output options
+  ;LDA #ACIA_out_sw                    ; Set our default output options
   STA os_outsel                       ; to the ANSI card only.
   LDA #LF_filt_sw
   STA os_infilt                       ; Switch on $A filtering on the ACIA.
@@ -52,6 +53,15 @@ RES_vec
   JSR INI_ACIA                        ; Init ACIA
   JSR ANSI_init_vec
   JSR TPB_init_vec                    ; Init Tower Peripheral Bus
+  
+  ; TEST CODE
+;LF_filt_sw = @00000001
+;LAB_Test_loop
+;  LDA #$AA
+;  JSR TPB_tx_byte_vec
+;  JMP LAB_Test_loop
+  ; END OF TEST CODE
+
 
 
 ; set up vectors and interrupt code, copy them to page 2
@@ -169,18 +179,23 @@ END_CODE
 LAB_mess
                                       ; sign on string
 
-  .byte $0C,$18,$02,$0D,$0A,"Tower of Eightness OS 23.7.2018.1",$0D,$0A,$0D,$0A
+  .byte $0C,$18,$02,$0D,$0A,"Tower of Eightness OS 26.8.2018.1",$0D,$0A,$0D,$0A
   .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
+
+
+; ToE OS Vectors
 
   *= $FFD0
 ANSI_init_vec
-  JMP ANSI_INIT
+  JMP ANSI_INIT        ; FFD0
 ANSI_write_vec
-  JMP ANSI_write
+  JMP ANSI_write       ; FFD3
 TPB_init_vec
-  JMP TPB_INIT
+  JMP TPB_INIT         ; FFD6
 TPB_LPT_write_vec
-  JMP TPB_LPT_write
+  JMP TPB_LPT_write    ; FFD9
+TPB_tx_byte_vec
+  JMP TPB_tx_byte      ; FFDC
 
 ; system vectors
 

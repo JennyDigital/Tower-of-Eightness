@@ -8,7 +8,7 @@
 TPB_base        = $C020
 TPB_reg_b       = TPB_base
 TPB_reg_a       = TPB_base+1
-TPB_ddr_b	    = TPB_base+2
+TPB_ddr_b       = TPB_base+2
 TPB_ddr_a       = TPB_base+3
 TPB_pcr         = TPB_base+$C
 TPB_ifr         = TPB_base+$D
@@ -32,16 +32,44 @@ TPB_BUS_reset   = @00001000
 TPB_BUS_atn     = @00000100
 
 
+; TPB Configuration parameters
+
+TPB_CMD_len     = 16              ; Length of control block
+TPB_BUS_lim_c   = 255             ; Number of samples before giving up on device
+
+
+; *****************************************************************************
+; *                           TABLE 1: BLOCK TYPES                            *
+; *                           --------------------                            *
+; * 1.  Command Block (Always the same size (as yet unspecified)).            *
+; * 2.  Response Block (Same size as the command block).                      *
+; * 3.  Data Block.  Upto 256 bytes.                                          *
+; * 4.  Broadcast Block (4 bytes long).                                       *
+; *                                                                           *
+; *****************************************************************************
+
+TPB_BLK_cmd      = 1
+TPB_BLK_rsp      = 2
+TPB_BLK_dat      = 3
+TPB_BLK_brd      = 4
+
+
 ; Memory allocations
 
-TPB_worksp      = $5F2            ; Start of TPB card memory allocation
-TPB_curr_dev    = TPB_worksp      ; Currently selected TPB devce ID
-TPB_dev_type    = TPB_worksp+1    ; Device class of selected device
-TPB_last_rd     = TPB_worksp+2    ; last byte read from TPB device
-TPB_status      = TPB_worksp+3    ; Status word from TPB engine (subject to change)
-TPB_BUS_tmr     = TPB_worksp+4    ; Bus countdown timer.  This ensures fewer hangs.
-TPB_BUS_lim     = TPB_worksp+5    ; Bus countdown timer limit. (Reload value).
+TPB_worksp       = $5F2            ; Start of TPB card memory allocation
+TPB_curr_dev     = TPB_worksp      ; Currently selected TPB devce ID
+TPB_dev_type     = TPB_worksp+1    ; Device class of selected device
+TPB_last_rd      = TPB_worksp+2    ; last byte read from TPB device
+TPB_BUS_status   = TPB_worksp+3    ; Status word from TPB engine (subject to change)
+TPB_BUS_tries    = TPB_worksp+4    ; Bus device counter.  This ensures fewer hangs.
+TPB_BUS_lim      = TPB_worksp+5    ; Bus countdown timer limit. (Reload value).
+TPB_BUS_blk_len  = TPB_worksp+6    ; Length of block in or out
+TPB_BUS_blk_type = TPB_worksp+7    ; Type of block transfer. See table 1
+TPB_BUS_temp     = TPB_worksp+9
 
+; Last TPB workspace allocation @ $5FA before buffers.
+
+TPB_BUS_IO_buff  = $600            ; Page of buffer for TPB transfers
 
 
 ; Initialisation Routine
@@ -51,6 +79,8 @@ TPB_PbOutputs   = TPB_LPT_stb_b | TPB_BUS_reset | TPB_BUS_clkout | TPB_BUS_datou
 
 
 TPB_INIT
+;  This first part initialises the on-card 6522 VIA pins for both features.
+
   LDA #0                          ; Set our registers to defaults
   STA TPB_reg_a
   LDA #TPB_PbInitial
@@ -62,8 +92,81 @@ TPB_INIT
   STA TPB_ddr_b                   ; Setup port B for both LPT and TPB initial state.
   LDA #TPB_CA1_pe_b               ; Configure for positive edge interrupt trigger.
   STA TPB_pcr                     ; on CA1
+  
+  ;  This second part initialises the Tower Peripheral Bus engine.
+  
+  LDA #0
+  STA TPB_BUS_status              ; Set the bus to listening.
+
+  LDA #TPB_BUS_lim_c
+  STA TPB_BUS_lim                 ; Set the bus response tries limit (variable for latency)
+  RTS
+
+
+; TPB transmit byte
+; *================================*
+; *                                *
+; *  ENTRY: A=byte                 *
+; *                                *
+; *                                *
+; *================================*
+
+TPB_tx_byte
+  LDX #10                   ; 1 start bit, 8 data bits and 1 stop bit.
+  SEC                       ; We want a start bit.
+  PHA
+TPB_bit_out  
+  BCC TPB_out_zero          ; Determine whether a 1 or 0 to be sent.
+ 
+  
+; output 1 on TPB data
+  LDA TPB_reg_b
+  ORA #TPB_BUS_datout
+  STA TPB_reg_b
+  NOP                       ; This NOP compensates for the branch timing.
+  JSR TPB_pulseclk
+  
+  JMP TPB_shiftbit
+  
+  
+; output 0 on TPB data  
+TPB_out_zero
+  LDA TPB_reg_b
+  AND #~TPB_BUS_datout
+  STA TPB_reg_b
+  JSR TPB_pulseclk 
+  
+  JMP TPB_shiftbit
+
+
+TPB_pulseclk  
+  LDA TPB_reg_b
+  ORA #TPB_BUS_clkout       ; Set the clock line output
+  STA TPB_reg_b
+  
+  JSR TPB_delay
+
+  LDA TPB_reg_b
+  AND #~TPB_BUS_clkout      ; Clear the clock line output
+  STA TPB_reg_b
+  
+  JSR TPB_delay
   RTS
   
+    
+TPB_shiftbit  
+  DEX
+  BEQ TPB_wr_done
+  PLA
+  ASL
+  PHA
+  JMP TPB_bit_out
+  
+TPB_wr_done
+  PLA
+  RTS
+
+
 
 ; TPB LPT Write.
 ; *================================*
@@ -98,8 +201,7 @@ TPB_LPT_write
   
   PLA
   PLP
-  RTS
-  
+  RTS  
   
 STB_ack_wait
   PHA
@@ -111,11 +213,14 @@ TPB_w_loop
   
   PLA
   RTS
+ 
+ 
+; Delay routine for TPB, there are better ways but this will do for now.
   
 TPB_delay
   PHA
   
-  LDA #15
+  LDA #6
   SEC
   
 TPB_delay_loop
