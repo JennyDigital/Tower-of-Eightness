@@ -196,6 +196,8 @@ TPB_LPT_write_vec
   JMP TPB_LPT_write    ; FFD9
 TPB_tx_byte_vec
   JMP TPB_tx_byte      ; FFDC
+TPB_tx_block_vec
+  JMP TPB_tx_block     ; FFDF
 
 ; system vectors
 

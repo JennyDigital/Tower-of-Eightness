@@ -64,8 +64,12 @@ TPB_BUS_status   = TPB_worksp+3    ; Status word from TPB engine (subject to cha
 TPB_BUS_tries    = TPB_worksp+4    ; Bus device counter.  This ensures fewer hangs.
 TPB_BUS_lim      = TPB_worksp+5    ; Bus countdown timer limit. (Reload value).
 TPB_BUS_blk_len  = TPB_worksp+6    ; Length of block in or out
-TPB_BUS_blk_type = TPB_worksp+7    ; Type of block transfer. See table 1
-TPB_BUS_temp     = TPB_worksp+9
+TPB_BUS_blk_stlo = TPB_worksp+7    ; Start address low byte of block
+TPB_BUS_blk_sthi = TPB_worksp+8    ; Start address high byte of block
+TPB_BUS_blk_type = TPB_worksp+9    ; Type of block transfer. See table 1
+TPB_Temp1        = $E2             ; Temporary memory location 1
+TPB_Temp2        = $E3             ; Temporary memory location 2
+; 4 spaces remain between the system variables and the buffer block.
 
 ; Last TPB workspace allocation @ $5FA before buffers.
 
@@ -102,6 +106,54 @@ TPB_INIT
   STA TPB_BUS_lim                 ; Set the bus response tries limit (variable for latency)
   RTS
 
+
+; TPB transmit block
+; *==================================================*
+; *                                                  *
+; *  ENTRY: TPB_BUS_blk_len = length of block        *
+; *         TPB_BUS_blk_st  = start of block         *
+; *                                                  *
+; *  EXIT:  TPB_BUS_blk_len = unchanged              *
+; *         TPB_BUS_blk_st  = st+len                 *
+; *                                                  *
+; *                                                  *
+; *                                                  *
+; *==================================================*
+
+TPB_tx_block
+  
+  LDA TPB_BUS_blk_stlo             ; Copy block address to temp1/2
+  STA TPB_Temp1
+  LDA TPB_BUS_blk_sthi
+  STA TPB_Temp2
+  
+TPB_BUS_tx_next                    ; Transmitter inside loop
+  LDA TPB_BUS_blk_len              ; Finish when TPB_blk_len = 0
+  BEQ TPB_tx_block_done
+  
+  LDY #0                           ; Get and transmit byte.
+  LDA (TPB_Temp1),Y
+  JSR TPB_tx_byte
+
+  DEC TPB_BUS_blk_len              ; Decrement our counter
+  
+  CLC                              ; Increment TPB_BUS_blk_len copy in TPB_Temp1/2
+  LDA TPB_Temp1
+  ADC #1
+  STA TPB_Temp1
+  LDA TPB_Temp2
+  ADC #0
+  STA TPB_Temp2
+  
+  JSR TPB_delay                    ; Add a little delay between bytes.
+  JSR TPB_delay                    ; thereby allowing the receiver to do something useful.
+  JSR TPB_delay
+  
+  JMP TPB_BUS_tx_next
+  
+TPB_tx_block_done
+  RTS
+  
 
 ; TPB transmit byte
 ; *================================*

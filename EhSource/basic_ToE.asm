@@ -284,8 +284,8 @@ IrqBase           = $DF       ; IRQ handler enabled/setup/triggered flags
 
 ; *** removed unused comments for $DE-$E1
 
-;                 = $E2       ; unused
-;                 = $E3       ; unused
+;                 = $E2       ; unused  NOTE: Now used by the TPB card as temporary locations.
+;                 = $E3       ; unused  NOTE: Now used by the TPB card as temporary locations.
 ;                 = $E4       ; unused
 ;                 = $E5       ; unused
 ;                 = $E6       ; unused
@@ -453,19 +453,21 @@ VEC_SV            = VEC_LD+2  ; save vector
 ; program RAM pages!
 
 ;Ibuffs            = IRQ_vec+$14
-;Ibuffs            = VEC_SV+$16
-Ibuffs             = $600 
-                             ; start of input buffer after IRQ/NMI code
+;Ibuffs            = VEC_SV+$16 
+                              ; start of input buffer after IRQ/NMI code
+Ibuffs             = $800     ; TODO: Create a method of allocation controlled from an
+                              ; external file
+                              
 Ibuffe            = Ibuffs+$7F ; end of input buffer
 
-Ram_base          = $0700     ; start of user RAM (set as needed, should be page aligned)
+Ram_base          = $0900     ; start of user RAM (set as needed, should be page aligned)
 Ram_top           = $C000     ; end of user RAM+1 (set as needed, should be page aligned)
 
 Stack_floor       = 16        ; bytes left free on stack for background interrupts
 
 ; This start can be changed to suit your system
 
-      *=    $C100
+      *=    $C100             ; Set here to accomodate the 1 page hole in the address map.
 
 ; BASIC cold start entry point
 
@@ -1011,7 +1013,7 @@ LAB_1359
 
 ; next two lines ignore any non print character and [SPACE] if input buffer empty
 
-      CMP   #$21              ; compare with [SP]+1
+      CMP   #$21              ; compare with [SP]+1 
       BCC   LAB_1359          ; if < ignore character
 
 LAB_1374
