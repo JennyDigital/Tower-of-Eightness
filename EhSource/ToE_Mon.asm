@@ -30,11 +30,12 @@ TPB_out_sw    = @00000100
 
   .ROM_AREA $C100,$FFFF
   
-  *= $FD00                            ; Give ourselves 3 pages for the OS.
+  *= $F000                            ; Give ourselves 3 pages for the OS.
   .INCLUDE "ACIA.asm"
   .INCLUDE "ANSICARD.asm"
   .INCLUDE "TPBCARD.asm"
 ;  .INCLUDE "SIM_ACIA.asm"
+
 ; reset vector points here
 
 RES_vec
@@ -45,7 +46,7 @@ RES_vec
   JSR TPB_delay
   
   LDA #ANSI_out_sw                    ; Set our default output options
-  ;LDA #ACIA_out_sw                    ; Set our default output options
+;  LDA #ACIA_out_sw                   ; Set our default output options
   STA os_outsel                       ; to the ANSI card only.
   LDA #LF_filt_sw
   STA os_infilt                       ; Switch on $A filtering on the ACIA.
@@ -54,14 +55,19 @@ RES_vec
   JSR ANSI_init_vec
   JSR TPB_init_vec                    ; Init Tower Peripheral Bus
   
-  ; TEST CODE
-;LF_filt_sw = @00000001
-;LAB_Test_loop
-;  LDA #$AA
-;  JSR TPB_tx_byte_vec
-;  JMP LAB_Test_loop
-  ; END OF TEST CODE
 
+; TEST CODE START
+
+; LDA #0
+; STA TPB_BUS_blk_stlo
+; LDA #$70
+; STA TPB_BUS_blk_sthi
+; LDA #15
+; STA TPB_BUS_blk_lenlo
+ 
+; JSR TPB_rx_block
+
+; TEST CODE END
 
 
 ; set up vectors and interrupt code, copy them to page 2
@@ -179,7 +185,7 @@ END_CODE
 LAB_mess
                                       ; sign on string
 
-  .byte $0C,$18,$02,$0D,$0A,"Tower of Eightness OS 26.8.2018.1",$0D,$0A,$0D,$0A
+  .byte $0C,$18,$02,$0D,$0A,"Tower of Eightness OS 8.9.2018.1",$0D,$0A,$0D,$0A
   .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
 
 
@@ -198,6 +204,12 @@ TPB_tx_byte_vec
   JMP TPB_tx_byte      ; FFDC
 TPB_tx_block_vec
   JMP TPB_tx_block     ; FFDF
+TPB_ATN_handler_vec
+  JMP TPB_ATN_handler  ; FFE2
+TPB_rx_byte_vec  
+  JMP TPB_rx_byte      ; FFE5
+TPB_rx_block_vec
+  JMP TPB_rx_block     ; FFE8
 
 ; system vectors
 

@@ -24,56 +24,86 @@ TPB_CA1_pe_b    = @00000001
 
 ; TPB Bus Control Bits
 
-TPB_BUS_clkout  = @00010000
-TPB_BUS_clkin   = @01000000
-TPB_BUS_datout  = @00100000
-TPB_BUS_datin   = @10000000
-TPB_BUS_reset   = @00001000
-TPB_BUS_atn     = @00000100
+TPB_BUS_clkout  = @00010000       ; Clock line output (Port B, out)
+TPB_BUS_clkin   = @01000000       ; Clock line readback (Port B, in)
+TPB_BUS_datout  = @00100000       ; Data line output (Port B, out)
+TPB_BUS_datin   = @10000000       ; Data line readback (Port B, in)
+TPB_BUS_reset   = @00001000       ; Reset (Port B, out) resets all devices on the bus.
+TPB_BUS_atn     = @00000100       ; ATN signal (Port B, in) indicated a peripheral needs attention.
 
 
 ; TPB Configuration parameters
 
-TPB_CMD_len     = 16              ; Length of control block
 TPB_BUS_lim_c   = 255             ; Number of samples before giving up on device
-
+TPB_BUS_dev_max = 15              ; Highest device address permitted, host being 0.
 
 ; *****************************************************************************
 ; *                           TABLE 1: BLOCK TYPES                            *
 ; *                           --------------------                            *
-; * 1.  Command Block (Always the same size (as yet unspecified)).            *
+; * 1.  Command Block (Always the same size 4 bytes at current).              *
 ; * 2.  Response Block (Same size as the command block).                      *
-; * 3.  Data Block.  Upto 256 bytes.                                          *
+; * 3.  Data Block.  Upto 65535 bytes. It is not reccomended to go that big,  *
+; *     you would touch registers that way!                                   *
 ; * 4.  Broadcast Block (4 bytes long).                                       *
 ; *                                                                           *
 ; *****************************************************************************
 
-TPB_BLK_cmd      = 1
-TPB_BLK_rsp      = 2
-TPB_BLK_dat      = 3
-TPB_BLK_brd      = 4
+TPB_BLK_cmd        = 1
+TPB_BLK_rsp        = 2
+TPB_BLK_dat        = 3
+TPB_BLK_brd        = 4
 
 
 ; Memory allocations
 
-TPB_worksp       = $5F2            ; Start of TPB card memory allocation
-TPB_curr_dev     = TPB_worksp      ; Currently selected TPB devce ID
-TPB_dev_type     = TPB_worksp+1    ; Device class of selected device
-TPB_last_rd      = TPB_worksp+2    ; last byte read from TPB device
-TPB_BUS_status   = TPB_worksp+3    ; Status word from TPB engine (subject to change)
-TPB_BUS_tries    = TPB_worksp+4    ; Bus device counter.  This ensures fewer hangs.
-TPB_BUS_lim      = TPB_worksp+5    ; Bus countdown timer limit. (Reload value).
-TPB_BUS_blk_len  = TPB_worksp+6    ; Length of block in or out
-TPB_BUS_blk_stlo = TPB_worksp+7    ; Start address low byte of block
-TPB_BUS_blk_sthi = TPB_worksp+8    ; Start address high byte of block
-TPB_BUS_blk_type = TPB_worksp+9    ; Type of block transfer. See table 1
-TPB_Temp1        = $E2             ; Temporary memory location 1
-TPB_Temp2        = $E3             ; Temporary memory location 2
-; 4 spaces remain between the system variables and the buffer block.
+TPB_worksp         = $5F2                 ; Start of TPB card memory allocation
+TPB_curr_dev       = TPB_worksp           ; Currently selected TPB devce ID
+TPB_dev_type       = TPB_worksp+1         ; Device class of selected device
+TPB_last_rd        = TPB_worksp+2         ; last byte read from TPB device
+TPB_BUS_status     = TPB_worksp+3         ; Status word from TPB engine (subject to change)
+TPB_BUS_tries      = TPB_worksp+4         ; Bus device counter.  This ensures fewer hangs.
+TPB_BUS_lim        = TPB_worksp+5         ; Bus countdown timer limit. (Reload value).
+TPB_BUS_blk_lenlo  = TPB_worksp+6         ; Length of block in or out
+TPB_BUS_blk_lenhi  = TPB_worksp+7         ; Length of block in or out
+TPB_BUS_blk_len    = TPB_BUS_blk_lenlo    ; Convenience pointer to TPB_BUS_blk_lenlo
+TPB_BUS_blk_stlo   = TPB_worksp+8         ; Start address low byte of block
+TPB_BUS_blk_sthi   = TPB_worksp+9         ; Start address high byte of block
+TPB_BUS_blk_st     = TPB_BUS_blk_stlo     ; Convenience pointer to TPB_BUS_BLK_stlo
+TPB_BUS_blk_type   = TPB_worksp+$A        ; Type of block transfer. See table 1
+TPB_Temp1          = $E2                  ; Temporary memory location 1
+TPB_Temp2          = $E3                  ; Temporary memory location 2
+TPB_Temp3          = $E4                  ; Temporary memory location 3
+
+; 3 spaces remain between the system variables and the buffer block.
+; This means we end up with $5FD to $5FF unused.
 
 ; Last TPB workspace allocation @ $5FA before buffers.
 
-TPB_BUS_IO_buff  = $600            ; Page of buffer for TPB transfers
+
+; TPB Command Codes
+
+PRESENCE           = 0                  ; Check for device presence by ID
+ATN_CHK            = 1                  ; Check if device is asserting ATN
+REQ_DEV_TYPE       = 2                  ; Request device type-code.
+CTRL_BLK_WR        = 3                  ; Write to control block
+CTRL_BLK_RD        = 4                  ; Read from control block
+BUFF_BLK_WR        = 5                  ; Write to device buffer
+BUFF_BLK_RD        = 6                  ; Read from device buffer
+BUFF_PROCESS       = 7                  ; Process buffer contents
+STREAM_OUT         = 8                  ; Stream out (each char requires an ACK or NACK after)
+STREAM_IN          = 9                  ; Stream in (for each char in, you must send an ACK or NACK)
+
+
+; ACK and NACK codes
+
+TPB_ACK            = $F1                ; Acknowledge code (Continuance signal)
+TPB_NACK           = $F5                ; Not Acknoledge code. (Terminator)
+
+
+TPB_BUS_RAMBASE    = $600
+TPB_Dev_table      = TPB_BUS_RAMBASE                     ; Start of the TPB bus device table.
+TPB_BUS_IO_buff    = TPB_Dev_table + TPB_BUS_dev_max + 1 ; Page of buffer for TPB transfers
+TPB_BUFFER         = $700                                ; Block transfers go here. Max 1 page.
 
 
 ; Initialisation Routine
@@ -107,35 +137,246 @@ TPB_INIT
   RTS
 
 
-; TPB transmit block
+; TPB ATN signal handler
+; ****************************************************
+; *                                                  *
+; *  ENTRY:                                          *
+; *  EXIT: P, carry is set when asserted, otherwise  *
+; *           cleared.                               *
+; *                                                  *
+; ****************************************************
+
+ATN_CHK_ctrl_blk   = TPB_BUS_IO_buff
+DEV_ID             = ATN_CHK_ctrl_blk
+DEV_BLK_TYPE       = ATN_CHK_ctrl_blk + 1
+DEV_CMD            = ATN_CHK_ctrl_blk + 2
+CHECKSUM           = ATN_CHK_ctrl_blk + 3
+
+
+TPB_ATN_handler
+  LDA TPB_reg_b                   ; Check if ATN is asserted
+  AND #TPB_BUS_atn
+  BEQ ATN_asserted                ; Find out who's asserting (low numbers first)
+  CLC                             ; When none are asserted, Carry is cleared and
+  RTS                             ; the routine exits quickly.
+  
+ATN_asserted
+  LDY #0
+ATN_next                          ; Work our way through the device table
+  LDA TPB_Dev_table,Y           
+  
+  BEQ TPB_EOT                     ; Check for end of table marker (0).
+  
+                                  ; Initialise our control block for attention check
+
+  STA DEV_ID                      ; Store device ID.
+  TYA
+  PHA                             ; Stack our table pointer for later.
+  LDA #TPB_BLK_cmd
+  STA DEV_BLK_TYPE
+  LDA #ATN_CHK
+  STA DEV_CMD
+  
+  JSR TPB_calc_ctrl_csum
+  
+  LDA #<ATN_CHK_ctrl_blk          ; Setup pointers and transmit control block.
+  STA TPB_BUS_blk_stlo
+  LDA #>ATN_CHK_ctrl_blk
+  STA TPB_BUS_blk_sthi
+  LDA #4
+  STA TPB_BUS_blk_lenlo
+  LDA #0
+  STA TPB_BUS_blk_lenhi
+  
+  JSR TPB_tx_block
+  
+  ;JSR TPB_ctrl_rd
+  
+  PLA                             ; Get our id table pointer back.
+  TAY
+  INY                             ; Advance to next table entry  
+  JMP ATN_next
+TPB_EOT
+  RTS
+  
+TPB_calc_ctrl_csum
+  CLC
+  LDA #0                          ; Calculate and store checksum for block.
+  ADC DEV_ID
+  ADC DEV_BLK_TYPE
+  ADC DEV_CMD
+  STA CHECKSUM
+  RTS
+ 
+
+; TPB recieve byte
+; *======================================*
+; *                                      *
+; *  ENTRY:                              *
+; *  EXIT: Affects A,X,Y,P               *
+; *        A = byte                      *
+; *        C = 1 Sucess, 0 Fail          *
+; *                                      *
+; *======================================*
+
+TPB_rx_byte                       ; Read one byte
+  LDA #0                          ; This is our starting value
+  STA TPB_Temp3                   ; Keep it safe in Temp1
+  
+  LDA TPB_reg_b                   ; Signal start bit required.
+  ORA #TPB_BUS_clkout             ; Set the clock line output
+  STA TPB_reg_b
+  
+  CLC
+  LDY #TPB_BUS_lim_c              ; Load our limit (preventing bus hangs)
+TPB_chk_databit
+  JSR TPB_delay                   ; Small delay.  This may change later.
+  LDA TPB_reg_b
+  AND #TPB_BUS_datin
+  BEQ TPB_sbit_asserted
+  
+  DEY                             ; Check for timeout & branch if still waiting.
+  BNE TPB_chk_databit
+  
+TPB_rx_fail
+  LDA TPB_reg_b                   ; Clear clock line output
+  AND #~TPB_BUS_clkout
+  STA TPB_reg_b
+  JSR TPB_delay                   ; ...and include a small delay
+
+  LDA #0                          ; We timed out so let's signal that
+  CLC
+  RTS
+  
+TPB_sbit_asserted
+  LDA TPB_reg_b                   ; Clear clock line output
+  AND #~TPB_BUS_clkout
+  STA TPB_reg_b
+  JSR TPB_delay                   ; ...and include a small delay
+  
+
+  LDX #8                          ; Receive and store 8 bits.
+TPB_rcv_nextbit  
+  JSR TPB_Takebit
+  ROL TPB_Temp3                   ; Push our sampled bit into our output.
+
+  DEX
+  BNE TPB_rcv_nextbit
+  
+  JSR TPB_Takebit                 ; Receive the stop bit.  
+  BCS TPB_rx_fail
+  
+  LDA TPB_Temp3                   ; Retrieve our finished byte
+  SEC                             ; and signal that we were successful
+  RTS
+  
+TPB_Takebit  
+  JSR TPB_pulseclk                ; Sample the bus and set or clear carry as required.
+  LDA TPB_reg_b
+  AND #TPB_BUS_datin
+  CLC
+  BNE TPB_skip_setbit
+  SEC
+TPB_skip_setbit
+  RTS
+ 
+ 
+ ; TPB receive block
 ; *==================================================*
 ; *                                                  *
-; *  ENTRY: TPB_BUS_blk_len = length of block        *
+; *  ENTRY: TPB_BUS_blk_lenlo = length of block (LO) *
+; *         TPB_BUS_blk_lenhi = length of block (HI) *
+; *                                                  *
 ; *         TPB_BUS_blk_st  = start of block         *
 ; *                                                  *
 ; *  EXIT:  TPB_BUS_blk_len = unchanged              *
 ; *         TPB_BUS_blk_st  = st+len                 *
+; *         A,X,Y,P all affected.                    *
+; *         C=0 Fail, C=1 Success                    *
 ; *                                                  *
+; *==================================================*
+ 
+TPB_rx_block
+  LDA TPB_BUS_blk_stlo             ; Copy block address to temp1/2
+  STA TPB_Temp1
+  LDA TPB_BUS_blk_sthi
+  STA TPB_Temp2
+  
+TPB_BUS_rx_next                    ; Receiver inside loop
+  LDA TPB_BUS_blk_lenlo            ; Finish when TPB_blk_len(lo and hi) = 0
+  ORA TPB_BUS_blk_lenhi
+  BEQ TPB_rx_block_done
+  
+  JSR TPB_rx_byte                  ; Get byte.
+  
+  BCS TPB_rx_continue              ; Continue unless TPB_rx_byte signals failiure.
+  PLA                              ; Get rid of Temp1 from stack. Not needed now.
+  RTS
+  
+TPB_rx_continue
+  LDY #0                           
+  STA (TPB_Temp1),Y                ; Store our successfully received byte.
+  
+  LDA TPB_BUS_blk_lenlo            ; Decrement our length counter
+  SEC
+  SBC #1
+  STA TPB_BUS_blk_lenlo
+  LDA TPB_BUS_blk_lenhi
+  SBC #0
+  STA TPB_BUS_blk_lenhi
+  
+  CLC                              ; Increment TPB_BUS_blk_len copy in TPB_Temp1/2
+  LDA TPB_Temp1
+  ADC #1
+  STA TPB_Temp1
+  LDA TPB_Temp2
+  ADC #0
+  STA TPB_Temp2
+  
+  JMP TPB_BUS_rx_next
+  
+TPB_rx_block_done
+  SEC
+  RTS
+
+
+; TPB transmit block
+; *==================================================*
+; *                                                  *
+; *  ENTRY: TPB_BUS_blk_lenlo = length of block (LO) *
+; *         TPB_BUS_blk_lenhi = length of block (HI) *
+; *                                                  *
+; *         TPB_BUS_blk_st  = start of block         *
+; *                                                  *
+; *  EXIT:  TPB_BUS_blk_len = unchanged              *
+; *         TPB_BUS_blk_st  = st+len                 *
+; *         A,X,Y,P all affected.                    *
 ; *                                                  *
 ; *                                                  *
 ; *==================================================*
 
 TPB_tx_block
-  
   LDA TPB_BUS_blk_stlo             ; Copy block address to temp1/2
   STA TPB_Temp1
   LDA TPB_BUS_blk_sthi
   STA TPB_Temp2
   
 TPB_BUS_tx_next                    ; Transmitter inside loop
-  LDA TPB_BUS_blk_len              ; Finish when TPB_blk_len = 0
+  LDA TPB_BUS_blk_lenlo            ; Finish when TPB_blk_len(lo and hi) = 0
+  ORA TPB_BUS_blk_lenhi
   BEQ TPB_tx_block_done
   
   LDY #0                           ; Get and transmit byte.
   LDA (TPB_Temp1),Y
   JSR TPB_tx_byte
 
-  DEC TPB_BUS_blk_len              ; Decrement our counter
+  LDA TPB_BUS_blk_lenlo            ; Decrement our length counter
+  SEC
+  SBC #1
+  STA TPB_BUS_blk_lenlo
+  LDA TPB_BUS_blk_lenhi
+  SBC #0
+  STA TPB_BUS_blk_lenhi
   
   CLC                              ; Increment TPB_BUS_blk_len copy in TPB_Temp1/2
   LDA TPB_Temp1
@@ -159,7 +400,7 @@ TPB_tx_block_done
 ; *================================*
 ; *                                *
 ; *  ENTRY: A=byte                 *
-; *                                *
+; *  EXIT: Affects X, P            *
 ; *                                *
 ; *================================*
 
