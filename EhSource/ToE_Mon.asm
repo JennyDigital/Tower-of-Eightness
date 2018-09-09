@@ -30,11 +30,11 @@ TPB_out_sw    = @00000100
 
   .ROM_AREA $C100,$FFFF
   
-  *= $F000                            ; Give ourselves 3 pages for the OS.
+  *= $F000                            ; Give ourselves room for the OS.
   .INCLUDE "ACIA.asm"
   .INCLUDE "ANSICARD.asm"
   .INCLUDE "TPBCARD.asm"
-;  .INCLUDE "SIM_ACIA.asm"
+ ; .INCLUDE "SIM_ACIA.asm"
 
 ; reset vector points here
 
@@ -55,21 +55,6 @@ RES_vec
   JSR ANSI_init_vec
   JSR TPB_init_vec                    ; Init Tower Peripheral Bus
   
-
-; TEST CODE START
-
-; LDA #0
-; STA TPB_BUS_blk_stlo
-; LDA #$70
-; STA TPB_BUS_blk_sthi
-; LDA #15
-; STA TPB_BUS_blk_lenlo
- 
-; JSR TPB_rx_block
-
-; TEST CODE END
-
-
 ; set up vectors and interrupt code, copy them to page 2
 
   LDY #END_CODE-LAB_vec               ; set index/count
@@ -185,7 +170,7 @@ END_CODE
 LAB_mess
                                       ; sign on string
 
-  .byte $0C,$18,$02,$0D,$0A,"Tower of Eightness OS 8.9.2018.1",$0D,$0A,$0D,$0A
+  .byte $0C,$18,$02,$0D,$0A,"Tower of Eightness OS 8.9.2018.2",$0D,$0A,$0D,$0A
   .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
 
 
@@ -210,6 +195,8 @@ TPB_rx_byte_vec
   JMP TPB_rx_byte      ; FFE5
 TPB_rx_block_vec
   JMP TPB_rx_block     ; FFE8
+TPB_Dev_Presence_vec
+  JMP TPB_Dev_Presence ; FFEB
 
 ; system vectors
 
