@@ -5,22 +5,27 @@
   .include "basic_ToE.asm"
 ; put the IRQ and MNI code in RAM so that it can be changed
 
-IRQ_vec       = VEC_SV+2              ; IRQ code vector
-NMI_vec       = IRQ_vec+$0A           ; NMI code vector
+; IRQ_vec	= VEC_SV+2              ; Previous IRQ code vector
+IRQ_vec		= IRQH_ProcessIRQs	; IRQ code vector
+NMI_vec		= IRQ_vec+$0A           ; NMI code vector
 
 
 ; OS System variables live here
 
-MON_sysvars   = $5E0                  ; base address of the 16 bytes of memory reserved
-os_outsel     = MON_sysvars           ; output selection variable
-os_infilt     = os_outsel+1           ; Filter switches for character input filtering.
+MON_sysvars   = $5E0			; base address of the 16 bytes of memory reserved
+os_outsel     = MON_sysvars		; output selection variable
+os_infilt     = os_outsel+1		; Filter switches for character input filtering.
+
+TOE_MemptrLo  = $E7			; General purpose memory pointer low byte
+TOE_MemptrHi  = $E8			; General purpose memory pointer high byte
 
 
 ; OS Bit Definitions
 
-ACIA_out_sw   = @00000001
-ANSI_out_sw   = @00000010
-TPB_out_sw    = @00000100
+ACIA1_out_sw	= @00000001
+ANSI_out_sw	= @00000010
+TPB_out_sw	= @00000100
+ACIA2_out_sw	= @00001000
 
 
 ; now the code. This sets up the vectors, interrupt code,
@@ -34,26 +39,53 @@ TPB_out_sw    = @00000100
   .INCLUDE "ACIA.asm"
   .INCLUDE "ANSICARD.asm"
   .INCLUDE "TPBCARD.asm"
- ; .INCLUDE "SIM_ACIA.asm"
+  .INCLUDE "TAPE_IO.asm"
+  .INCLUDE "AY_DRIVER.asm"
+  .INCLUDE "IRQ_Handler.asm"
+  .INCLUDE "TEST_IRQ.asm"
+
 
 ; reset vector points here
 
 RES_vec
-  CLD                                 ; clear decimal mode
-  LDX #$FF                            ; empty stack
-  TXS                                 ; set the stack
+  SEI					; Ensure IRQ's are turned off.
+  CLD					; clear decimal mode
+  LDX #$FF				; empty stack
+  TXS					; set the stack
+
+  JSR IRQH_Handler_Init_vec		; Initialise the IRQ Handler
+
+; test code
+  LDA #<TEST_IRQ			; Put the test IRQ address into the table at IRQ Location 0
+  STA IRQH_CallReg
+  LDA #>TEST_IRQ
+  STA IRQH_CallReg + 1
+  LDA #0
+  JSR IRQH_SetIRQ_vec
+  
+  LDA #1				; Enable IRQ 0
+  ORA IRQH_MaskByte
+  STA IRQH_MaskByte
+  
+  JSR INIT_TEST_IRQ
+   
+  CLI					; Enable IRQs globally.
+
+; end of test code
 
   JSR TPB_delay
   
-  LDA #ANSI_out_sw                    ; Set our default output options
-;  LDA #ACIA_out_sw                   ; Set our default output options
+  LDA #ANSI_out_sw                    ; Set our default output options for ANSI output mode.
+;  LDA #ACIA_out_sw                   ; Set our default output options for ACIA output mode.
   STA os_outsel                       ; to the ANSI card only.
-  LDA #LF_filt_sw
+  LDA #LF_filt_sw1
   STA os_infilt                       ; Switch on $A filtering on the ACIA.
   
-  JSR INI_ACIA                        ; Init ACIA
-  JSR ANSI_init_vec
+  JSR INI_ACIA1                       ; Init ACIA1. We currently need this for the keyboard.
+  JSR INI_ACIA2                       ; Init ACIA2. Just in case.
+  JSR ANSI_init_vec                   ; Initialise the ANSI text video card.
   JSR TPB_init_vec                    ; Init Tower Peripheral Bus
+  JSR AY_Init                         ; Initialise the AY sound system.
   
 ; set up vectors and interrupt code, copy them to page 2
 
@@ -64,10 +96,16 @@ LAB_stlp
   DEY                                 ; decrement index/count
   BNE LAB_stlp                        ; loop if more to do
 
+  
+; Initialise filing system
 
-; now do the signon message, Y = $00 here
+  JSR TAPE_init_vec                   ; Initialise TowerTAPE filing system.
+    
+; now do the signon message
 
+  LDY #0
 LAB_signon
+
   LDA LAB_mess,Y                      ; get byte from sign on message
   BEQ LAB_nokey                       ; exit loop if done
 
@@ -92,18 +130,13 @@ LAB_dowarm
   JMP LAB_WARM                        ; do EhBASIC warm start
 
 
-         ; flag no byte received
-no_load                               ; empty load vector for EhBASIC
-no_save                               ; empty save vector for EhBASIC
-  RTS
-
 ; EhBASIC vector tables
 
 LAB_vec
-  .word ACIAin                        ; byte in from ACIA
-  .word WR_char                       ; byte out to ACIA
-  .word no_load                       ; null load vector for EhBASIC
-  .word no_save                       ; null save vector for EhBASIC
+  .word ACIA1in                       ; byte in from ACIA1
+  .word WR_char                       ; byte out to ACIA1
+  .word TAPE_LOAD_BASIC_vec           ; null load vector for EhBASIC
+  .word TAPE_SAVE_BASIC_vec           ; save vector for EhBASIC
 
 ; EhBASIC IRQ support
 
@@ -135,14 +168,22 @@ WR_char
   PHP                                 ; Save our registers in case we need 'em
   PHA
    
-  LDA #ACIA_out_sw
+  LDA #ACIA1_out_sw
   BIT os_outsel
-  BEQ no_ACIA
+  BEQ no_ACIA1
   PLA
-  JSR ACIAout                         ; Print to ACIA
+  JSR ACIA1out                         ; Print to ACIA1
+
+  PHA
+no_ACIA1  
+  LDA #ACIA2_out_sw
+  BIT os_outsel
+  BEQ no_ACIA2
+  PLA
+  JSR ACIA2out                         ; Print to ACIA1
   
   PHA
-no_ACIA
+no_ACIA2
   LDA #ANSI_out_sw
   BIT os_outsel
   BEQ no_ANSI
@@ -164,41 +205,117 @@ no_TPB_LPT
   PLA
   PLP
   RTS
+  
+  
+; Tower string printing routine.
+TOE_PrintStr
+  LDY #0					; Initialise loop index.
+TOE_PrintStr_L
+  LDA (TOE_MemptrLo),Y				; Print character.
+  BEQ TOE_DonePrinting
+  JSR V_OUTP
+  INY
+  BRA TOE_PrintStr_L
 
+TOE_DonePrinting
+  RTS
+  
 END_CODE
 
 LAB_mess
                                       ; sign on string
 
-  .byte $0C,$18,$02,$0D,$0A,"Tower of Eightness OS 8.9.2018.2",$0D,$0A,$0D,$0A
+  .byte "Tower of Eightness OS 21.8.2021.1",$0D,$0A,$0D,$0A
   .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
 
 
 ; ToE OS Vectors
 
-  *= $FFD0
-ANSI_init_vec
-  JMP ANSI_INIT        ; FFD0
-ANSI_write_vec
-  JMP ANSI_write       ; FFD3
-TPB_init_vec
-  JMP TPB_INIT         ; FFD6
-TPB_LPT_write_vec
-  JMP TPB_LPT_write    ; FFD9
-TPB_tx_byte_vec
-  JMP TPB_tx_byte      ; FFDC
-TPB_tx_block_vec
-  JMP TPB_tx_block     ; FFDF
-TPB_ATN_handler_vec
-  JMP TPB_ATN_handler  ; FFE2
-TPB_rx_byte_vec  
-  JMP TPB_rx_byte      ; FFE5
-TPB_rx_block_vec
-  JMP TPB_rx_block     ; FFE8
-TPB_Dev_Presence_vec
-  JMP TPB_Dev_Presence ; FFEB
+  *= $FF90
+  
+; ANSI Card vectors
 
-; system vectors
+ANSI_init_vec
+  JMP ANSI_INIT            ; FF90
+ANSI_write_vec
+  JMP ANSI_write           ; FF93
+  
+
+; Tower Peripheral Bus vectors
+
+TPB_init_vec
+  JMP TPB_INIT             ; FF96
+TPB_LPT_write_vec
+  JMP TPB_LPT_write        ; FF99
+TPB_tx_byte_vec
+  JMP TPB_tx_byte          ; FF9C
+TPB_tx_block_vec
+  JMP TPB_tx_block         ; FF9F
+TPB_ATN_handler_vec
+  JMP TPB_ATN_handler      ; FFA2
+TPB_rx_byte_vec  
+  JMP TPB_rx_byte          ; FFA5
+TPB_rx_block_vec
+  JMP TPB_rx_block         ; FFA8
+TPB_Dev_Presence_vec
+  JMP TPB_Dev_Presence     ; FFAB
+TPB_Req_Dev_Type_vec
+  JMP TPB_Req_Dev_Type     ; FFAE
+TPB_dev_select_vec
+  JMP TPB_dev_select       ; FFB1
+TPB_Ctrl_Blk_Wr_vec
+  JMP TPB_Ctrl_Blk_Wr      ; FFB4
+TPB_Ctrl_Blk_Rd_vec
+  JMP TPB_Ctrl_Blk_Rd      ; FFB7
+
+
+; TAPE subsystem vectors
+
+TAPE_Leader_vec
+  JMP F_TAPE_Leader        ; FFBA
+TAPE_BlockOut_vec
+  JMP F_TAPE_BlockOut      ; FFBD
+TAPE_ByteOut_vec
+  JMP F_TAPE_ByteOut       ; FFC0
+TAPE_BlockIn_vec
+  JMP F_TAPE_BlockIn       ; FFC3
+TAPE_ByteIn_vec
+  JMP F_TAPE_GetByte       ; FFC6
+TAPE_init_vec
+  JMP F_TAPE_Init          ; FFC9
+TAPE_SAVE_BASIC_vec  
+  JMP F_TAPE_SAVE_BASIC    ; FFCC
+TAPE_LOAD_BASIC_vec  
+  JMP F_TAPE_LOAD_BASIC    ; FFCF
+
+
+; Stream output vector.  
+
+TOE_PrintStr_vec
+  JMP TOE_PrintStr         ; FFD2
+
+
+; AY Soundcard vectors.
+  
+AY_Userwrite_vec           ; FFD5
+  JMP AY_Userwrite
+AY_Userread_vec            ; FFD8
+  JMP AY_Userread
+
+
+; IRQ Handler Subsystem vectors
+  
+IRQH_Handler_Init_vec	   ; FFDB
+  JMP IRQH_Handler_Init_F
+IRQH_SetIRQ_vec		   ; FFDE
+  JMP IRQH_SetIRQ_F
+IRQH_ClrIRQ_vec		   ; FFE1
+  JMP IRQH_ClrIRQ_F
+IRQH_SystemReport_vec	   ; FFE4
+  JMP IRQH_SystemReport_F
+
+
+; processor hardware vectors.  These are fixed in hardware and cannot be moved.
 
   *= $FFFA
 

@@ -28,8 +28,9 @@ TPB_BUS_clkout  = @00010000       ; Clock line output (Port B, out)
 TPB_BUS_clkin   = @01000000       ; Clock line readback (Port B, in)
 TPB_BUS_datout  = @00100000       ; Data line output (Port B, out)
 TPB_BUS_datin   = @10000000       ; Data line readback (Port B, in)
-TPB_BUS_reset   = @00001000       ; Reset (Port B, out) resets all devices on the bus.
-TPB_BUS_atn     = @00000100       ; ATN signal (Port B, in) indicated a peripheral needs attention.
+TPB_BUS_select  = @00001000       ; TPB bus select (Port B, out) signals bus selection.
+TPB_BUS_atnin   = @00000100       ; ATN signal readback (Port B, in) indicates a peripheral needs attention or select signal
+TPB_BUS_atnout  = @00000001       ; ATN signal output.  When used, tells a device that the data is a select signal.
 
 
 ; TPB Configuration parameters
@@ -52,6 +53,24 @@ TPB_BLK_cmd        = 1
 TPB_BLK_rsp        = 2
 TPB_BLK_dat        = 3
 TPB_BLK_brd        = 4
+
+
+; *****************************************************************************
+; *                                                                           *
+; *                          TABLE 2: DEVICE TYPES                            *
+; *                          ---------------------                            *
+; * 1.  DEVType_BlkStorage.  Block storage device.                            *
+; * 2.  DEVType_IOStream.    Input/Output Stream device.                      *
+; * 15. DEVType_User.        User defined device.  Must use own code.         *
+; *                                                                           *
+; *                                                                           *
+; *                                                                           *
+; *                                                                           *
+; *****************************************************************************
+
+DEVType_blkstorage = 1
+DEVType_IOstream   = 2
+DEVType_User       = 15
 
 
 ; Memory allocations
@@ -82,8 +101,8 @@ TPB_Temp3          = $E4                  ; Temporary memory location 3
 
 ; TPB Command Codes
 
-PRESENCE           = 0                  ; Check for device presence by ID
-ATN_CHK            = 1                  ; Check if device is asserting ATN
+PRESENCE           = 0                  ; Check for device presence by ID   <DONE>
+ATN_CHK            = 1                  ; Check if device is asserting ATN   <DONE>
 REQ_DEV_TYPE       = 2                  ; Request device type-code.
 CTRL_BLK_WR        = 3                  ; Write to control block
 CTRL_BLK_RD        = 4                  ; Read from control block
@@ -116,8 +135,8 @@ CHECKSUM           = TPB_ctrl_blk + 3
 
 ; Initialisation Routine
 
-TPB_PbInitial   = TPB_LPT_stb_b | TPB_BUS_reset
-TPB_PbOutputs   = TPB_LPT_stb_b | TPB_BUS_reset | TPB_BUS_clkout | TPB_BUS_datout
+TPB_PbInitial   = TPB_LPT_stb_b
+TPB_PbOutputs   = TPB_LPT_stb_b | TPB_BUS_clkout | TPB_BUS_datout | TPB_BUS_atnout | TPB_BUS_select
 
 
 TPB_INIT
@@ -143,6 +162,154 @@ TPB_INIT
   LDA #TPB_BUS_lim_c
   STA TPB_BUS_lim                 ; Set the bus response tries limit (variable for latency)
   RTS
+
+
+; TPB Write to remote device control block
+; *******************************************************
+; *                                                     *
+; *  ENTRY:                                             *
+; *  EXIT:                                              *
+; *         Affects, A,X,Y,P.                           *
+; *         C = 0: Fail                                 *
+; *         C = 1: Success.                             *
+; *                                                     *
+; *******************************************************
+
+TPB_Ctrl_Blk_Wr
+  LDA TPB_curr_dev                ; Setup Command Block
+  STA DEV_ID
+  LDA #TPB_BLK_cmd
+  STA DEV_BLK_TYPE
+  LDA #CTRL_BLK_WR
+  STA DEV_CMD_RSP
+  JSR TPB_calc_ctrl_csum
+
+  JSR TPB_Tx_CMD                  ; Issue write to remote control block command.
+    
+  JSR TPB_WaitATN                 ; Wait for Attention signal
+  BCC CBW_Fail                    ; If no device then quit with carry clear.
+  
+  LDA #<TPB_BUFFER                ; Setup for device control block transmit.
+  STA TPB_BUS_blk_stlo
+  LDA #>TPB_BUFFER
+  STA TPB_BUS_blk_sthi
+  LDA #16                         ; Control blocks are 16 bytes in length
+  STA TPB_BUS_blk_lenlo           ; at present.  I may change this...
+  LDA #0
+  STA TPB_BUS_blk_lenhi
+  
+  JSR TPB_tx_block                ; Transmit the control block.
+  
+  SEC                             ; Exit signalling success.
+  RTS
+  
+CBW_Fail  
+  CLC                             ; Exit signalling fail.
+  RTS
+  
+  
+  ; TPB Read from remote device control block
+; *******************************************************
+; *                                                     *
+; *  ENTRY:                                             *
+; *  EXIT:                                              *
+; *         Affects, A,X,Y,P.                           *
+; *         C = 0: Fail                                 *
+; *         C = 1: Success.                             *
+; *                                                     *
+; *******************************************************
+
+TPB_Ctrl_Blk_Rd
+  LDA TPB_curr_dev                ; Setup Command Block
+  STA DEV_ID
+  LDA #TPB_BLK_cmd
+  STA DEV_BLK_TYPE
+  LDA #CTRL_BLK_RD
+  STA DEV_CMD_RSP
+  JSR TPB_calc_ctrl_csum
+
+  JSR TPB_Tx_CMD                  ; Issue write to remote control block command.
+ 
+  JSR TPB_WaitATN                 ; Wait for Attention signal
+  BCC CBR_Fail                    ; If no device then quit with carry clear.
+  
+  LDA #<TPB_BUFFER                ; Setup for device control block receive.
+  STA TPB_BUS_blk_stlo
+  LDA #>TPB_BUFFER
+  STA TPB_BUS_blk_sthi
+  LDA #16                         ; Control blocks are 16 bytes in length
+  STA TPB_BUS_blk_lenlo           ; at present.  I may change this...
+  LDA #0
+  STA TPB_BUS_blk_lenhi
+  
+  JSR TPB_rx_block                ; Receive the control block.
+  BCC CBR_Fail
+    
+  RTS                             ; Exit successfully.
+  
+CBR_Fail  
+  CLC                             ; Exit signalling fail.
+  RTS
+  
+  
+  
+
+; TPB Request device type code
+; *******************************************************
+; *                                                     *
+; *  ENTRY: A=Device ID                                 *
+; *  EXIT:  A=Device Type                               *
+; *         Affects, A,X,Y,P.                           *
+; *         C = 0: Fail                                 *
+; *         C = 1: Success.                             *
+; *                                                     *
+; *******************************************************
+  
+TPB_Req_Dev_Type
+  STA DEV_ID                      ; Setup Command Block
+  LDA #TPB_BLK_cmd
+  STA DEV_BLK_TYPE
+  LDA #REQ_DEV_TYPE
+  STA DEV_CMD_RSP
+  JSR TPB_calc_ctrl_csum
+  
+  JSR TPB_Tx_CMD                  ; Issue Req_Dev_Type command
+    
+  JSR TPB_WaitATN                 ; Wait for Attention signal
+  BCC DevType_Fail                ; If no device then quit with carry clear.
+
+  LDA #<TPB_ctrl_blk              ; Setup for device reply to the control block
+  STA TPB_BUS_blk_stlo
+  LDA #>TPB_ctrl_blk
+  STA TPB_BUS_blk_sthi
+  LDA #4
+  STA TPB_BUS_blk_lenlo
+  LDA #0
+  STA TPB_BUS_blk_lenhi
+  
+  JSR TPB_rx_block                ; Get our reply block.
+  BCC DevType_Fail                ; Error if TPB_rx_block fails.
+  
+  CLC                            ; Calculate Checksum
+  LDA DEV_ID
+  ADC DEV_BLK_TYPE
+  ADC DEV_CMD_RSP
+  
+  CMP CHECKSUM                   ; Compare with received checksum
+  BNE DevType_Fail               ; Signal appropriately with the carry bit.
+  
+  LDA DEV_BLK_TYPE               ; Check for the appropriate response.
+  CMP #TPB_BLK_rsp
+  BNE DevType_Fail               ; ...and fail if incorrect.
+  
+  LDA DEV_CMD_RSP                ; Reply with device type.
+  
+  SEC
+  RTS
+
+DevType_Fail
+  CLC                            ; General failiure exit point.
+  RTS
   
   
 ; TPB Check ATN state.
@@ -157,7 +324,7 @@ TPB_INIT
 
 TPB_Check_ATN
   LDA TPB_reg_b                   ; Check if ATN is asserted
-  AND #TPB_BUS_atn
+  AND #TPB_BUS_atnin
   SEC
   BEQ ATN_asserted                ; Skip clearing C if ATN is asserted.
   CLC                             ; Carry is cleared as ATN isn't asserted.
@@ -217,14 +384,14 @@ FinWaitATN
 ; ****************************************************
 ; *                                                  *
 ; *  ENTRY: A=ID                                     *
-; *  EXIT:  TPB_BUS_IO_buff= reply block             *
+; *  EXIT:  TPB_BUS_IO_buff = reply block            *
 ; *         C=0 (No device or block fail),           *
 ; *         C=1 Success.                             *
 ; *                                                  *
 ; ****************************************************
 
 
-; Setup Command Block
+; Setup Command Block 
 
 TPB_Dev_Presence
   ; Command Setup
@@ -472,7 +639,7 @@ TPB_skip_setbit
 ; *                                                  *
 ; *  EXIT:  TPB_BUS_blk_len = unchanged              *
 ; *         TPB_BUS_blk_st  = st+len                 *
-; *         A,X,Y,P all affected.                    *
+; *         A,X,Y,P affected.                        *
 ; *                                                  *
 ; *                                                  *
 ; *==================================================*
@@ -518,7 +685,7 @@ TPB_tx_block_done
   RTS
  
 
- ; TPB receive block
+; TPB receive block
 ; *==================================================*
 ; *                                                  *
 ; *  ENTRY: TPB_BUS_blk_lenlo = length of block (LO) *
@@ -575,7 +742,46 @@ TPB_rx_continue
 TPB_rx_block_done
   SEC
   RTS
+  
+  
+; TPB Device Select
+; *==================================================*
+; *                                                  *
+; *   ENTRY:   A = Device to select                  *
+; *   EXIT:    None                                  *
+; *   AFFECTS: A,X,Y,P                               *
+; *                                                  *
+; *                                                  *
+; *==================================================*
 
+TPB_dev_select
+  TAY                       ; Save our device ID
+  
+  
+  LDA #TPB_BUS_select       ; Assert SELECT signal
+  STA TPB_reg_b
+
+  LDX #$0                   ; Give device time to act
+ATN_Resp_Dwell
+  DEX
+  NOP
+  NOP
+  BNE ATN_Resp_Dwell
+  
+  TYA                       ; Get our ID from Y
+  JSR TPB_tx_byte           ; Transmit our device ID
+  
+  LDA #~TPB_BUS_select      ; Deassert SELECT
+  STA TPB_reg_b
+  
+  STY TPB_curr_dev          ; Update current dev variable
+  
+  RTS
+  
+
+
+    
+FINDME:
 
 ; TPB LPT Write.
 ; *================================*

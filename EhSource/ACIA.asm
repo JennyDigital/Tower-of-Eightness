@@ -10,14 +10,25 @@ ACIA_CTRL_LISTEN = ACIA_WL8 | ACIA_RCS_BRG | ACIA_9600 | ACIA_TIC_00
 ACIA_CMD_SETUP  = ACIA_PMC_DIS | ACIA_PME_DIS | ACIA_REM_OFF | ACIA_TIC_10 | ACIA_INT_DIS | ACIA_DTR_RDY
 
 
-; ACIA Registers
+; ACIA1 Registers
 
-ACIA_base     = $C010                 ; Change as needed later.
-ACIA_tx       = ACIA_base
-ACIA_rx       = ACIA_base
-ACIA_sts      = ACIA_base + 1
-ACIA_cmd      = ACIA_base + 2
-ACIA_ctrl     = ACIA_base + 3
+ACIA1_base     = $C010                 ; Change as needed later.
+ACIA1_tx       = ACIA1_base
+ACIA1_rx       = ACIA1_base
+ACIA1_sts      = ACIA1_base + 1
+ACIA1_cmd      = ACIA1_base + 2
+ACIA1_ctrl     = ACIA1_base + 3
+
+
+; ACIA2 Registers
+
+ACIA2_base     = $C014                 ; Change as needed later.
+ACIA2_tx       = ACIA2_base
+ACIA2_rx       = ACIA2_base
+ACIA2_sts      = ACIA2_base + 1
+ACIA2_cmd      = ACIA2_base + 2
+ACIA2_ctrl     = ACIA2_base + 3
+
 
 
 ; ACIA Speeds
@@ -72,51 +83,81 @@ ACIA_DTR_RDY        = @00000001
 
 ; ACIA Clock Source
 
-ACIA_RCS_EXT  = @00000000
-ACIA_RCS_BRG  = @00010000
+ACIA_RCS_EXT	= @00000000
+ACIA_RCS_BRG	= @00010000
 
 
 ; Status Flags
 
-ACIA_PER      = @00000001
-ACIA_FER      = @00000010
-ACIA_OVR      = @00000100
-ACIA_RBF      = @00001000
-ACIA_TXE      = @00010000
-ACIA_DCD      = @00100000
-ACIA_DSR      = @01000000
-ACIA_INT      = @10000000
+ACIA_PER	= @00000001
+ACIA_FER	= @00000010
+ACIA_OVR	= @00000100
+ACIA_RBF	= @00001000
+ACIA_TXE	= @00010000
+ACIA_DCD	= @00100000
+ACIA_DSR	= @01000000
+ACIA_INT	= @10000000
 
 
 ; Filter Switch
 
-LF_filt_sw    = @00000001
+LF_filt_sw1	= @00000001
+LF_filt_sw2	= @00000010
 
 
 
 ; Tower of Eightness Specific serial routines.
 	
-INI_ACIA                          ; As required for a 6551 ACIA
+INI_ACIA1                         ; As required for a 6551 ACIA
   LDA #ACIA_CMD_SETUP
-  STA ACIA_cmd                    ; Set the command reg for specified baud rate
+  STA ACIA1_cmd                    ; Set the command reg for specified baud rate
   LDA #ACIA_CTRL_LISTEN
-  STA ACIA_ctrl                   ; Set the control reg for correct operation
-  JSR ACIAin                      ; Swallow the first byte (experimental fix)
-  RTS	
+  STA ACIA1_ctrl                   ; Set the control reg for correct operation
+  JSR ACIA1in                      ; Swallow the first byte (experimental fix)
+  RTS
+  
+  
+INI_ACIA2                         ; As required for a 6551 ACIA
+  LDA #ACIA_CMD_SETUP
+  STA ACIA2_cmd                    ; Set the command reg for specified baud rate
+  LDA #ACIA_CTRL_LISTEN
+  STA ACIA2_ctrl                   ; Set the control reg for correct operation
+  JSR ACIA2in                      ; Swallow the first byte (experimental fix)
+  RTS
 
 
-; byte out to 6551 ACIA
+; byte out to 6551 ACIA1
 
-ACIAout
+ACIA1out
   PHP                             ; Save registers as we aren't allowed to change them
   PHA
 	
-  STA ACIA_tx                     ; write to ACIA TX buffer
+  STA ACIA1_tx                     ; write to ACIA TX buffer
   LDA #ACIA_TXE
 
-ACIA_wr_wait
-  BIT ACIA_sts
-  BEQ ACIA_wr_wait                ; Wait until written.
+ACIA1_wr_wait
+  BIT ACIA1_sts
+  BEQ ACIA1_wr_wait                ; Wait until written.
+	
+  PLA                             ; Restore registers. We're all good.
+  PLP
+	
+  RTS                             ; Done... Hopefully.
+  
+  
+  
+; byte out to 6551 ACIA2
+
+ACIA2out
+  PHP                             ; Save registers as we aren't allowed to change them
+  PHA
+	
+  STA ACIA2_tx                     ; write to ACIA TX buffer
+  LDA #ACIA_TXE
+
+ACIA2_wr_wait
+  BIT ACIA2_sts
+  BEQ ACIA2_wr_wait                ; Wait until written.
 	
   PLA                             ; Restore registers. We're all good.
   PLP
@@ -124,22 +165,43 @@ ACIA_wr_wait
   RTS                             ; Done... Hopefully.
 
 
-; byte in from 6551 ACIA
+; byte in from 6551 ACIA 1
 
-ACIAin
+ACIA1in
   LDA #ACIA_RBF
-  BIT ACIA_sts                    ; do we have a byte?
-  BEQ LAB_nobyw                   ; branch if no byte waiting
+  BIT ACIA1_sts				; do we have a byte?
+  BEQ LAB_nobyw				; branch if no byte waiting
 
-  LDA ACIA_rx                     ; Get byte sent.
-  SEC                             ; flag byte received
+  LDA ACIA1_rx				; Get byte sent.
+  SEC					; flag byte received
   
   PHA
-  LDA #LF_filt_sw
+  LDA #LF_filt_sw1
   BIT os_infilt
   BEQ filter_inp
   PLA
   RTS
+
+
+; byte in from 6551 ACIA 2
+  
+ACIA2in
+  LDA #ACIA_RBF
+  BIT ACIA2_sts				; do we have a byte?
+  BEQ LAB_nobyw				; branch if no byte waiting
+
+  LDA ACIA2_rx				; Get byte sent.
+  SEC					; flag byte received
+  
+  PHA
+  LDA #LF_filt_sw2
+  BIT os_infilt
+  BEQ filter_inp
+  PLA
+  RTS
+
+; Byte filter feature.  Applicable to both ACIAs.
+
 
 filter_inp  
   PLA

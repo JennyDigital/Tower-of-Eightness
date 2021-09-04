@@ -1,5 +1,5 @@
 
-; Enhanced BASIC to assemble under 6502 simulator, $ver 2.22p5
+; Enhanced BASIC to assemble under 6502 simulator, $ver 2.22p4
 
 ; $E7E1 $E7CF $E7C6 $E7D3 $E7D1 $E7D5 $E7CF $E81E $E825
 
@@ -29,17 +29,6 @@
 ;                 is > 0 and < 1E-16
 ;              added additional stack floor protection for background interrupts
 ;              fixed conditional LOOP & NEXT cannot find their data strucure on stack
-; 2.22p5    fixes issues reported by users Ruud and dclxvi on the 6502.org forum
-;      5.0     http://forum.6502.org/viewtopic.php?f=5&t=5500
-;              sanity check for RAM top allows values below RAM base
-;      5.1-7   http://forum.6502.org/viewtopic.php?f=5&t=5606
-;              1-7 coresponds to the bug# in the thread
-;      5.1     TO expression with a subtract may evaluate with the sign bit flipped
-;      5.3     call to LAB_1B5B may return to an address -$100 (page not incremented)
-;      5.4     string concatenate followed by MINUS or NOT() crashes EhBASIC
-;      5.5     garbage collection may cause an overlap with temporary strings
-;      5.6     floating point multiply rounding bug
-;      5.7     VAL() may cause string variables to be trashed
 
 ; zero page use ..
 
@@ -295,13 +284,13 @@ IrqBase           = $DF       ; IRQ handler enabled/setup/triggered flags
 
 ; *** removed unused comments for $DE-$E1
 
-;                 = $E2       ; TPB card temporary location
-;                 = $E3       ; TPB card temporary location
-;                 = $E4       ; TAPE tempoaray location.
-;                 = $E5       ; TAPE BlockLo
-;                 = $E6       ; TAPE blockHi
-;                 = $E7       ; TOE_MemptrLo low byte general purpose pointer
-;                 = $E8       ; TOE_MemptrHi high byte general purpose pointer.
+;                 = $E2       ; unused  NOTE: Now used by the TPB card as temporary locations.
+;                 = $E3       ; unused  NOTE: Now used by the TPB card as temporary locations.
+;                 = $E4       ; unused
+;                 = $E5       ; unused
+;                 = $E6       ; unused
+;                 = $E7       ; unused
+;                 = $E8       ; unused
 ;                 = $E9       ; unused
 ;                 = $EA       ; unused
 ;                 = $EB       ; unused
@@ -463,23 +452,22 @@ VEC_SV            = VEC_LD+2  ; save vector
 ; the input buffer must not cross a page boundary and must not overlap with
 ; program RAM pages!
 
-; FINDME
-; $900-$AFF Allocated to the cassette file system.  This is probably generous.
-
 ;Ibuffs            = IRQ_vec+$14
-Ibuffs            = $B00       ; TODO: Create a method of allocation controlled from an
-                               ; external file
-                               ; start of input buffer after IRQ/NMI code
+;Ibuffs            = VEC_SV+$16 
+                              ; start of input buffer after IRQ/NMI code
+Ibuffs             = $900     ; TODO: Create a method of allocation controlled from an
+                              ; external file
+                              
 Ibuffe            = Ibuffs+$7F ; end of input buffer
 
-Ram_base          = $0C00      ; start of user RAM (set as needed, should be page aligned)
-Ram_top           = $C000      ; end of user RAM+1 (set as needed, should be page aligned)
+Ram_base          = $0A00     ; start of user RAM (set as needed, should be page aligned)
+Ram_top           = $C000     ; end of user RAM+1 (set as needed, should be page aligned)
 
-Stack_floor       = 16         ; bytes left free on stack for background interrupts
+Stack_floor       = 16        ; bytes left free on stack for background interrupts
 
 ; This start can be changed to suit your system
 
-      *=    $C100
+      *=    $C100             ; Set here to accomodate the 1 page hole in the address map.
 
 ; BASIC cold start entry point
 
@@ -582,12 +570,7 @@ LAB_2DAA
 LAB_2DB6
       LDA   Itempl            ; get temporary integer low byte
       LDY   Itemph            ; get temporary integer high byte
-; *** begin patch  2.22p5.0 RAM top sanity check ***
-; *** replace
-;      CPY   #<Ram_base+1      ; compare with start of RAM+$100 high byte
-; +++ with
-      CPY   #>Ram_base+1      ; compare with start of RAM+$100 high byte
-; *** end patch    2.22p5.0 ***
+      CPY   #<Ram_base+1      ; compare with start of RAM+$100 high byte
       BCC   LAB_GMEM          ; if too small go try again
 
 
@@ -1030,7 +1013,7 @@ LAB_1359
 
 ; next two lines ignore any non print character and [SPACE] if input buffer empty
 
-      CMP   #$21              ; compare with [SP]+1
+      CMP   #$21              ; compare with [SP]+1 
       BCC   LAB_1359          ; if < ignore character
 
 LAB_1374
@@ -1514,10 +1497,6 @@ LAB_FOR
       JSR   LAB_CTNM          ; check if source is numeric, else do type mismatch
       JSR   LAB_EVNM          ; evaluate expression and check is numeric,
                               ; else do type mismatch
-; *** begin patch  2.22p5.1   TO expression may get sign bit flipped
-; *** add
-      JSR   LAB_27BA          ; round FAC1
-; *** end   patch  2.22p5.1   TO expression may get sign bit flipped
       LDA   FAC1_s            ; get FAC1 sign (b7)
       ORA   #$7F              ; set all non sign bits
       AND   FAC1_1            ; and FAC1 mantissa1
@@ -1549,13 +1528,6 @@ LAB_15B3
                               ; here (+/-1) is then compared to that result and if they
                               ; are the same (+ve and FOR > TO or -ve and FOR < TO) then
                               ; the loop is done
-                             
-; *** begin patch  2.22p5.3   potential return address -$100 (page not incremented) ***
-; *** add
-   .IF [* & $FF] == $FD
-      NOP                     ; return address of JSR +1 (on  next page)
-   .ENDIF  
-; *** end   patch  2.22p5.3   potential return address -$100 (page not incremented) ***
       JSR   LAB_1B5B          ; push sign, round FAC1 and put on stack
       LDA   Frnxth            ; get var pointer for FOR/NEXT high byte
       PHA                     ; push on stack
@@ -3104,12 +3076,6 @@ LAB_1B43
       LDA   LAB_OPPT+1,Y      ; get function vector low byte
       PHA                     ; onto stack
                               ; now push sign, round FAC1 and put on stack
-; *** begin patch  2.22p5.3   potential return address -$100 (page not incremented) ***
-; *** add
-   .IF [* & $FF] == $FD
-      NOP                     ; return address of JSR +1 (on  next page)
-   .ENDIF  
-; *** end   patch  2.22p5.3   potential return address -$100 (page not incremented) ***
       JSR   LAB_1B5B          ; function will return here, then the next RTS will call
                               ; the function
       LDA   comp_f            ; get compare function flag
@@ -3136,14 +3102,8 @@ LAB_1B5B
 
 ; round FAC1 and put on stack
 
-; *** begin patch  2.22p5.1   TO expression may get sign bit flipped
-; *** replace
-;LAB_1B66
-;      JSR   LAB_27BA          ; round FAC1
-; *** with
-      JSR   LAB_27BA          ; round FAC1
 LAB_1B66
-; *** end   patch  2.22p5.1   TO expression may get sign bit flipped
+      JSR   LAB_27BA          ; round FAC1
       LDA   FAC1_3            ; get FAC1 mantissa3
       PHA                     ; push on stack
       LDA   FAC1_2            ; get FAC1 mantissa2
@@ -3336,22 +3296,8 @@ TK_GT_PLUS  = TK_GT-TK_PLUS
       LDY   #TK_GT_PLUS*3     ; set offset from base to > operator
 LAB_1C13
       PLA                     ; dump return address low byte
-; *** begin patch  2.22p5.4  concatenate MINUS or NOT() crashes EhBASIC  ***
-; *** replace
-;      PLA                     ; dump return address high byte
-;      JMP   LAB_1B1D          ; execute function then continue evaluation
-; *** with
-      TAX                     ; save to trap concatenate
       PLA                     ; dump return address high byte
-      CPX   #<[LAB_224Da+2]   ; from concatenate low return address?
-      BNE   LAB_1C13b         ; No - continue!
-      CMP   #>[LAB_224Da+2]   ; from concatenate high return address?
-      BEQ   LAB_1C13a         ; Yes - error!
-LAB_1C13b
       JMP   LAB_1B1D          ; execute function then continue evaluation
-LAB_1C13a
-      JMP   LAB_1ABC          ; throw "type mismatch error" then warm start      
-; *** end   patch  2.22p5.4  concatenate MINUS or NOT() crashes EhBASIC  ***
 
 ; variable name set-up
 ; get (var), return value in FAC_1 and $ flag
@@ -4638,10 +4584,6 @@ LAB_214B
       STA   Sstorh            ; set string storage high byte
       LDY   #$00              ; clear index
       STY   garb_h            ; clear working pointer high byte (flag no strings to move)
-; *** begin patch  2.22p5.5  garbage collection may overlap temporary strings
-; *** add
-      STY   garb_l            ; clear working pointer low byte (flag no strings to move)
-; *** begin patch  2.22p5.5  garbage collection may overlap temporary strings
       LDA   Earryl            ; get array mem end low byte
       LDX   Earryh            ; get array mem end high byte
       STA   Histrl            ; save as highest string low byte
@@ -4795,13 +4737,7 @@ LAB_2211
 
 LAB_2216
       DEC   g_step            ; decrement step size (now $03 for descriptor stack)
-; *** begin patch  2.22p5.5  garbage collection may overlap temporary strings
-; *** replace
-;      LDX   garb_h            ; get string to move high byte
-; *** with
-      LDA   garb_h            ; any string to move?
-      ORA   garb_l
-; *** end   patch  2.22p5.5  garbage collection may overlap temporary strings
+      LDX   garb_h            ; get string to move high byte
       BEQ   LAB_2211          ; exit if nothing to move
 
       LDY   g_indx            ; get index byte back (points to descriptor)
@@ -4837,10 +4773,6 @@ LAB_224D
       PHA                     ; put on stack
       LDA   des_pl            ; get descriptor pointer low byte
       PHA                     ; put on stack
-; *** begin patch  2.22p5.4  concatenate MINUS or NOT() crashes EhBASIC  ***
-; *** add extra label to verify originating function
-LAB_224Da
-; *** end patch    2.22p5.4  concatenate MINUS or NOT() crashes EhBASIC  ***
       JSR   LAB_GVAL          ; get value from line
       JSR   LAB_CTST          ; check if source is string, else do type mismatch
       PLA                     ; get descriptor pointer low byte back
@@ -5256,52 +5188,29 @@ LAB_VAL
       JMP   LAB_24F1          ; clear FAC1 exponent and sign and return
 
 LAB_23C5
-; *** begin patch  2.22p5.7  VAL() may cause string variables to be trashed
-; *** replace     
-;      LDX   Bpntrl            ; get BASIC execute pointer low byte
-;      LDY   Bpntrh            ; get BASIC execute pointer high byte
-;      STX   Btmpl             ; save BASIC execute pointer low byte
-;      STY   Btmph             ; save BASIC execute pointer high byte
-;      LDX   ut1_pl            ; get string pointer low byte
-;      STX   Bpntrl            ; save as BASIC execute pointer low byte
-;      CLC                     ; clear carry
-;      ADC   ut1_pl            ; add string length
-;      STA   ut2_pl            ; save string end low byte
-;      LDA   ut1_ph            ; get string pointer high byte
-;      STA   Bpntrh            ; save as BASIC execute pointer high byte
-;      ADC   #$00              ; add carry to high byte
-;      STA   ut2_ph            ; save string end high byte
-;      LDY   #$00              ; set index to $00
-;      LDA   (ut2_pl),Y        ; get string end +1 byte
-;      PHA                     ; push it
-;      TYA                     ; clear A
-;      STA   (ut2_pl),Y        ; terminate string with $00
-;      JSR   LAB_GBYT          ; scan memory
-;      JSR   LAB_2887          ; get FAC1 from string
-;      PLA                     ; restore string end +1 byte
-;      LDY   #$00              ; set index to zero
-;      STA   (ut2_pl),Y        ; put string end byte back
-; *** with
-      PHA                     ; save length
-      INY                     ; string length +1
-      TYA
-      JSR   LAB_MSSP          ; allocate temp string +1 bytes long
-      PLA                     ; get length back
-      JSR   LAB_229C          ; copy string (ut1_pl) -> (Sutill) for A bytes
-      LDA   #0                ; add delimiter to end of string
-      TAY
-      STA   (Sutill),Y
-      LDX   Bpntrl            ; save BASIC execute pointer low byte
-      LDY   Bpntrh
-      STX   Btmpl
-      STY   Btmph
-      LDX   str_pl            ; point to temporary string
-      LDY   str_ph
-      STX   Bpntrl
-      STY   Bpntrh
+      LDX   Bpntrl            ; get BASIC execute pointer low byte
+      LDY   Bpntrh            ; get BASIC execute pointer high byte
+      STX   Btmpl             ; save BASIC execute pointer low byte
+      STY   Btmph             ; save BASIC execute pointer high byte
+      LDX   ut1_pl            ; get string pointer low byte
+      STX   Bpntrl            ; save as BASIC execute pointer low byte
+      CLC                     ; clear carry
+      ADC   ut1_pl            ; add string length
+      STA   ut2_pl            ; save string end low byte
+      LDA   ut1_ph            ; get string pointer high byte
+      STA   Bpntrh            ; save as BASIC execute pointer high byte
+      ADC   #$00              ; add carry to high byte
+      STA   ut2_ph            ; save string end high byte
+      LDY   #$00              ; set index to $00
+      LDA   (ut2_pl),Y        ; get string end +1 byte
+      PHA                     ; push it
+      TYA                     ; clear A
+      STA   (ut2_pl),Y        ; terminate string with $00
       JSR   LAB_GBYT          ; scan memory
       JSR   LAB_2887          ; get FAC1 from string
-; *** end patch    2.22p5.7  VAL() may cause string variables to be trashed
+      PLA                     ; restore string end +1 byte
+      LDY   #$00              ; set index to zero
+      STA   (ut2_pl),Y        ; put string end byte back
 
 ; restore BASIC execute pointer from temp (Btmpl/Btmph)
 
@@ -5856,23 +5765,13 @@ LAB_MULTIPLY
 
 LAB_2622
       BNE   LAB_2627          ; branch if byte <> zero
-; *** begin patch  2.22p5.6  floating point multiply rounding bug
-; *** replace
-;      JMP   LAB_2569          ; shift FCAtemp << A+8 times
-;
-;                              ; else do shift and add
-;LAB_2627
-;      LSR                     ; shift byte
-;      ORA   #$80              ; set top bit (mark for 8 times)
-; *** with
-      SEC
-      JMP   LAB_2569          ; shift FACtemp << A+8 times
+
+      JMP   LAB_2569          ; shift FCAtemp << A+8 times
 
                               ; else do shift and add
 LAB_2627
-      SEC                     ; set top bit (mark for 8 times)
-      ROR
-; *** end patch    2.22p5.6  floating point multiply rounding bug
+      LSR                     ; shift byte
+      ORA   #$80              ; set top bit (mark for 8 times)
 LAB_262A
       TAY                     ; copy result
       BCC   LAB_2640          ; skip next if bit was zero
@@ -8001,7 +7900,7 @@ LAB_MSZM
 
 LAB_SMSG
       .byte " Bytes free",$0D,$0A,$0A
-      .byte "Enhanced BASIC 2.22p5",$0A,$00
+      .byte "Enhanced BASIC 2.22p4",$0A,$00
 
 ; numeric constants and series
 
