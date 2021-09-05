@@ -42,7 +42,7 @@ ACIA2_out_sw	= @00001000
   .INCLUDE "TAPE_IO.asm"
   .INCLUDE "AY_DRIVER.asm"
   .INCLUDE "IRQ_Handler.asm"
-  .INCLUDE "TEST_IRQ.asm"
+  .INCLUDE "COUNTDOWN_IRQ.asm"
 
 
 ; reset vector points here
@@ -53,25 +53,19 @@ RES_vec
   LDX #$FF				; empty stack
   TXS					; set the stack
 
+
+; Set up system timing function
+
   JSR IRQH_Handler_Init_vec		; Initialise the IRQ Handler
 
-; test code
-  LDA #<TEST_IRQ			; Put the test IRQ address into the table at IRQ Location 0
+  LDA #<COUNTDOWN_IRQ			; Put the test IRQ address into the table at IRQ Location 0
   STA IRQH_CallReg
-  LDA #>TEST_IRQ
+  LDA #>COUNTDOWN_IRQ
   STA IRQH_CallReg + 1
   LDA #0
   JSR IRQH_SetIRQ_vec
-  
-  LDA #1				; Enable IRQ 0
-  ORA IRQH_MaskByte
-  STA IRQH_MaskByte
-  
-  JSR INIT_TEST_IRQ
    
   CLI					; Enable IRQs globally.
-
-; end of test code
 
   JSR TPB_delay
   
@@ -313,7 +307,12 @@ IRQH_ClrIRQ_vec		   ; FFE1
   JMP IRQH_ClrIRQ_F
 IRQH_SystemReport_vec	   ; FFE4
   JMP IRQH_SystemReport_F
+  
+; Timer System vectors
 
+INIT_COUNTDOWN_IRQ_vec	   ; FFE7
+  JMP INIT_COUNTDOWN_IRQ
+  
 
 ; processor hardware vectors.  These are fixed in hardware and cannot be moved.
 

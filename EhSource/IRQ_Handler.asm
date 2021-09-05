@@ -3,20 +3,30 @@
 ; Interrupt request handling and masking on per device basis.
 
 
-; System constants.  Presently only one exists.
+; System constants
 
-IRQH_Version_C		= 0				; Version 0 (Pre-release)
+IRQH_Version_C		= 0					; Version 0 (Pre-release)
+
+
+; IRQ Handler command codes
+;
+IRQH_Service_CMD	= 0					; Request IRQ Service
+IRQH_Shutdown_CMD	= 1					; Shutdown IRQ gracefully
+IRQH_Reset_CMD		= 2					; Reset the IRQ handler.
 
 
 ; IRQ Memory table
 ;
-IRQH_Table_Base		= $A20 				; Beginning of IRQ Handler Memory.
-IRQH_CallList		= IRQH_Table_Base		; All sixteen bytes for eight addresses.
-IRQH_CallReg		= IRQH_CallList + 16		; Two bytes containing an address being transferred.
-IRQH_ClaimsList		= IRQH_CallReg + 2		; Byte with list of calls that returned and IRQ Claim
-IRQH_MaskByte		= IRQH_ClaimsList + 1		; Byte containing IRQ Table entry mask bits. IRQ entry LSb is IRQ entry 0.
-IRQH_WorkingMask	= IRQH_MaskByte + 1		; Walking bit for masking and setting purposes.
-IRQH_CurrentEntry	= IRQH_WorkingMask + 1		; Pointer for IRQ Table entries.
+IRQH_Table_Base		= $A20 					; Beginning of IRQ Handler Memory.
+IRQH_CallList		= IRQH_Table_Base			; All sixteen bytes for eight addresses.
+IRQH_CallReg		= IRQH_CallList + 16			; Two bytes containing an address being transferred.
+IRQH_ClaimsList		= IRQH_CallReg + 2			; Byte with list of calls that returned and IRQ Claim
+IRQH_MaskByte		= IRQH_ClaimsList + 1			; Byte containing IRQ Table entry mask bits. IRQ entry LSb is IRQ entry 0.
+IRQH_WorkingMask	= IRQH_MaskByte + 1			; Walking bit for masking and setting purposes.
+IRQH_CurrentEntry	= IRQH_WorkingMask + 1			; Pointer for IRQ Table entries.
+IRQH_CMD_Table		= IRQH_CurrentEntry + 1			; Table of IRQ handler commands with parameter space.  16 bytes.
+
+IRQH_zero_range_C	= IRQH_CurrentEntry+17-IRQH_CallReg	; Amount to zero after IRQH_CallList.
 
 ; Table current size is 21 bytes.
 
@@ -45,10 +55,16 @@ IRQH_FillTable_L
   BCS IRQH_FillTable_L
   
   LDA #0					; Clear rest of the IRQ Handler's structure.
-  STA IRQH_ClaimsList
-  STA IRQH_MaskByte
-  STA IRQH_WorkingMask
-  STA IRQH_CurrentEntry
+  LDX #0
+  
+IRQH_FillRemaining_L
+  LDA #0
+  STA IRQH_CallReg,X
+  INX
+  
+  TXA						; Stop when the table is full.
+  CMP #IRQH_zero_range_C
+  BNE IRQH_FillRemaining_L
   
   RTS						; Return to caller.
   

@@ -32,4 +32,4 @@ WE = (!RWB) & PHI2;
 
 LE = !(PHI2 # RWB) & LAT_ADDR & IOSEL;
 
-OE = PHI2 & RWB; /* & !IOSEL; */
+OE = RWB;

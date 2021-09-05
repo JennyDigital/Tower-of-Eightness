@@ -11536,7 +11536,7 @@ Based on the following sources:
 <part name="P+2" library="supply1" deviceset="VCC" device=""/>
 <part name="GND3" library="supply1" deviceset="GND" device=""/>
 <part name="IC1" library="memory-hitachi" deviceset="62256P" device=""/>
-<part name="IC4" library="microchip" deviceset="27*128" device="P" technology="C"/>
+<part name="IC4" library="microchip" deviceset="27*128" device="P" technology="C" value="27C128P/28C256"/>
 <part name="IC2" library="memory-hitachi" deviceset="62256P" device=""/>
 <part name="IC3" library="memory-hitachi" deviceset="62256P" device=""/>
 <part name="GND1" library="supply1" deviceset="GND" device=""/>
