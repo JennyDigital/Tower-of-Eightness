@@ -361,10 +361,12 @@ TK_BITSET         = TK_SWAP+1       ; BITSET token
 TK_BITCLR         = TK_BITSET+1     ; BITCLR token
 TK_IRQ            = TK_BITCLR+1     ; IRQ token
 TK_NMI            = TK_IRQ+1        ; NMI token
+TK_VERIFY         = TK_NMI+1        ; VERIFY token
+
 
 ; secondary command tokens, can't start a statement
 
-TK_TAB            = TK_NMI+1        ; TAB token
+TK_TAB            = TK_VERIFY+1     ; TAB token
 TK_ELSE           = TK_TAB+1        ; ELSE token
 TK_TO             = TK_ELSE+1       ; TO token
 TK_FN             = TK_TO+1         ; FN token
@@ -457,6 +459,7 @@ VEC_IN            = VEC_CC+2  ; input vector
 VEC_OUT           = VEC_IN+2  ; output vector
 VEC_LD            = VEC_OUT+2 ; load vector
 VEC_SV            = VEC_LD+2  ; save vector
+VEC_VERIFY        = VEC_SV+2  ; verify vector
 ; end bulk initialize by min_mon.asm from LAB_vec at LAB_stlp
 
 ; Ibuffs can now be anywhere in RAM, ensure that the max length is < $80,
@@ -7917,6 +7920,8 @@ V_LOAD
       JMP   (VEC_LD)          ; load BASIC program
 V_SAVE
       JMP   (VEC_SV)          ; save BASIC program
+V_VERIFY
+      JMP   (VEC_VERIFY)
 
 ; The rest are tables messages and code for RAM
 
@@ -8163,6 +8168,7 @@ LAB_CTBL
       .word LAB_BITCLR-1      ; BITCLR          new command
       .word LAB_IRQ-1         ; IRQ             new command
       .word LAB_NMI-1         ; NMI             new command
+      .word TAPE_VERIFY_BASIC_vec-1      ; VERIFY          new command
 
 ; function pre process routine table
 
@@ -8589,9 +8595,11 @@ LBB_USR
       .byte $00
 TAB_ASCV
 LBB_VAL
-      .byte "AL(",TK_VAL      ; VAL(
+      .BYTE "AL(",TK_VAL      ; VAL(
 LBB_VPTR
       .byte "ARPTR(",TK_VPTR  ; VARPTR(
+LBB_VERIFY
+      .BYTE "ERIFY",TK_VERIFY ; VERIFY
       .byte $00
 TAB_ASCW
 LBB_WAIT
@@ -8698,6 +8706,9 @@ LAB_KEYT
       .word LBB_IRQ           ; IRQ
       .byte 3,'N'
       .word LBB_NMI           ; NMI
+      .byte 7,'V'
+      .word LBB_VERIFY        ; VERIFY
+
 
 ; secondary commands (can't start a statement)
 

@@ -26,6 +26,7 @@ ACIA1_out_sw	= @00000001
 ANSI_out_sw	= @00000010
 TPB_out_sw	= @00000100
 ACIA2_out_sw	= @00001000
+TAPE_out_sw	= @00010000
 
 
 ; now the code. This sets up the vectors, interrupt code,
@@ -131,6 +132,8 @@ LAB_vec
   .word WR_char                       ; byte out to ACIA1
   .word TAPE_LOAD_BASIC_vec           ; null load vector for EhBASIC
   .word TAPE_SAVE_BASIC_vec           ; save vector for EhBASIC
+  .word TAPE_VERIFY_BASIC_vec         ; verify vector for EhBASIC
+  
 
 ; EhBASIC IRQ support
 
@@ -160,6 +163,9 @@ NMI_CODE
 
 WR_char
   PHP                                 ; Save our registers in case we need 'em
+  PHX
+  PHY
+  PHA
   PHA
    
   LDA #ACIA1_out_sw
@@ -191,12 +197,23 @@ no_ANSI
   BEQ no_TPB_LPT
   PLA
   JSR TPB_LPT_write_vec               ; Print to TPB LPT card
-  
-  PLP
-  RTS
-  
-no_TPB_LPT
+
+  PHA  
+no_TPB_LPT                            ; "Print" to the TAPE interface
+  LDA #TAPE_out_sw
+  BIT os_outsel
+  BEQ MON_EndWRITE_B                  ; Dont write to tape unless selected.
   PLA
+  JSR TAPE_ByteOut_vec
+  
+  BRA MON_EndWRITE_B2
+
+MON_EndWRITE_B
+  PLA                                   ; Clean up stack including restoring P and return.
+MON_EndWRITE_B2
+  PLA
+  PLY
+  PLX
   PLP
   RTS
   
@@ -219,14 +236,23 @@ END_CODE
 LAB_mess
                                       ; sign on string
 
-  .byte "Tower of Eightness OS 21.8.2021.1",$0D,$0A,$0D,$0A
+  .byte "Tower of Eightness OS 11.9.2021.1",$0D,$0A,$0D,$0A
   .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
 
 
 ; ToE OS Vectors
 
-  *= $FF90
+  *= $FF60
+; Stream output vector.  
+
+TOE_PrintStr_vec
+  JMP TOE_PrintStr         ; FF60
+
   
+; ... existing vectors continue from here.
+
+  *= $FF90
+
 ; ANSI Card vectors
 
 ANSI_init_vec
@@ -281,12 +307,8 @@ TAPE_SAVE_BASIC_vec
   JMP F_TAPE_SAVE_BASIC    ; FFCC
 TAPE_LOAD_BASIC_vec  
   JMP F_TAPE_LOAD_BASIC    ; FFCF
-
-
-; Stream output vector.  
-
-TOE_PrintStr_vec
-  JMP TOE_PrintStr         ; FFD2
+TAPE_VERIFY_BASIC_vec
+  JMP F_TAPE_VERIFY_BASIC  ; FFD2
 
 
 ; AY Soundcard vectors.

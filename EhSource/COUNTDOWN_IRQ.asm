@@ -5,8 +5,8 @@
 
 ; Variables
 
-CTR_V			= $A50		; This is our counter variable base address.
-CTR_LOAD_VAL_V		= $A52		; This is the interval between counts in PHI2 ticks
+CTR_V			= IRQH_CMD_Table+16		; This is our counter variable base address.
+CTR_LOAD_VAL_V		= CTR_V + 2			; This is the interval between counts in PHI2 ticks
 
 
 ; Constants

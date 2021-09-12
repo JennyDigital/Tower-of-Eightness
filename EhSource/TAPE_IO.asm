@@ -19,6 +19,9 @@ TAPE_BlockIn_Complete	= @00000001
 TAPE_BlockIn_Escape	= @00000010
 TAPE_BlockIn_Error	= @00000100
 
+TAPE_Verify_Good	= @00000001
+TAPE_Verify_Escape	= @00000010
+TAPE_Verify_Error	= @00000100
 
 ; Tape interface port addresses
 
@@ -102,6 +105,12 @@ V_TAPE_Sample_Offset		= V_TAPE_Phasetime + 1		; Sample offset variable
 V_TAPE_Bitlength		= V_TAPE_Sample_Offset + 1	; How long a bit is in passes variable
 V_TAPE_bitcycles		= V_TAPE_Bitlength + 1		; Number of cycles to a bit variable
 
+V_TAPE_Verify_Status		= V_TAPE_bitcycles + 1		; Status register for the F_TAPE_Verify function.
+
+
+
+
+
 
 
 ; Next is $934.
@@ -117,13 +126,13 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System",$0D,$0A
-  .BYTE "V1.1",$0D,$0A,$0D,$0A,$00
+  .BYTE "V1.2",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
 
   .BYTE $D,$A
-  .BYTE "Ready.",$D,$A,0
+  .BYTE "Ready",$D,$A,0
   
   
 TMSG_Saving
@@ -147,6 +156,16 @@ TMSG_Verifying
 
   .BYTE $D,$A
   .BYTE "Verifying.",$D,$A,0
+  
+TMSG_Verified
+
+  .BYTE $D,$A
+  .BYTE "Verified OK.",$D,$A,0
+  
+TMSG_VerifyError
+
+  .BYTE $D,$A
+  .BYTE "Verify Error",$D,$A,0
 
 TMSG_TapeError
 
@@ -278,6 +297,104 @@ F_TAPE_SAVE_BASIC
     
   RTS							; We're done for now.
   
+  
+
+; Tape VERIFY routine.
+; --------------------
+
+F_TAPE_VERIFY_BASIC
+
+ LDA #<TAPE_Header_Buffer				; Point to start of header buffer
+  STA TAPE_BlockLo
+  LDA #>TAPE_Header_Buffer
+  STA TAPE_BlockHi
+  
+  LDA #TAPE_Header_End - TAPE_Header_Buffer		; Specify how big our header is.
+  STA V_TAPE_BlockSize
+  LDA #0
+  STA V_TAPE_BlockSize + 1
+  
+  LDA #<TMSG_Searching					; Tell the user that we are searching.
+  STA TOE_MemptrLo
+  LDA #>TMSG_Searching
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+  
+  JSR F_TAPE_BlockIn					; Load the header block.
+
+  LDA TAPE_BlockIn_Status				; Branch on non load conditions
+  CMP #TAPE_Verify_Escape
+  BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+  CMP #TAPE_Verify_Error
+  BNE TAPE_BASIC_Verify_Stage
+
+  LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
+  STA TOE_MemptrLo
+  LDA #>TMSG_HeaderError
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+  
+  JMP F_TAPE_VERIFY_BASIC				; Keep coming back until the header is read valid or the user presses escape
+  
+TAPE_BASIC_Verify_Stage
+
+  JSR F_TAPE_GetBASIC_Size				; Put our BASIC program size into V_TAPE_BlockSize.
+
+  LDA TAPE_FileSizeLo					; Check our file is the same size as our stored program.
+  CMP V_TAPE_BlockSize
+  BNE TAPE_Verify_Error_B
+  LDA TAPE_FileSizeHi
+  CMP V_TAPE_BlockSize + 1
+  BNE TAPE_Verify_Error_B
+   
+  LDA TAPE_FileSizeLo					; Tell the system how big the file to verify is.
+  STA V_TAPE_BlockSize
+  LDA TAPE_FileSizeHi
+  STA V_TAPE_BlockSize + 1
+  
+  LDA #<Ram_base					; Tell the system where to start verifying the BASIC program,
+  STA TAPE_BlockLo					; this should point to Ram_base.
+  LDA #>Ram_base
+  STA TAPE_BlockHi
+  
+  LDA #<TMSG_Verifying					; Tell the user that we are verifying.
+  STA TOE_MemptrLo
+  LDA #>TMSG_Verifying
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec 
+    
+  JSR F_TAPE_VerifyBlock				; Verify the BASIC program.
+
+  LDA V_TAPE_Verify_Status				; Branch on non load conditions
+  CMP #TAPE_Verify_Escape
+  BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+  
+  CMP #TAPE_Verify_Error				; Check if verify passed or not.
+  BNE TAPE_BASIC_Verify_OK
+  
+TAPE_Verify_Error_B  
+  LDA #<TMSG_VerifyError				; Inform the user of the verification error.
+  STA TOE_MemptrLo
+  LDA #>TMSG_VerifyError
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+  RTS
+  
+TAPE_BASIC_Verify_OK
+  LDA #<TMSG_Verified					; Inform the user of verification success.
+  STA TOE_MemptrLo
+  LDA #>TMSG_Verified
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+
+TAPE_BASIC_Verify_Done  
+  RTS
+  
+
+
+
+
+
 
 ; Tape LOADing routine.
 ; ---------------------
@@ -324,7 +441,7 @@ F_TAPE_LOAD_BASIC
   CMP #TAPE_BlockIn_Escape
   BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
   CMP #TAPE_BlockIn_Error
-  BNE TAPE_BASIC_Load_Verify_Stage
+  BNE TAPE_BASIC_Load_Stage
 
   LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
   STA TOE_MemptrLo
@@ -334,7 +451,7 @@ F_TAPE_LOAD_BASIC
   JMP F_TAPE_LOAD_BASIC
   
 
-TAPE_BASIC_Load_Verify_Stage   
+TAPE_BASIC_Load_Stage   
   LDA TAPE_FileSizeLo					; Tell the system how big the file to load is.
   STA V_TAPE_BlockSize
   LDA TAPE_FileSizeHi
@@ -663,19 +780,18 @@ L_TAPE_BlockOut
   LDA TAPE_BlockHi
   ADC #0
   STA TAPE_BlockHi
-  
-TAPE_DecCounter
-  CPY #0
-  BNE TAPE_BlockOut_DecCounter
-  CPX #0
-  BEQ TAPE_BlockOut_Finish
 
 TAPE_BlockOut_DecCounter
   DEX
   CPX #$FF
-  BNE L_TAPE_BlockOut
+  BNE TAPE_BlockOut_CheckZero_B
   DEY
-  JMP L_TAPE_BlockOut
+  
+TAPE_BlockOut_CheckZero_B
+  CPY #0
+  BNE L_TAPE_BlockOut
+  CPX #0
+  BNE L_TAPE_BlockOut
 
 TAPE_BlockOut_Finish  
   RTS
@@ -905,31 +1021,99 @@ TAPE_BlockIn_Store
   ADC #0
   STA TAPE_BlockHi
 
-  CPY #0
-  BNE TAPE_BlockIn_DecCounter
-  CPX #0
-  BEQ TAPE_BlockIn_Finish
-
 TAPE_BlockIn_DecCounter
   DEX
   CPX #$FF
-  BNE L_TAPE_BlockIn
+  BNE TAPE_CheckBlockInCounterZero_B
   DEY
-  JMP L_TAPE_BlockIn
-  
+
+TAPE_CheckBlockInCounterZero_B  
+  CPY #0
+  BNE L_TAPE_BlockIn
+  CPX #0
+  BNE L_TAPE_BlockIn
+
 TAPE_BlockIn_Finish
   LDA #TAPE_BlockIn_Complete					; Indicate tast completion
   STA TAPE_BlockIn_Status
   RTS
   
+ 
+; TODO:- The following appears to be dead-code, to be taken out soon. 
+ 
+;TAPE_BytePumpIn							; Save the byte counter high byte  
+;  JMP L_TAPE_BlockIn
+  
+;  RTS
+   
+  
+F_TAPE_VerifyBlock
 
+  JSR F_TAPE_FindStart						; Follow the leader signal
   
-TAPE_BytePumpIn							; Save the byte counter high byte
+  LDA TAPE_RX_Status
+  CMP #TAPE_Stat_Escape
+  BEQ TAPE_Verify_Sig_Escape
   
+  LDX V_TAPE_BlockSize						; Get the low byte of BlockStart
+  LDY V_TAPE_BlockSize+1					; Get the high byte of BlockStart
+  
+  LDA #TAPE_Verify_Good						; Initialise Verify's status register
+  STA V_TAPE_Verify_Status
+  
+L_TAPE_BlockVerify
 
+  PHX								; Get a byte from the tape interface
+  PHY
+  JSR F_TAPE_GetByte
+  PLY
+  PLX
   
-  JMP L_TAPE_BlockIn
+  LDA TAPE_RX_Status						; did we capture a good byte?
+  CMP #TAPE_Stat_RXFull
+  BEQ TAPE_Verify_Check
   
+  CMP #TAPE_Stat_Escape						; Did we press escape?
+  BNE TAPE_Verify_CheckError
+  
+TAPE_Verify_Sig_Escape  
+  LDA #TAPE_Verify_Escape					; Signal that we pressed escape and return.
+  STA V_TAPE_Verify_Status
+  RTS
+  
+TAPE_Verify_CheckError						; Signal the encountered error and return.
+  LDA #TAPE_Verify_Error
+  STA V_TAPE_Verify_Status
+  RTS  
+  
+TAPE_Verify_Check
+  LDA TAPE_ByteReceived						; Compare our fectched byte with the one in BASIC memory.
+  CMP (TAPE_BlockLo)
+  BNE TAPE_Verify_CheckError					; Signal inconsistency as an error.
+  
+  LDA TAPE_BlockLo						; Increment our byte pointer
+  CLC
+  ADC #1
+  STA TAPE_BlockLo
+  LDA TAPE_BlockHi
+  ADC #0
+  STA TAPE_BlockHi
+
+TAPE_Verify_DecCounter
+  DEX
+  CPX #$FF
+  BNE TAPE_CheckCounterZero_B
+  DEY
+  
+TAPE_CheckCounterZero_B
+  CPY #0							; Check to see if we have done yet.
+  BNE L_TAPE_BlockVerify
+  CPX #0
+  BNE L_TAPE_BlockVerify
+  
+TAPE_Verify_Finish
+  LDA #TAPE_Verify_Good						; Indicate test completion
+  STA V_TAPE_Verify_Status
   RTS
 
 
@@ -1028,24 +1212,24 @@ TAPE_AtMinimum
 ;#################################
 
 
-TAPE_TestOutput
+; TAPE_TestOutput
 ;  LDA TAPE_StartDet
 ;  STA $C041
 ;  RTS
 
 
 
-  LDA TAPE_Sample_Position
-  BNE TAPE_Marker
-  LDA #1
-  STA $C041
-  RTS
-TAPE_Marker
-  LDA #0
+;  LDA TAPE_Sample_Position
+;  BNE TAPE_Marker
+;  LDA #1
+;  STA $C041
+;  RTS
+;TAPE_Marker
+;  LDA #0
   
 ;  LDA TAPE_Demod_Status
 
-  STA $C041
+;  STA $C041
 
-  RTS
+;  RTS
   
