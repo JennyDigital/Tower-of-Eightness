@@ -95,7 +95,7 @@ TAPE_LoadAddrHi			= TAPE_LoadAddrLo + 1		; High byte of the file load address
 TAPE_FileName			= TAPE_LoadAddrHi + 1		; Null terminated filename field 17 bytes long.
 TAPE_ChecksumLo			= TAPE_FileName + 17		; Checksum Low byte
 TAPE_ChecksumHi			= TAPE_ChecksumLo + 1		; Checksum High byte
-TAPE_Header_End			= TAPE_Header_Buffer + 31	; End of header space.
+TAPE_Header_End			= TAPE_ChecksumHi		; End of header space.
 
 TAPE_CS_AccLo			= TAPE_Header_End + 1		; Tape checksum Accumulator low byte
 TAPE_CS_AccHi			= TAPE_CS_AccLo + 1		; Tape checksum Accumulator high byte
@@ -119,7 +119,7 @@ C_TAPE_Fname_BuffEnd		= V_TAPE_Fname_Buffer + C_TAPE_Fname_BufferSize
 
 
 
-; Next is $957.
+; Next is $93F.
 
 ; +-------------------------------------------------------------------------------------------+
 ; +                                                                                           +
@@ -132,7 +132,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System",$0D,$0A
-  .BYTE "V2.0",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.01",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
@@ -355,7 +355,7 @@ F_TAPE_GetName
   
   LDA TAPE_temp2					; Recover our string length
   SEC
-  SBC #16
+  SBC #17
   BMI TAPE_NameToBuffer_B
   BRA TAPE_LEN_ERR
 
