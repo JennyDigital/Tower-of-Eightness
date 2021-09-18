@@ -106,14 +106,20 @@ V_TAPE_Bitlength		= V_TAPE_Sample_Offset + 1	; How long a bit is in passes varia
 V_TAPE_bitcycles		= V_TAPE_Bitlength + 1		; Number of cycles to a bit variable
 
 V_TAPE_Verify_Status		= V_TAPE_bitcycles + 1		; Status register for the F_TAPE_Verify function.
+V_TAPE_Fname_Buffer		= V_TAPE_Verify_Status + 1	; Filename Buffer for null terminated filename.
+
+
+; Some more handy constants
+
+C_TAPE_Fname_BufferSize		= 17
+C_TAPE_Fname_BuffEnd		= V_TAPE_Fname_Buffer + C_TAPE_Fname_BufferSize 
 
 
 
 
 
 
-
-; Next is $934.
+; Next is $957.
 
 ; +-------------------------------------------------------------------------------------------+
 ; +                                                                                           +
@@ -126,7 +132,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System",$0D,$0A
-  .BYTE "V1.2",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.0",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
@@ -138,7 +144,7 @@ TMSG_Ready
 TMSG_Saving
 
   .BYTE $D,$A
-  .BYTE "Saving...",$D,$A,0
+  .BYTE "Saving ",0
   
   
 TMSG_Searching
@@ -147,10 +153,14 @@ TMSG_Searching
   .BYTE "Searching...",$D,$A,0
 
 
+TMSG_Found
+  .BYTE $D,$A
+  .BYTE "Found ",0 
+
 TMSG_Loading
 
   .BYTE $D,$A
-  .BYTE "Loading.",$D,$A,0
+  .BYTE "Loading...",$D,$A,0
   
 TMSG_Verifying
 
@@ -170,7 +180,7 @@ TMSG_VerifyError
 TMSG_TapeError
 
   .BYTE $D,$A
-  .BYTE "Tape loading error.",$D,$A,0
+  .BYTE "Tape loading Error.",$D,$A,0
   
 TMSG_HeaderError  
 
@@ -226,19 +236,178 @@ TAPE_msg_done
 ;**                                                                                     **
 ;*****************************************************************************************
 
-F_TAPE_Getname						; Purpose, to get a filename for the tape header.
 
-  RTS							; TODO:- Write this function.
+; TODO:- Implement this function.
+;
+; Compares the filename in the buffer to the one in the header and returns C=1 on equality, otherwise C=0
+;
+
+F_TAPE_CompareFileNames
+  LDY #0						; Setup our index
+  
+  LDA V_TAPE_Fname_Buffer				; Short circuit to match on null filename specified.
+  CMP #0
+  BEQ TAPE_CompareByte_Match_B
+  
+TAPE_CompareByte_L
+  LDA V_TAPE_Fname_Buffer,Y				; Get our byte to compare
+
+  CMP TAPE_FileName,Y					; Branch on mismatch.
+  BNE TAPE_CompareMismatch_B
+  
+  TYA							; Decrement index and branch when done
+  INY
+  CMP #16
+  BEQ TAPE_CompareByte_Match_B
+  BRA TAPE_CompareByte_L
+  
+TAPE_CompareByte_Match_B				; Signal match and exit
+  SEC
+  RTS 
+  
+TAPE_CompareMismatch_B
+  CLC							; Signal mismatch and exit
+  RTS
+
+; Just prints 'Found ', followed by the filename.  That's all.
+
+F_TAPE_PrintFound
+  LDA #<TMSG_Found					; Print 'Found '
+  STA TOE_MemptrLo
+  LDA #>TMSG_Found 
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+  
+  JSR F_TAPE_PrintFname_in_Header			; Print our filename.
+  JSR   LAB_CRLF					; print CR/LF. 
+  RTS
+
+
+; Fill out V_TAPE_Fname_buffer with filename.
+; TOE_MemptrLo and Hi contain the address bytes for the source.  A contains the length.
+; This function also null terminates the string.
+
+F_TAPE_Fill_Fname
+  LDY #0						; Clear our index so we point to the start of the string.
+  
+  CMP #0						; Handle null string swiftly
+  BEQ TAPE_Fill_Null_L
+  
+  TAX							; Set up our byte counter
+  
+TAPE_Fill_Fname_L					; Fill_Fname loop start
+  LDA (TOE_MemptrLo),Y					; Get our byte
+  STA V_TAPE_Fname_Buffer,Y				; Save our byte in our buffer.
+
+  INY							; Increment our index
+  DEX							; Decrement our counter
+  TXA
+  BNE TAPE_Fill_Fname_L					; Repeat while counter not zero
+
+TAPE_Fill_Null_L					; At this point, we're putting the null characters in
+  LDA #0
+  
+  STA V_TAPE_Fname_Buffer,Y
+  TYA
+  INY
+  CMP #16
+  BNE TAPE_Fill_Null_L
+  
+  RTS							; End of F_TAPE_Fill_Fname routine.
+  
+  
+; Copies V_TAPE_Fname_Buffer to the header
+  
+F_TAPE_Fname_Buf_to_Header
+  LDY #0						; Set our index
+
+TAPE_Fname_Buf_to_Header_L
+
+  LDA V_TAPE_Fname_Buffer,Y				; Get our first byte
+  STA TAPE_FileName,Y					; And transfer it to the header.
+  
+  INY							; Increment and repeat until done.
+  CMP #0
+  BNE TAPE_Fname_Buf_to_Header_L
+  
+TAPE_Fname_BlankRest_B					; Fill out rest of header with zero's for checksum purposes.
+  LDA #0
+  STA TAPE_FileName,Y
+  TYA
+  CMP #17
+  BEQ TAPE_Done_BlankRest_B
+  INY
+  BRA TAPE_Fname_BlankRest_B
+  
+TAPE_Done_BlankRest_B
+  RTS							; Done
+
+
+; Get filename from command line into buffer.  Also handle errors.  This may not be the final thing.
+
+F_TAPE_GetName
+  JSR   LAB_EVEX					; evaluate string
+  JSR   LAB_EVST					; test it is a string
+  STA TAPE_temp2					; Store our string length for later
+  
+  LDA Dtypef						; Find out if it is a string and error if it isn't.  $FF=Str, $0=Numeric
+  BEQ TAPE_SYN_ERR
+  
+  LDA TAPE_temp2					; Recover our string length
+  SEC
+  SBC #16
+  BMI TAPE_NameToBuffer_B
+  BRA TAPE_LEN_ERR
+
+TAPE_LEN_ERR  
+  LDX #$24 ;ERR_BF					; Issue a Bad filename Error
+  JSR LAB_XERR
+  RTS							; Does LAB_XERR really return??
+  
+TAPE_SYN_ERR
+; Syntax Error output
+  LDX #$2 ;ERR_SN					; Issue a Syntax Error.  
+  JSR LAB_XERR
+  RTS							; Does LAB_XERR really return??							; Otherwise do nothing at all.
+
+
+TAPE_NameToBuffer_B
+
+  STX TOE_MemptrLo					; Copy our String to the 
+  STY TOE_MemptrHi					; TOE_Memptr contains starting location
+  LDA TAPE_temp2					; and A contains size.
+  JSR F_TAPE_Fill_Fname
+  RTS
+
+
+; Print Filename in header
+
+F_TAPE_PrintFname_in_Header
+  LDA #<TAPE_FileName				; Print our Filename in the header space
+  STA TOE_MemptrLo
+  LDA #>TAPE_FileName 
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec  
+  RTS
+  
+
+; Saves A BASIC program.  Meant to be called from within BASIC
+;
 
 F_TAPE_SAVE_BASIC
+
+  JSR F_TAPE_GetName
+  JSR F_TAPE_Fname_Buf_to_Header			; Put it in the header
   
   LDA #<TMSG_Saving					; Tell the user that we are saving.
   STA TOE_MemptrLo
   LDA #>TMSG_Saving
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
+  
+  JSR F_TAPE_PrintFname_in_Header			; Print our filename.
 
-  JSR F_TAPE_GetBASIC_Size				; Start by measuring our program
+  JSR F_TAPE_GetBASIC_Size				; Measure our program
   
   LDA V_TAPE_BlockSize					; Save our program size to the header
   STA TAPE_FileSizeLo
@@ -275,8 +444,6 @@ F_TAPE_SAVE_BASIC
   LDA #TAPE_Header_End - TAPE_Header_Buffer
   STA V_TAPE_BlockSize
   
-  JSR F_TAPE_Getname
-  
   JSR F_TAPE_BlockOut					; Write our block to tape
   
   LDX #<C_TAPE_Interblock_pause				; Wait a little before writing the actual program data block.
@@ -304,6 +471,10 @@ F_TAPE_SAVE_BASIC
 
 F_TAPE_VERIFY_BASIC
 
+  JSR F_TAPE_GetName					; Get the filename string into our buffer
+
+TAPE_VERIFY_Header_B
+
  LDA #<TAPE_Header_Buffer				; Point to start of header buffer
   STA TAPE_BlockLo
   LDA #>TAPE_Header_Buffer
@@ -326,7 +497,7 @@ F_TAPE_VERIFY_BASIC
   CMP #TAPE_Verify_Escape
   BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
   CMP #TAPE_Verify_Error
-  BNE TAPE_BASIC_Verify_Stage
+  BNE TAPE_BASVERIFY_Fname_Check
 
   LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
   STA TOE_MemptrLo
@@ -334,7 +505,14 @@ F_TAPE_VERIFY_BASIC
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
   
-  JMP F_TAPE_VERIFY_BASIC				; Keep coming back until the header is read valid or the user presses escape
+  JMP TAPE_VERIFY_Header_B				; Keep coming back until the header is read valid or the user presses escape
+
+
+TAPE_BASVERIFY_Fname_Check
+  JSR F_TAPE_PrintFound
+  
+  JSR F_TAPE_CompareFileNames
+  BCC TAPE_VERIFY_Header_B
   
 TAPE_BASIC_Verify_Stage
 
@@ -419,6 +597,11 @@ TAPE_BlockIn_EscHandler
   
 F_TAPE_LOAD_BASIC
 
+  JSR F_TAPE_GetName					; Get the filename string into our buffer
+;  JSR F_TAPE_Fname_Buf_to_Header			; Put it in the header
+
+TAPE_LOAD_Header_B  
+
   LDA #<TAPE_Header_Buffer				; Point to start of header buffer
   STA TAPE_BlockLo
   LDA #>TAPE_Header_Buffer
@@ -441,17 +624,23 @@ F_TAPE_LOAD_BASIC
   CMP #TAPE_BlockIn_Escape
   BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
   CMP #TAPE_BlockIn_Error
-  BNE TAPE_BASIC_Load_Stage
+  BNE TAPE_BASLOAD_Fname_Check
 
   LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
   STA TOE_MemptrLo
   LDA #>TMSG_HeaderError
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
-  JMP F_TAPE_LOAD_BASIC
+  JMP TAPE_LOAD_Header_B
   
 
-TAPE_BASIC_Load_Stage   
+TAPE_BASLOAD_Fname_Check
+  JSR F_TAPE_PrintFound
+  
+  JSR F_TAPE_CompareFileNames
+  BCC TAPE_LOAD_Header_B
+
+TAPE_BASIC_Load_Stage
   LDA TAPE_FileSizeLo					; Tell the system how big the file to load is.
   STA V_TAPE_BlockSize
   LDA TAPE_FileSizeHi
@@ -472,8 +661,11 @@ TAPE_BASIC_Load_Stage
   
   LDA TAPE_BlockIn_Status				; Branch on non load conditions
   CMP #TAPE_BlockIn_Escape
-  BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+  BNE TAPE_Skip_EscHandler_B
+  JMP TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
   
+TAPE_Skip_EscHandler_B  
+
   CMP #TAPE_BlockIn_Complete
   BEQ TAPE_BASIC_LoadingDone
 

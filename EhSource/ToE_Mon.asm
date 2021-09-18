@@ -236,7 +236,7 @@ END_CODE
 LAB_mess
                                       ; sign on string
 
-  .byte "Tower of Eightness OS 11.9.2021.1",$0D,$0A,$0D,$0A
+  .byte "Tower of Eightness OS 18.9.2021.1",$0D,$0A,$0D,$0A
   .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
 
 
@@ -336,7 +336,7 @@ INIT_COUNTDOWN_IRQ_vec	   ; FFE7
   JMP INIT_COUNTDOWN_IRQ
   
 
-; processor hardware vectors.  These are fixed in hardware and cannot be moved.
+; Processor hardware vectors.  These are fixed in hardware and cannot be moved.
 
   *= $FFFA
 
