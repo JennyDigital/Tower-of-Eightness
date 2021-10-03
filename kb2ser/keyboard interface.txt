@@ -1,0 +1,7 @@
+I have slightly modified Grant Searle's keyboard interface software to make it ToE compatible.  This is what you need to get going.  Some years ago I emailed him asking permission, and he did not reply so here it is but if he asks me to take it down, I shall comply.
+
+Also included is a little script to burn it to the chip with no mess or fuss from the command line.  All you do is run the bash script from within the Prebuilt folder.
+
+The command is as follows:-
+
+./burn_kb2ser.sh
