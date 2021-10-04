@@ -114,7 +114,7 @@ V_TAPE_Fname_Buffer		= V_TAPE_Verify_Status + 1	; Filename Buffer for null termi
 
 C_TAPE_Fname_BufferSize		= 17
 C_TAPE_Fname_BuffEnd		= V_TAPE_Fname_Buffer + C_TAPE_Fname_BufferSize 
-C_TAPE_HeaderSize		= TAPE_Header_End - TAPE_Header_Buffer
+C_TAPE_HeaderSize		= TAPE_Header_End - TAPE_Header_Buffer + 1
 
 
 
@@ -133,7 +133,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System",$0D,$0A
-  .BYTE "V2.1",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.11",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
@@ -182,6 +182,7 @@ TMSG_TapeError
 
   .BYTE $D,$A
   .BYTE "Tape loading Error.",$D,$A,0
+  
   
 TMSG_HeaderError  
 
@@ -806,7 +807,7 @@ TAPE_BASIC_LoadingDone
   STA TAPE_BlockLo
   LDA #>Ram_base
   STA TAPE_BlockHi
-  
+
   JSR F_TAPE_CalcChecksum				; Get our checksum value into TAPE_CS_Acc_Lo and Hi
   
   LDA TAPE_ChecksumLo					; First we check the low byte.

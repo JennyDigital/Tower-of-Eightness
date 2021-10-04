@@ -8902,8 +8902,8 @@
 08902    ; put the IRQ and MNI code in RAM so that it can be changed
 08903    
 08904    ; IRQ_vec	= VEC_SV+2              ; Previous IRQ code vector
-08905      FB6B             IRQ_vec		= IRQH_ProcessIRQs	; IRQ code vector
-08906      FB75             NMI_vec		= IRQ_vec+$0A           ; NMI code vector
+08905      FB6C             IRQ_vec		= IRQH_ProcessIRQs	; IRQ code vector
+08906      FB76             NMI_vec		= IRQ_vec+$0A           ; NMI code vector
 08907    
 08908    
 08909    ; OS System variables live here
@@ -10205,13 +10205,13 @@
 10205    
 10206      0011             C_TAPE_Fname_BufferSize		= 17
 10207      0942             C_TAPE_Fname_BuffEnd		= V_TAPE_Fname_Buffer + C_TAPE_Fname_BufferSize 
-10208      001B             C_TAPE_HeaderSize		= TAPE_Header_End - TAPE_Header_Buffer
+10208      001C             C_TAPE_HeaderSize		= TAPE_Header_End - TAPE_Header_Buffer + 1
 10209    
 10210    
 10211    
 10212    
 10213    
-10214    ; Next is $93F.
+10214    ; Next is $943.
 10215    
 10216    ; +-------------------------------------------------------------------------------------------+
 10217    ; +                                                                                           +
@@ -10224,7 +10224,7 @@
 10224     
 10225      .BYTE $0C,1,$18,$03,$0D,$0A
 10226      .BYTE "TowerTAPE Filing System",$0D,$0A
-10227      .BYTE "V2.1",$0D,$0A,$0D,$0A,$00
+10227      .BYTE "V2.11",$0D,$0A,$0D,$0A,$00
 10228      
 10229    
 10230    TMSG_Ready
@@ -10274,670 +10274,670 @@
 10274      .BYTE $D,$A
 10275      .BYTE "Tape loading Error.",$D,$A,0
 10276      
-10277    TMSG_HeaderError  
-10278    
-10279      .BYTE $D,$A
-10280      .BYTE "Header error. Retrying.",$D,$A,0
-10281      
-10282    TMSG_TypeBASIC
-10283    
-10284      .BYTE "BASIC: ",0
-10285      
-10286    TMSG_TypeBINARY
-10287    
-10288      .BYTE "binary: ",0
-10289      
-10290    TMSG_TypeTEXT
-10291    
-10292      .BYTE "text: ",0
-10293      
-10294    TMSG_TypeOTHER
-10295      .BYTE "other: ",0
-10296      
-10297    
+10277      
+10278    TMSG_HeaderError  
+10279    
+10280      .BYTE $D,$A
+10281      .BYTE "Header error. Retrying.",$D,$A,0
+10282      
+10283    TMSG_TypeBASIC
+10284    
+10285      .BYTE "BASIC: ",0
+10286      
+10287    TMSG_TypeBINARY
+10288    
+10289      .BYTE "binary: ",0
+10290      
+10291    TMSG_TypeTEXT
+10292    
+10293      .BYTE "text: ",0
+10294      
+10295    TMSG_TypeOTHER
+10296      .BYTE "other: ",0
+10297      
 10298    
-10299    ; +-------------------------------------------------------------------------------------------------+
-10300    ; +                                                                                                 +
-10301    ; +                        Functions for tape loading and saving start here.                        +
-10302    ; +                        =================================================                        +
-10303    ; +                                                                                                 +
+10299    
+10300    ; +-------------------------------------------------------------------------------------------------+
+10301    ; +                                                                                                 +
+10302    ; +                        Functions for tape loading and saving start here.                        +
+10303    ; +                        =================================================                        +
 10304    ; +                                                                                                 +
-10305    ; +-------------------------------------------------------------------------------------------------+
-10306    
+10305    ; +                                                                                                 +
+10306    ; +-------------------------------------------------------------------------------------------------+
 10307    
-10308    ;*****************************************************************************************
-10309    ;**                                                                                     **
+10308    
+10309    ;*****************************************************************************************
 10310    ;**                                                                                     **
-10311    ;**                HOUSEKEEPING AND INITIALISATION FUNCTIONS GO HERE.                   **
-10312    ;**                                                                                     **
+10311    ;**                                                                                     **
+10312    ;**                HOUSEKEEPING AND INITIALISATION FUNCTIONS GO HERE.                   **
 10313    ;**                                                                                     **
-10314    ;*****************************************************************************************
-10315    
-10316    F_TAPE_Init
-10317    F49A  A9 81          LDA #TAPE_out | JOYSTICK_sel				; Setup tape and joystick 6522 DDR Bits.
-10318    F49C  8D 42 C0       STA TAPE_DDRB
-10319    
-10320    F49F  A0 00          LDY #0						; Setup our index to the start of the string
-10321      
-10322    L_TAPE_init_msg  
-10323    F4A1  B9 AF F3       LDA TMSG_init_msg,Y					; Get the character
-10324    F4A4  F0 07          BEQ TAPE_msg_done					; Break out of the loop when we're done.
-10325      
-10326    F4A6  20 02 E2       JSR V_OUTP						; output character
-10327      
-10328    F4A9  C8             INY							; Do the next character
-10329    F4AA  4C A1 F4       JMP L_TAPE_init_msg
-10330    
-10331    TAPE_msg_done  
-10332    F4AD  60             RTS
-10333        
-10334    
-10335      
-10336    
+10314    ;**                                                                                     **
+10315    ;*****************************************************************************************
+10316    
+10317    F_TAPE_Init
+10318    F49B  A9 81          LDA #TAPE_out | JOYSTICK_sel				; Setup tape and joystick 6522 DDR Bits.
+10319    F49D  8D 42 C0       STA TAPE_DDRB
+10320    
+10321    F4A0  A0 00          LDY #0						; Setup our index to the start of the string
+10322      
+10323    L_TAPE_init_msg  
+10324    F4A2  B9 AF F3       LDA TMSG_init_msg,Y					; Get the character
+10325    F4A5  F0 07          BEQ TAPE_msg_done					; Break out of the loop when we're done.
+10326      
+10327    F4A7  20 02 E2       JSR V_OUTP						; output character
+10328      
+10329    F4AA  C8             INY							; Do the next character
+10330    F4AB  4C A2 F4       JMP L_TAPE_init_msg
+10331    
+10332    TAPE_msg_done  
+10333    F4AE  60             RTS
+10334        
+10335    
+10336      
 10337    
-10338    ;*****************************************************************************************
-10339    ;**                                                                                     **
+10338    
+10339    ;*****************************************************************************************
 10340    ;**                                                                                     **
-10341    ;**          Helper and high level functions for tape loading and saving.               **
-10342    ;**                                                                                     **
+10341    ;**                                                                                     **
+10342    ;**          Helper and high level functions for tape loading and saving.               **
 10343    ;**                                                                                     **
-10344    ;*****************************************************************************************
-10345    
+10344    ;**                                                                                     **
+10345    ;*****************************************************************************************
 10346    
-10347    ; Compares the filename in the buffer to the one in the header and returns C=1 on equality, otherwise C=0
-10348    ;
-10349    
-10350    F_TAPE_CompareFileNames
-10351    F4AE  A0 00          LDY #0						; Setup our index
-10352      
-10353    F4B0  AD 31 09       LDA V_TAPE_Fname_Buffer				; Short circuit to match on null filename specified.
-10354    F4B3  C9 00          CMP #0
-10355    F4B5  F0 10          BEQ TAPE_CompareByte_Match_B
-10356      
-10357    TAPE_CompareByte_L
-10358    F4B7  B9 31 09       LDA V_TAPE_Fname_Buffer,Y				; Get our byte to compare
-10359    
-10360    F4BA  D9 17 09       CMP TAPE_FileName,Y					; Branch on mismatch.
-10361    F4BD  D0 0A          BNE TAPE_CompareMismatch_B
-10362      
-10363    F4BF  98             TYA							; Decrement index and branch when done
-10364    F4C0  C8             INY
-10365    F4C1  C9 10          CMP #16
-10366    F4C3  F0 02          BEQ TAPE_CompareByte_Match_B
-10367    F4C5  80 F0          BRA TAPE_CompareByte_L
-10368      
-10369    TAPE_CompareByte_Match_B				; Signal match and exit
-10370    F4C7  38             SEC
-10371    F4C8  60             RTS 
-10372      
-10373    TAPE_CompareMismatch_B
-10374    F4C9  18             CLC							; Signal mismatch and exit
-10375    F4CA  60             RTS
-10376    
-10377    ; Just prints 'Found ', followed by the filename.  That's all.
-10378    
-10379    F_TAPE_PrintFound
-10380    F4CB  A9 FC          LDA #<TMSG_Found					; Print 'Found '
-10381    F4CD  85 E7          STA TOE_MemptrLo
-10382    F4CF  A9 F3          LDA #>TMSG_Found 
-10383    F4D1  85 E8          STA TOE_MemptrHi
-10384    F4D3  20 60 FF       JSR TOE_PrintStr_vec
-10385      
-10386    
-10387    F4D6  AD 12 09       LDA TAPE_FileType					; Check and print BASIC if necessary.
-10388    F4D9  C9 00          CMP #C_TAPE_FType_BASIC
-10389    F4DB  D0 0D          BNE TAPE_Skip_RepBASIC_B
-10390      
-10391    F4DD  A9 7A          LDA #<TMSG_TypeBASIC
-10392    F4DF  85 E7          STA TOE_MemptrLo
-10393    F4E1  A9 F4          LDA #>TMSG_TypeBASIC
-10394    F4E3  85 E8          STA TOE_MemptrHi
-10395    F4E5  20 60 FF       JSR TOE_PrintStr_vec
-10396      
-10397    F4E8  80 33          BRA TAPE_DoPrintFname_B
-10398       
-10399    TAPE_Skip_RepBASIC_B
-10400    
-10401    F4EA  AD 12 09       LDA TAPE_FileType					; Check and print BASIC if necessary.
-10402    F4ED  C9 01          CMP #C_TAPE_FType_BINARY
-10403    F4EF  D0 0D          BNE TAPE_Skip_RepBinary_B
-10404      
-10405    F4F1  A9 82          LDA #<TMSG_TypeBINARY
-10406    F4F3  85 E7          STA TOE_MemptrLo
-10407    F4F5  A9 F4          LDA #>TMSG_TypeBINARY
-10408    F4F7  85 E8          STA TOE_MemptrHi
-10409    F4F9  20 60 FF       JSR TOE_PrintStr_vec
-10410      
-10411    F4FC  80 1F          BRA TAPE_DoPrintFname_B
-10412      
-10413    TAPE_Skip_RepBinary_B
-10414    
-10415    F4FE  AD 12 09       LDA TAPE_FileType					; Check and print BASIC if necessary.
-10416    F501  C9 02          CMP #C_TAPE_FType_TEXT
-10417    F503  D0 0D          BNE TAPE_Skip_RepText_B
-10418      
-10419    F505  A9 8B          LDA #<TMSG_TypeTEXT
-10420    F507  85 E7          STA TOE_MemptrLo
-10421    F509  A9 F4          LDA #>TMSG_TypeTEXT
-10422    F50B  85 E8          STA TOE_MemptrHi
-10423    F50D  20 60 FF       JSR TOE_PrintStr_vec
-10424    
-10425    F510  80 0B          BRA TAPE_DoPrintFname_B
-10426      
-10427    TAPE_Skip_RepText_B
-10428    
-10429    F512  A9 92          LDA #<TMSG_TypeOTHER
-10430    F514  85 E7          STA TOE_MemptrLo
-10431    F516  A9 F4          LDA #>TMSG_TypeOTHER
-10432    F518  85 E8          STA TOE_MemptrHi
-10433    F51A  20 60 FF       JSR TOE_PrintStr_vec
-10434    
-10435    TAPE_DoPrintFname_B
-10436    F51D  20 BF F5       JSR F_TAPE_PrintFname_in_Header			; Print our filename.
-10437    F520  20 99 C9       JSR   LAB_CRLF					; print CR/LF. 
-10438    F523  60             RTS
-10439      
-10440    
-10441    ; Write HEAD to the header ID field.  Yes, it's primitive but it really is the easiest way.
-10442    ;  
-10443    F_TAPE_WriteHeaderID
-10444    F524  A9 48          LDA #'H'
-10445    F526  8D 0E 09       STA TAPE_HeaderID
-10446    F529  A9 45          LDA #'E'
-10447    F52B  8D 0F 09       STA TAPE_HeaderID + 1
-10448    F52E  A9 41          LDA #'A'
-10449    F530  8D 10 09       STA TAPE_HeaderID + 2
-10450    F533  A9 44          LDA #'D'
-10451    F535  8D 11 09       STA TAPE_HeaderID + 3
-10452    F538  60             RTS
-10453    
+10347    
+10348    ; Compares the filename in the buffer to the one in the header and returns C=1 on equality, otherwise C=0
+10349    ;
+10350    
+10351    F_TAPE_CompareFileNames
+10352    F4AF  A0 00          LDY #0						; Setup our index
+10353      
+10354    F4B1  AD 31 09       LDA V_TAPE_Fname_Buffer				; Short circuit to match on null filename specified.
+10355    F4B4  C9 00          CMP #0
+10356    F4B6  F0 10          BEQ TAPE_CompareByte_Match_B
+10357      
+10358    TAPE_CompareByte_L
+10359    F4B8  B9 31 09       LDA V_TAPE_Fname_Buffer,Y				; Get our byte to compare
+10360    
+10361    F4BB  D9 17 09       CMP TAPE_FileName,Y					; Branch on mismatch.
+10362    F4BE  D0 0A          BNE TAPE_CompareMismatch_B
+10363      
+10364    F4C0  98             TYA							; Decrement index and branch when done
+10365    F4C1  C8             INY
+10366    F4C2  C9 10          CMP #16
+10367    F4C4  F0 02          BEQ TAPE_CompareByte_Match_B
+10368    F4C6  80 F0          BRA TAPE_CompareByte_L
+10369      
+10370    TAPE_CompareByte_Match_B				; Signal match and exit
+10371    F4C8  38             SEC
+10372    F4C9  60             RTS 
+10373      
+10374    TAPE_CompareMismatch_B
+10375    F4CA  18             CLC							; Signal mismatch and exit
+10376    F4CB  60             RTS
+10377    
+10378    ; Just prints 'Found ', followed by the filename.  That's all.
+10379    
+10380    F_TAPE_PrintFound
+10381    F4CC  A9 FD          LDA #<TMSG_Found					; Print 'Found '
+10382    F4CE  85 E7          STA TOE_MemptrLo
+10383    F4D0  A9 F3          LDA #>TMSG_Found 
+10384    F4D2  85 E8          STA TOE_MemptrHi
+10385    F4D4  20 60 FF       JSR TOE_PrintStr_vec
+10386      
+10387    
+10388    F4D7  AD 12 09       LDA TAPE_FileType					; Check and print BASIC if necessary.
+10389    F4DA  C9 00          CMP #C_TAPE_FType_BASIC
+10390    F4DC  D0 0D          BNE TAPE_Skip_RepBASIC_B
+10391      
+10392    F4DE  A9 7B          LDA #<TMSG_TypeBASIC
+10393    F4E0  85 E7          STA TOE_MemptrLo
+10394    F4E2  A9 F4          LDA #>TMSG_TypeBASIC
+10395    F4E4  85 E8          STA TOE_MemptrHi
+10396    F4E6  20 60 FF       JSR TOE_PrintStr_vec
+10397      
+10398    F4E9  80 33          BRA TAPE_DoPrintFname_B
+10399       
+10400    TAPE_Skip_RepBASIC_B
+10401    
+10402    F4EB  AD 12 09       LDA TAPE_FileType					; Check and print BASIC if necessary.
+10403    F4EE  C9 01          CMP #C_TAPE_FType_BINARY
+10404    F4F0  D0 0D          BNE TAPE_Skip_RepBinary_B
+10405      
+10406    F4F2  A9 83          LDA #<TMSG_TypeBINARY
+10407    F4F4  85 E7          STA TOE_MemptrLo
+10408    F4F6  A9 F4          LDA #>TMSG_TypeBINARY
+10409    F4F8  85 E8          STA TOE_MemptrHi
+10410    F4FA  20 60 FF       JSR TOE_PrintStr_vec
+10411      
+10412    F4FD  80 1F          BRA TAPE_DoPrintFname_B
+10413      
+10414    TAPE_Skip_RepBinary_B
+10415    
+10416    F4FF  AD 12 09       LDA TAPE_FileType					; Check and print BASIC if necessary.
+10417    F502  C9 02          CMP #C_TAPE_FType_TEXT
+10418    F504  D0 0D          BNE TAPE_Skip_RepText_B
+10419      
+10420    F506  A9 8C          LDA #<TMSG_TypeTEXT
+10421    F508  85 E7          STA TOE_MemptrLo
+10422    F50A  A9 F4          LDA #>TMSG_TypeTEXT
+10423    F50C  85 E8          STA TOE_MemptrHi
+10424    F50E  20 60 FF       JSR TOE_PrintStr_vec
+10425    
+10426    F511  80 0B          BRA TAPE_DoPrintFname_B
+10427      
+10428    TAPE_Skip_RepText_B
+10429    
+10430    F513  A9 93          LDA #<TMSG_TypeOTHER
+10431    F515  85 E7          STA TOE_MemptrLo
+10432    F517  A9 F4          LDA #>TMSG_TypeOTHER
+10433    F519  85 E8          STA TOE_MemptrHi
+10434    F51B  20 60 FF       JSR TOE_PrintStr_vec
+10435    
+10436    TAPE_DoPrintFname_B
+10437    F51E  20 C0 F5       JSR F_TAPE_PrintFname_in_Header			; Print our filename.
+10438    F521  20 99 C9       JSR   LAB_CRLF					; print CR/LF. 
+10439    F524  60             RTS
+10440      
+10441    
+10442    ; Write HEAD to the header ID field.  Yes, it's primitive but it really is the easiest way.
+10443    ;  
+10444    F_TAPE_WriteHeaderID
+10445    F525  A9 48          LDA #'H'
+10446    F527  8D 0E 09       STA TAPE_HeaderID
+10447    F52A  A9 45          LDA #'E'
+10448    F52C  8D 0F 09       STA TAPE_HeaderID + 1
+10449    F52F  A9 41          LDA #'A'
+10450    F531  8D 10 09       STA TAPE_HeaderID + 2
+10451    F534  A9 44          LDA #'D'
+10452    F536  8D 11 09       STA TAPE_HeaderID + 3
+10453    F539  60             RTS
 10454    
-10455    ; Check to see if our header block IS a header block.
-10456    ;
-10457    F_TAPE_CheckHeaderID
-10458    F539  AD 0E 09       LDA TAPE_HeaderID
-10459    F53C  C9 48          CMP #'H'
-10460    F53E  D0 17          BNE TAPE_NotAHeader_B
-10461      
-10462    F540  AD 0F 09       LDA TAPE_HeaderID + 1
-10463    F543  C9 45          CMP #'E'
-10464    F545  D0 10          BNE TAPE_NotAHeader_B
-10465      
-10466    F547  AD 10 09       LDA TAPE_HeaderID + 2
-10467    F54A  C9 41          CMP #'A'
-10468    F54C  D0 09          BNE TAPE_NotAHeader_B
-10469      
-10470    F54E  AD 11 09       LDA TAPE_HeaderID + 3
-10471    F551  C9 44          CMP #'D'
-10472    F553  D0 02          BNE TAPE_NotAHeader_B
-10473      
-10474    F555  38             SEC					; Is a confirmed header
-10475    F556  60             RTS
-10476      
-10477    TAPE_NotAHeader_B  
-10478    F557  18             CLC					; Is not a header or is a bad header.
-10479    F558  60             RTS
-10480      
-10481    
-10482    ; Fill out V_TAPE_Fname_buffer with filename.
-10483    ; TOE_MemptrLo and Hi contain the address bytes for the source.  A contains the length.
-10484    ; This function also null terminates the string.
-10485    
-10486    F_TAPE_Fill_Fname
-10487    F559  A0 00          LDY #0						; Clear our index so we point to the start of the string.
-10488      
-10489    F55B  C9 00          CMP #0						; Handle null string swiftly
-10490    F55D  F0 0B          BEQ TAPE_Fill_Null_L
-10491      
-10492    F55F  AA             TAX							; Set up our byte counter
-10493      
-10494    TAPE_Fill_Fname_L					; Fill_Fname loop start
-10495    F560  B1 E7          LDA (TOE_MemptrLo),Y					; Get our byte
-10496    F562  99 31 09       STA V_TAPE_Fname_Buffer,Y				; Save our byte in our buffer.
-10497    
-10498    F565  C8             INY							; Increment our index
-10499    F566  CA             DEX							; Decrement our counter
-10500    F567  8A             TXA
-10501    F568  D0 F6          BNE TAPE_Fill_Fname_L					; Repeat while counter not zero
-10502    
-10503    TAPE_Fill_Null_L					; At this point, we're putting the null characters in
-10504    F56A  A9 00          LDA #0
-10505      
-10506    F56C  99 31 09       STA V_TAPE_Fname_Buffer,Y
-10507    F56F  98             TYA
-10508    F570  C8             INY
-10509    F571  C9 10          CMP #16
-10510    F573  D0 F5          BNE TAPE_Fill_Null_L
-10511      
-10512    F575  60             RTS							; End of F_TAPE_Fill_Fname routine.
-10513      
+10455    
+10456    ; Check to see if our header block IS a header block.
+10457    ;
+10458    F_TAPE_CheckHeaderID
+10459    F53A  AD 0E 09       LDA TAPE_HeaderID
+10460    F53D  C9 48          CMP #'H'
+10461    F53F  D0 17          BNE TAPE_NotAHeader_B
+10462      
+10463    F541  AD 0F 09       LDA TAPE_HeaderID + 1
+10464    F544  C9 45          CMP #'E'
+10465    F546  D0 10          BNE TAPE_NotAHeader_B
+10466      
+10467    F548  AD 10 09       LDA TAPE_HeaderID + 2
+10468    F54B  C9 41          CMP #'A'
+10469    F54D  D0 09          BNE TAPE_NotAHeader_B
+10470      
+10471    F54F  AD 11 09       LDA TAPE_HeaderID + 3
+10472    F552  C9 44          CMP #'D'
+10473    F554  D0 02          BNE TAPE_NotAHeader_B
+10474      
+10475    F556  38             SEC					; Is a confirmed header
+10476    F557  60             RTS
+10477      
+10478    TAPE_NotAHeader_B  
+10479    F558  18             CLC					; Is not a header or is a bad header.
+10480    F559  60             RTS
+10481      
+10482    
+10483    ; Fill out V_TAPE_Fname_buffer with filename.
+10484    ; TOE_MemptrLo and Hi contain the address bytes for the source.  A contains the length.
+10485    ; This function also null terminates the string.
+10486    
+10487    F_TAPE_Fill_Fname
+10488    F55A  A0 00          LDY #0						; Clear our index so we point to the start of the string.
+10489      
+10490    F55C  C9 00          CMP #0						; Handle null string swiftly
+10491    F55E  F0 0B          BEQ TAPE_Fill_Null_L
+10492      
+10493    F560  AA             TAX							; Set up our byte counter
+10494      
+10495    TAPE_Fill_Fname_L					; Fill_Fname loop start
+10496    F561  B1 E7          LDA (TOE_MemptrLo),Y					; Get our byte
+10497    F563  99 31 09       STA V_TAPE_Fname_Buffer,Y				; Save our byte in our buffer.
+10498    
+10499    F566  C8             INY							; Increment our index
+10500    F567  CA             DEX							; Decrement our counter
+10501    F568  8A             TXA
+10502    F569  D0 F6          BNE TAPE_Fill_Fname_L					; Repeat while counter not zero
+10503    
+10504    TAPE_Fill_Null_L					; At this point, we're putting the null characters in
+10505    F56B  A9 00          LDA #0
+10506      
+10507    F56D  99 31 09       STA V_TAPE_Fname_Buffer,Y
+10508    F570  98             TYA
+10509    F571  C8             INY
+10510    F572  C9 10          CMP #16
+10511    F574  D0 F5          BNE TAPE_Fill_Null_L
+10512      
+10513    F576  60             RTS							; End of F_TAPE_Fill_Fname routine.
 10514      
-10515    ; Copies V_TAPE_Fname_Buffer to the header
-10516      
-10517    F_TAPE_Fname_Buf_to_Header
-10518    F576  A0 00          LDY #0						; Set our index
-10519    
-10520    TAPE_Fname_Buf_to_Header_L
-10521    
-10522    F578  B9 31 09       LDA V_TAPE_Fname_Buffer,Y				; Get our first byte
-10523    F57B  99 17 09       STA TAPE_FileName,Y					; And transfer it to the header.
-10524      
-10525    F57E  C8             INY							; Increment and repeat until done.
-10526    F57F  C9 00          CMP #0
-10527    F581  D0 F5          BNE TAPE_Fname_Buf_to_Header_L
-10528      
-10529    TAPE_Fname_BlankRest_B					; Fill out rest of header with zero's for checksum purposes.
-10530    F583  A9 00          LDA #0
-10531    F585  99 17 09       STA TAPE_FileName,Y
-10532    F588  98             TYA
-10533    F589  C9 11          CMP #17
-10534    F58B  F0 03          BEQ TAPE_Done_BlankRest_B
-10535    F58D  C8             INY
-10536    F58E  80 F3          BRA TAPE_Fname_BlankRest_B
-10537      
-10538    TAPE_Done_BlankRest_B
-10539    F590  60             RTS							; Done
-10540    
+10515      
+10516    ; Copies V_TAPE_Fname_Buffer to the header
+10517      
+10518    F_TAPE_Fname_Buf_to_Header
+10519    F577  A0 00          LDY #0						; Set our index
+10520    
+10521    TAPE_Fname_Buf_to_Header_L
+10522    
+10523    F579  B9 31 09       LDA V_TAPE_Fname_Buffer,Y				; Get our first byte
+10524    F57C  99 17 09       STA TAPE_FileName,Y					; And transfer it to the header.
+10525      
+10526    F57F  C8             INY							; Increment and repeat until done.
+10527    F580  C9 00          CMP #0
+10528    F582  D0 F5          BNE TAPE_Fname_Buf_to_Header_L
+10529      
+10530    TAPE_Fname_BlankRest_B					; Fill out rest of header with zero's for checksum purposes.
+10531    F584  A9 00          LDA #0
+10532    F586  99 17 09       STA TAPE_FileName,Y
+10533    F589  98             TYA
+10534    F58A  C9 11          CMP #17
+10535    F58C  F0 03          BEQ TAPE_Done_BlankRest_B
+10536    F58E  C8             INY
+10537    F58F  80 F3          BRA TAPE_Fname_BlankRest_B
+10538      
+10539    TAPE_Done_BlankRest_B
+10540    F591  60             RTS							; Done
 10541    
-10542    ; Get filename from command line into buffer.  Also handle errors.  This may not be the final thing.
-10543    
-10544    F_TAPE_GetName
-10545    F591  20 E7 CB       JSR   LAB_EVEX					; evaluate string
-10546    F594  20 55 D4       JSR   LAB_EVST					; test it is a string
-10547    F597  8D 02 09       STA TAPE_temp2					; Store our string length for later
-10548      
-10549    F59A  A5 5F          LDA Dtypef						; Find out if it is a string and error if it isn't.  $FF=Str, $0=Numeric
-10550    F59C  F0 10          BEQ TAPE_SYN_ERR
-10551      
-10552    F59E  AD 02 09       LDA TAPE_temp2					; Recover our string length
-10553    F5A1  38             SEC
-10554    F5A2  E9 11          SBC #17
-10555    F5A4  30 0E          BMI TAPE_NameToBuffer_B
-10556    F5A6  80 00          BRA TAPE_LEN_ERR
-10557    
-10558    TAPE_LEN_ERR  
-10559    F5A8  A2 24          LDX #$24 ;ERR_BF					; Issue a Bad filename Error
-10560    F5AA  20 3F C2       JSR LAB_XERR
-10561    F5AD  60             RTS							; Does LAB_XERR really return??
-10562      
-10563    TAPE_SYN_ERR
-10564    ; Syntax Error output
-10565    F5AE  A2 02          LDX #$2 ;ERR_SN					; Issue a Syntax Error.  
-10566    F5B0  20 3F C2       JSR LAB_XERR
-10567    F5B3  60             RTS							; Does LAB_XERR really return??							
-10568    
-10569    TAPE_NameToBuffer_B
-10570    
-10571    F5B4  86 E7          STX TOE_MemptrLo					; Copy our String to the 
-10572    F5B6  84 E8          STY TOE_MemptrHi					; TOE_Memptr contains starting location
-10573    F5B8  AD 02 09       LDA TAPE_temp2					; and A contains size.
-10574    F5BB  20 59 F5       JSR F_TAPE_Fill_Fname
-10575    F5BE  60             RTS
-10576    
+10542    
+10543    ; Get filename from command line into buffer.  Also handle errors.  This may not be the final thing.
+10544    
+10545    F_TAPE_GetName
+10546    F592  20 E7 CB       JSR   LAB_EVEX					; evaluate string
+10547    F595  20 55 D4       JSR   LAB_EVST					; test it is a string
+10548    F598  8D 02 09       STA TAPE_temp2					; Store our string length for later
+10549      
+10550    F59B  A5 5F          LDA Dtypef						; Find out if it is a string and error if it isn't.  $FF=Str, $0=Numeric
+10551    F59D  F0 10          BEQ TAPE_SYN_ERR
+10552      
+10553    F59F  AD 02 09       LDA TAPE_temp2					; Recover our string length
+10554    F5A2  38             SEC
+10555    F5A3  E9 11          SBC #17
+10556    F5A5  30 0E          BMI TAPE_NameToBuffer_B
+10557    F5A7  80 00          BRA TAPE_LEN_ERR
+10558    
+10559    TAPE_LEN_ERR  
+10560    F5A9  A2 24          LDX #$24 ;ERR_BF					; Issue a Bad filename Error
+10561    F5AB  20 3F C2       JSR LAB_XERR
+10562    F5AE  60             RTS							; Does LAB_XERR really return??
+10563      
+10564    TAPE_SYN_ERR
+10565    ; Syntax Error output
+10566    F5AF  A2 02          LDX #$2 ;ERR_SN					; Issue a Syntax Error.  
+10567    F5B1  20 3F C2       JSR LAB_XERR
+10568    F5B4  60             RTS							; Does LAB_XERR really return??							
+10569    
+10570    TAPE_NameToBuffer_B
+10571    
+10572    F5B5  86 E7          STX TOE_MemptrLo					; Copy our String to the 
+10573    F5B7  84 E8          STY TOE_MemptrHi					; TOE_Memptr contains starting location
+10574    F5B9  AD 02 09       LDA TAPE_temp2					; and A contains size.
+10575    F5BC  20 5A F5       JSR F_TAPE_Fill_Fname
+10576    F5BF  60             RTS
 10577    
-10578    ; Print Filename in header
-10579    
-10580    F_TAPE_PrintFname_in_Header
-10581    F5BF  A9 17          LDA #<TAPE_FileName				; Print our Filename in the header space
-10582    F5C1  85 E7          STA TOE_MemptrLo
-10583    F5C3  A9 09          LDA #>TAPE_FileName 
-10584    F5C5  85 E8          STA TOE_MemptrHi
-10585    F5C7  20 60 FF       JSR TOE_PrintStr_vec  
-10586    F5CA  60             RTS
-10587      
-10588    
-10589    ; Saves A BASIC program.  Meant to be called from within BASIC
-10590    ;
-10591    
-10592    F_TAPE_SAVE_BASIC
-10593    
-10594    F5CB  20 91 F5       JSR F_TAPE_GetName
-10595    F5CE  20 76 F5       JSR F_TAPE_Fname_Buf_to_Header			; Put it in the header
-10596      
-10597    F5D1  20 24 F5       JSR F_TAPE_WriteHeaderID				; Include the Header ID 'HEAD'
-10598      
-10599    F5D4  A9 E1          LDA #<TMSG_Saving					; Tell the user that we are saving.
-10600    F5D6  85 E7          STA TOE_MemptrLo
-10601    F5D8  A9 F3          LDA #>TMSG_Saving
-10602    F5DA  85 E8          STA TOE_MemptrHi
-10603    F5DC  20 60 FF       JSR TOE_PrintStr_vec
-10604      
-10605    F5DF  20 BF F5       JSR F_TAPE_PrintFname_in_Header			; Print our filename.
-10606    
-10607    F5E2  20 29 F8       JSR F_TAPE_GetBASIC_Size				; Measure our program
-10608      
-10609    F5E5  AD 00 09       LDA V_TAPE_BlockSize					; Save our program size to the header
-10610    F5E8  8D 13 09       STA TAPE_FileSizeLo
-10611    F5EB  AD 01 09       LDA V_TAPE_BlockSize + 1
-10612    F5EE  8D 14 09       STA TAPE_FileSizeHi
-10613      
-10614    F5F1  A9 00          LDA #<Ram_base					; Get our starting pointer for calculating our checksum loaded.
-10615    F5F3  85 E5          STA TAPE_BlockLo
-10616    F5F5  A9 0C          LDA #>Ram_base
-10617    F5F7  85 E6          STA TAPE_BlockHi
-10618      
-10619    F5F9  20 EE F7       JSR F_TAPE_CalcChecksum				; Get our checksum value
-10620    
-10621    F5FC  AD 2A 09       LDA TAPE_CS_AccLo					; Store our calculated Checksum
-10622    F5FF  8D 28 09       STA TAPE_ChecksumLo
-10623    F602  AD 2B 09       LDA TAPE_CS_AccHi
-10624    F605  8D 29 09       STA TAPE_ChecksumHi
-10625      
-10626    F608  A9 00          LDA #<Ram_base					; Include the start of basic to the load address in the header
-10627    F60A  8D 15 09       STA TAPE_LoadAddrLo
-10628    F60D  A9 0C          LDA #>Ram_base
-10629    F60F  8D 16 09       STA TAPE_LoadAddrHi
-10630      
-10631    F612  A9 00          LDA #C_TAPE_FType_BASIC				; Setup the file type in the header to BASIC
-10632    F614  8D 12 09       STA TAPE_FileType
-10633      
-10634    F617  A9 0E          LDA #<TAPE_Header_Buffer				; Setup our block pointer to the start of the header
-10635    F619  85 E5          STA TAPE_BlockLo
-10636    F61B  A9 09          LDA #>TAPE_Header_Buffer
-10637    F61D  85 E6          STA TAPE_BlockHi
-10638      
-10639    F61F  A9 1B          LDA #<C_TAPE_HeaderSize				; Load our blocksize with the size of our header buffer
-10640    F621  8D 00 09       STA V_TAPE_BlockSize
-10641    F624  A9 00          LDA #>C_TAPE_HeaderSize
-10642    F626  8D 01 09       STA V_TAPE_BlockSize + 1
-10643      
-10644    F629  20 C3 F8       JSR F_TAPE_BlockOut					; Write our block to tape
-10645      
-10646    F62C  A2 C8          LDX #<C_TAPE_Interblock_pause				; Wait a little before writing the actual program data block.
-10647    F62E  A0 AF          LDY #>C_TAPE_Interblock_pause
-10648    F630  20 DB F7       JSR F_TAPE_Pause
-10649      
-10650    F633  AD 15 09       LDA TAPE_LoadAddrLo					; Transfer our start address to our Block pointer
-10651    F636  85 E5          STA TAPE_BlockLo
-10652    F638  AD 16 09       LDA TAPE_LoadAddrHi
-10653    F63B  85 E6          STA TAPE_BlockHi
-10654      
-10655    F63D  AD 13 09       LDA TAPE_FileSizeLo					; Setup our blocksize counter
-10656    F640  8D 00 09       STA V_TAPE_BlockSize
-10657    F643  AD 14 09       LDA TAPE_FileSizeHi
-10658    F646  8D 01 09       STA V_TAPE_BlockSize + 1
-10659      
-10660    F649  20 C3 F8       JSR F_TAPE_BlockOut					; Write our file
-10661        
-10662    F64C  60             RTS							; We're done for now.
-10663      
+10578    
+10579    ; Print Filename in header
+10580    
+10581    F_TAPE_PrintFname_in_Header
+10582    F5C0  A9 17          LDA #<TAPE_FileName				; Print our Filename in the header space
+10583    F5C2  85 E7          STA TOE_MemptrLo
+10584    F5C4  A9 09          LDA #>TAPE_FileName 
+10585    F5C6  85 E8          STA TOE_MemptrHi
+10586    F5C8  20 60 FF       JSR TOE_PrintStr_vec  
+10587    F5CB  60             RTS
+10588      
+10589    
+10590    ; Saves A BASIC program.  Meant to be called from within BASIC
+10591    ;
+10592    
+10593    F_TAPE_SAVE_BASIC
+10594    
+10595    F5CC  20 92 F5       JSR F_TAPE_GetName
+10596    F5CF  20 77 F5       JSR F_TAPE_Fname_Buf_to_Header			; Put it in the header
+10597      
+10598    F5D2  20 25 F5       JSR F_TAPE_WriteHeaderID				; Include the Header ID 'HEAD'
+10599      
+10600    F5D5  A9 E2          LDA #<TMSG_Saving					; Tell the user that we are saving.
+10601    F5D7  85 E7          STA TOE_MemptrLo
+10602    F5D9  A9 F3          LDA #>TMSG_Saving
+10603    F5DB  85 E8          STA TOE_MemptrHi
+10604    F5DD  20 60 FF       JSR TOE_PrintStr_vec
+10605      
+10606    F5E0  20 C0 F5       JSR F_TAPE_PrintFname_in_Header			; Print our filename.
+10607    
+10608    F5E3  20 2A F8       JSR F_TAPE_GetBASIC_Size				; Measure our program
+10609      
+10610    F5E6  AD 00 09       LDA V_TAPE_BlockSize					; Save our program size to the header
+10611    F5E9  8D 13 09       STA TAPE_FileSizeLo
+10612    F5EC  AD 01 09       LDA V_TAPE_BlockSize + 1
+10613    F5EF  8D 14 09       STA TAPE_FileSizeHi
+10614      
+10615    F5F2  A9 00          LDA #<Ram_base					; Get our starting pointer for calculating our checksum loaded.
+10616    F5F4  85 E5          STA TAPE_BlockLo
+10617    F5F6  A9 0C          LDA #>Ram_base
+10618    F5F8  85 E6          STA TAPE_BlockHi
+10619      
+10620    F5FA  20 EF F7       JSR F_TAPE_CalcChecksum				; Get our checksum value
+10621    
+10622    F5FD  AD 2A 09       LDA TAPE_CS_AccLo					; Store our calculated Checksum
+10623    F600  8D 28 09       STA TAPE_ChecksumLo
+10624    F603  AD 2B 09       LDA TAPE_CS_AccHi
+10625    F606  8D 29 09       STA TAPE_ChecksumHi
+10626      
+10627    F609  A9 00          LDA #<Ram_base					; Include the start of basic to the load address in the header
+10628    F60B  8D 15 09       STA TAPE_LoadAddrLo
+10629    F60E  A9 0C          LDA #>Ram_base
+10630    F610  8D 16 09       STA TAPE_LoadAddrHi
+10631      
+10632    F613  A9 00          LDA #C_TAPE_FType_BASIC				; Setup the file type in the header to BASIC
+10633    F615  8D 12 09       STA TAPE_FileType
+10634      
+10635    F618  A9 0E          LDA #<TAPE_Header_Buffer				; Setup our block pointer to the start of the header
+10636    F61A  85 E5          STA TAPE_BlockLo
+10637    F61C  A9 09          LDA #>TAPE_Header_Buffer
+10638    F61E  85 E6          STA TAPE_BlockHi
+10639      
+10640    F620  A9 1C          LDA #<C_TAPE_HeaderSize				; Load our blocksize with the size of our header buffer
+10641    F622  8D 00 09       STA V_TAPE_BlockSize
+10642    F625  A9 00          LDA #>C_TAPE_HeaderSize
+10643    F627  8D 01 09       STA V_TAPE_BlockSize + 1
+10644      
+10645    F62A  20 C4 F8       JSR F_TAPE_BlockOut					; Write our block to tape
+10646      
+10647    F62D  A2 C8          LDX #<C_TAPE_Interblock_pause				; Wait a little before writing the actual program data block.
+10648    F62F  A0 AF          LDY #>C_TAPE_Interblock_pause
+10649    F631  20 DC F7       JSR F_TAPE_Pause
+10650      
+10651    F634  AD 15 09       LDA TAPE_LoadAddrLo					; Transfer our start address to our Block pointer
+10652    F637  85 E5          STA TAPE_BlockLo
+10653    F639  AD 16 09       LDA TAPE_LoadAddrHi
+10654    F63C  85 E6          STA TAPE_BlockHi
+10655      
+10656    F63E  AD 13 09       LDA TAPE_FileSizeLo					; Setup our blocksize counter
+10657    F641  8D 00 09       STA V_TAPE_BlockSize
+10658    F644  AD 14 09       LDA TAPE_FileSizeHi
+10659    F647  8D 01 09       STA V_TAPE_BlockSize + 1
+10660      
+10661    F64A  20 C4 F8       JSR F_TAPE_BlockOut					; Write our file
+10662        
+10663    F64D  60             RTS							; We're done for now.
 10664      
-10665    
-10666    ; Tape VERIFY routine.
-10667    ; --------------------
-10668    
-10669    F_TAPE_VERIFY_BASIC
-10670    
-10671    F64D  20 91 F5       JSR F_TAPE_GetName					; Get the filename string into our buffer
-10672    
-10673    TAPE_VERIFY_Searching_B
-10674    
-10675    F650  A9 EB          LDA #<TMSG_Searching					; Tell the user that we are searching.
-10676    F652  85 E7          STA TOE_MemptrLo
-10677    F654  A9 F3          LDA #>TMSG_Searching
-10678    F656  85 E8          STA TOE_MemptrHi
-10679    F658  20 60 FF       JSR TOE_PrintStr_vec
-10680    
-10681    TAPE_VERIFY_Header_B
-10682    
-10683    F65B  A9 0E          LDA #<TAPE_Header_Buffer				; Point to start of header buffer
-10684    F65D  85 E5          STA TAPE_BlockLo
-10685    F65F  A9 09          LDA #>TAPE_Header_Buffer
-10686    F661  85 E6          STA TAPE_BlockHi
-10687      
-10688    F663  A9 1B          LDA #<C_TAPE_HeaderSize				; Specify how big our header is.
-10689    F665  8D 00 09       STA V_TAPE_BlockSize
-10690    F668  A9 00          LDA #>C_TAPE_HeaderSize
-10691    F66A  8D 01 09       STA V_TAPE_BlockSize + 1
-10692      
-10693    F66D  20 9F F9       JSR F_TAPE_BlockIn					; Load the header block.
-10694      
-10695    F670  D0 03          BNE TAPE_BlockIn_EscNotPressed_B
-10696    F672  4C FD F6       JMP TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
-10697    
-10698    TAPE_BlockIn_EscNotPressed_B
-10699    
-10700    F675  20 39 F5       JSR F_TAPE_CheckHeaderID				; try again if not a valid header
-10701    F678  90 E1          BCC TAPE_VERIFY_Header_B
-10702    
-10703    F67A  C9 04          CMP #TAPE_Verify_Error
-10704    F67C  D0 0E          BNE TAPE_BASVERIFY_Fname_Check
-10705    
-10706    F67E  A9 5E          LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
-10707    F680  85 E7          STA TOE_MemptrLo
-10708    F682  A9 F4          LDA #>TMSG_HeaderError
-10709    F684  85 E8          STA TOE_MemptrHi
-10710    F686  20 60 FF       JSR TOE_PrintStr_vec
-10711      
-10712    F689  4C 5B F6       JMP TAPE_VERIFY_Header_B				; Keep coming back until the header is read valid or the user presses escape
-10713    
+10665      
+10666    
+10667    ; Tape VERIFY routine.
+10668    ; --------------------
+10669    
+10670    F_TAPE_VERIFY_BASIC
+10671    
+10672    F64E  20 92 F5       JSR F_TAPE_GetName					; Get the filename string into our buffer
+10673    
+10674    TAPE_VERIFY_Searching_B
+10675    
+10676    F651  A9 EC          LDA #<TMSG_Searching					; Tell the user that we are searching.
+10677    F653  85 E7          STA TOE_MemptrLo
+10678    F655  A9 F3          LDA #>TMSG_Searching
+10679    F657  85 E8          STA TOE_MemptrHi
+10680    F659  20 60 FF       JSR TOE_PrintStr_vec
+10681    
+10682    TAPE_VERIFY_Header_B
+10683    
+10684    F65C  A9 0E          LDA #<TAPE_Header_Buffer				; Point to start of header buffer
+10685    F65E  85 E5          STA TAPE_BlockLo
+10686    F660  A9 09          LDA #>TAPE_Header_Buffer
+10687    F662  85 E6          STA TAPE_BlockHi
+10688      
+10689    F664  A9 1C          LDA #<C_TAPE_HeaderSize				; Specify how big our header is.
+10690    F666  8D 00 09       STA V_TAPE_BlockSize
+10691    F669  A9 00          LDA #>C_TAPE_HeaderSize
+10692    F66B  8D 01 09       STA V_TAPE_BlockSize + 1
+10693      
+10694    F66E  20 A0 F9       JSR F_TAPE_BlockIn					; Load the header block.
+10695      
+10696    F671  D0 03          BNE TAPE_BlockIn_EscNotPressed_B
+10697    F673  4C FE F6       JMP TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+10698    
+10699    TAPE_BlockIn_EscNotPressed_B
+10700    
+10701    F676  20 3A F5       JSR F_TAPE_CheckHeaderID				; try again if not a valid header
+10702    F679  90 E1          BCC TAPE_VERIFY_Header_B
+10703    
+10704    F67B  C9 04          CMP #TAPE_Verify_Error
+10705    F67D  D0 0E          BNE TAPE_BASVERIFY_Fname_Check
+10706    
+10707    F67F  A9 5F          LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
+10708    F681  85 E7          STA TOE_MemptrLo
+10709    F683  A9 F4          LDA #>TMSG_HeaderError
+10710    F685  85 E8          STA TOE_MemptrHi
+10711    F687  20 60 FF       JSR TOE_PrintStr_vec
+10712      
+10713    F68A  4C 5C F6       JMP TAPE_VERIFY_Header_B				; Keep coming back until the header is read valid or the user presses escape
 10714    
-10715    TAPE_BASVERIFY_Fname_Check
-10716    F68C  20 CB F4       JSR F_TAPE_PrintFound
-10717      
-10718    F68F  20 AE F4       JSR F_TAPE_CompareFileNames
-10719    F692  90 C7          BCC TAPE_VERIFY_Header_B
-10720      
-10721    F694  AD 12 09       LDA TAPE_FileType					; We're only interested in verifying BASIC files.
-10722    F697  D0 C2          BNE TAPE_VERIFY_Header_B
-10723      
-10724    TAPE_BASIC_Verify_Stage
-10725    
-10726    F699  20 29 F8       JSR F_TAPE_GetBASIC_Size				; Put our BASIC program size into V_TAPE_BlockSize.
-10727    
-10728    F69C  AD 13 09       LDA TAPE_FileSizeLo					; Check our file is the same size as our stored program.
-10729    F69F  CD 00 09       CMP V_TAPE_BlockSize
-10730    F6A2  D0 35          BNE TAPE_Verify_Error_B
-10731    F6A4  AD 14 09       LDA TAPE_FileSizeHi
-10732    F6A7  CD 01 09       CMP V_TAPE_BlockSize + 1
-10733    F6AA  D0 2D          BNE TAPE_Verify_Error_B
-10734       
-10735    F6AC  AD 13 09       LDA TAPE_FileSizeLo					; Tell the system how big the file to verify is.
-10736    F6AF  8D 00 09       STA V_TAPE_BlockSize
-10737    F6B2  AD 14 09       LDA TAPE_FileSizeHi
-10738    F6B5  8D 01 09       STA V_TAPE_BlockSize + 1
-10739      
-10740    F6B8  A9 00          LDA #<Ram_base					; Tell the system where to start verifying the BASIC program,
-10741    F6BA  85 E5          STA TAPE_BlockLo					; this should point to Ram_base.
-10742    F6BC  A9 0C          LDA #>Ram_base
-10743    F6BE  85 E6          STA TAPE_BlockHi
-10744      
-10745    F6C0  A9 14          LDA #<TMSG_Verifying					; Tell the user that we are verifying.
-10746    F6C2  85 E7          STA TOE_MemptrLo
-10747    F6C4  A9 F4          LDA #>TMSG_Verifying
-10748    F6C6  85 E8          STA TOE_MemptrHi
-10749    F6C8  20 60 FF       JSR TOE_PrintStr_vec 
-10750        
-10751    F6CB  20 F8 F9       JSR F_TAPE_VerifyBlock				; Verify the BASIC program.
-10752    
-10753    F6CE  AD 30 09       LDA V_TAPE_Verify_Status				; Branch on non load conditions
-10754    F6D1  C9 02          CMP #TAPE_Verify_Escape
-10755    F6D3  F0 28          BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
-10756      
-10757    F6D5  C9 04          CMP #TAPE_Verify_Error				; Check if verify passed or not.
-10758    F6D7  D0 0C          BNE TAPE_BASIC_Verify_OK
-10759      
-10760    TAPE_Verify_Error_B  
-10761    F6D9  A9 34          LDA #<TMSG_VerifyError				; Inform the user of the verification error.
-10762    F6DB  85 E7          STA TOE_MemptrLo
-10763    F6DD  A9 F4          LDA #>TMSG_VerifyError
-10764    F6DF  85 E8          STA TOE_MemptrHi
-10765    F6E1  20 60 FF       JSR TOE_PrintStr_vec
-10766    F6E4  60             RTS
-10767      
-10768    TAPE_BASIC_Verify_OK
-10769    F6E5  A9 23          LDA #<TMSG_Verified					; Inform the user of verification success.
-10770    F6E7  85 E7          STA TOE_MemptrLo
-10771    F6E9  A9 F4          LDA #>TMSG_Verified
-10772    F6EB  85 E8          STA TOE_MemptrHi
-10773    F6ED  20 60 FF       JSR TOE_PrintStr_vec
-10774    
-10775    TAPE_BASIC_Verify_Done  
-10776    F6F0  60             RTS
-10777      
-10778    
+10715    
+10716    TAPE_BASVERIFY_Fname_Check
+10717    F68D  20 CC F4       JSR F_TAPE_PrintFound
+10718      
+10719    F690  20 AF F4       JSR F_TAPE_CompareFileNames
+10720    F693  90 C7          BCC TAPE_VERIFY_Header_B
+10721      
+10722    F695  AD 12 09       LDA TAPE_FileType					; We're only interested in verifying BASIC files.
+10723    F698  D0 C2          BNE TAPE_VERIFY_Header_B
+10724      
+10725    TAPE_BASIC_Verify_Stage
+10726    
+10727    F69A  20 2A F8       JSR F_TAPE_GetBASIC_Size				; Put our BASIC program size into V_TAPE_BlockSize.
+10728    
+10729    F69D  AD 13 09       LDA TAPE_FileSizeLo					; Check our file is the same size as our stored program.
+10730    F6A0  CD 00 09       CMP V_TAPE_BlockSize
+10731    F6A3  D0 35          BNE TAPE_Verify_Error_B
+10732    F6A5  AD 14 09       LDA TAPE_FileSizeHi
+10733    F6A8  CD 01 09       CMP V_TAPE_BlockSize + 1
+10734    F6AB  D0 2D          BNE TAPE_Verify_Error_B
+10735       
+10736    F6AD  AD 13 09       LDA TAPE_FileSizeLo					; Tell the system how big the file to verify is.
+10737    F6B0  8D 00 09       STA V_TAPE_BlockSize
+10738    F6B3  AD 14 09       LDA TAPE_FileSizeHi
+10739    F6B6  8D 01 09       STA V_TAPE_BlockSize + 1
+10740      
+10741    F6B9  A9 00          LDA #<Ram_base					; Tell the system where to start verifying the BASIC program,
+10742    F6BB  85 E5          STA TAPE_BlockLo					; this should point to Ram_base.
+10743    F6BD  A9 0C          LDA #>Ram_base
+10744    F6BF  85 E6          STA TAPE_BlockHi
+10745      
+10746    F6C1  A9 15          LDA #<TMSG_Verifying					; Tell the user that we are verifying.
+10747    F6C3  85 E7          STA TOE_MemptrLo
+10748    F6C5  A9 F4          LDA #>TMSG_Verifying
+10749    F6C7  85 E8          STA TOE_MemptrHi
+10750    F6C9  20 60 FF       JSR TOE_PrintStr_vec 
+10751        
+10752    F6CC  20 F9 F9       JSR F_TAPE_VerifyBlock				; Verify the BASIC program.
+10753    
+10754    F6CF  AD 30 09       LDA V_TAPE_Verify_Status				; Branch on non load conditions
+10755    F6D2  C9 02          CMP #TAPE_Verify_Escape
+10756    F6D4  F0 28          BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+10757      
+10758    F6D6  C9 04          CMP #TAPE_Verify_Error				; Check if verify passed or not.
+10759    F6D8  D0 0C          BNE TAPE_BASIC_Verify_OK
+10760      
+10761    TAPE_Verify_Error_B  
+10762    F6DA  A9 35          LDA #<TMSG_VerifyError				; Inform the user of the verification error.
+10763    F6DC  85 E7          STA TOE_MemptrLo
+10764    F6DE  A9 F4          LDA #>TMSG_VerifyError
+10765    F6E0  85 E8          STA TOE_MemptrHi
+10766    F6E2  20 60 FF       JSR TOE_PrintStr_vec
+10767    F6E5  60             RTS
+10768      
+10769    TAPE_BASIC_Verify_OK
+10770    F6E6  A9 24          LDA #<TMSG_Verified					; Inform the user of verification success.
+10771    F6E8  85 E7          STA TOE_MemptrLo
+10772    F6EA  A9 F4          LDA #>TMSG_Verified
+10773    F6EC  85 E8          STA TOE_MemptrHi
+10774    F6EE  20 60 FF       JSR TOE_PrintStr_vec
+10775    
+10776    TAPE_BASIC_Verify_Done  
+10777    F6F1  60             RTS
+10778      
 10779    
 10780    
 10781    
 10782    
 10783    
-10784    ; Tape Reporting routines.
-10785    ; ------------------------
-10786    
-10787    TAPE_BlockIn_LoadErr
-10788    F6F1  A9 46          LDA #<TMSG_TapeError					; Tell the user that we are have encountered an error.
-10789    F6F3  85 E7          STA TOE_MemptrLo
-10790    F6F5  A9 F4          LDA #>TMSG_TapeError
-10791    F6F7  85 E8          STA TOE_MemptrHi
-10792    F6F9  20 60 FF       JSR TOE_PrintStr_vec
-10793    F6FC  60             RTS
-10794      
-10795    TAPE_BlockIn_EscHandler
-10796    F6FD  A9 18          LDA #<LAB_BMSG					; Tell the user that we are have pressed Escape.
-10797    F6FF  85 E7          STA TOE_MemptrLo
-10798    F701  A9 E9          LDA #>LAB_BMSG
-10799    F703  85 E8          STA TOE_MemptrHi
-10800    F705  20 60 FF       JSR TOE_PrintStr_vec
-10801    F708  60             RTS
-10802      
+10784    
+10785    ; Tape Reporting routines.
+10786    ; ------------------------
+10787    
+10788    TAPE_BlockIn_LoadErr
+10789    F6F2  A9 47          LDA #<TMSG_TapeError					; Tell the user that we are have encountered an error.
+10790    F6F4  85 E7          STA TOE_MemptrLo
+10791    F6F6  A9 F4          LDA #>TMSG_TapeError
+10792    F6F8  85 E8          STA TOE_MemptrHi
+10793    F6FA  20 60 FF       JSR TOE_PrintStr_vec
+10794    F6FD  60             RTS
+10795      
+10796    TAPE_BlockIn_EscHandler
+10797    F6FE  A9 18          LDA #<LAB_BMSG					; Tell the user that we are have pressed Escape.
+10798    F700  85 E7          STA TOE_MemptrLo
+10799    F702  A9 E9          LDA #>LAB_BMSG
+10800    F704  85 E8          STA TOE_MemptrHi
+10801    F706  20 60 FF       JSR TOE_PrintStr_vec
+10802    F709  60             RTS
 10803      
-10804    ;To BASIC 'LOAD' entry point.
-10805      
-10806    F_TAPE_LOAD_BASIC
-10807    
-10808    F709  20 91 F5       JSR F_TAPE_GetName					; Get the filename string into our buffer
-10809    
-10810    TAPE_LOAD_Header_B  
-10811    
-10812    F70C  A9 EB          LDA #<TMSG_Searching					; Tell the user that we are searching.
-10813    F70E  85 E7          STA TOE_MemptrLo
-10814    F710  A9 F3          LDA #>TMSG_Searching
-10815    F712  85 E8          STA TOE_MemptrHi
-10816    F714  20 60 FF       JSR TOE_PrintStr_vec
-10817    
-10818    TAPE_LOAD_Header_Silent_B
-10819    
-10820    F717  A9 0E          LDA #<TAPE_Header_Buffer				; Point to start of header buffer
-10821    F719  85 E5          STA TAPE_BlockLo
-10822    F71B  A9 09          LDA #>TAPE_Header_Buffer
-10823    F71D  85 E6          STA TAPE_BlockHi
-10824      
-10825    F71F  A9 1B          LDA #<C_TAPE_HeaderSize				; Specify how big our header is.
-10826    F721  8D 00 09       STA V_TAPE_BlockSize
-10827    F724  A9 00          LDA #>C_TAPE_HeaderSize
-10828    F726  8D 01 09       STA V_TAPE_BlockSize + 1
-10829    
-10830    F729  20 9F F9       JSR F_TAPE_BlockIn					; Load the header block.
-10831      
-10832    F72C  AD 0D 09       LDA TAPE_BlockIn_Status				; Branch on non load conditions
-10833    F72F  C9 02          CMP #TAPE_BlockIn_Escape
-10834    F731  F0 CA          BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
-10835      
-10836    F733  20 39 F5       JSR F_TAPE_CheckHeaderID				; try again if not a valid header
-10837    F736  90 DF          BCC TAPE_LOAD_Header_Silent_B
-10838    
-10839    F738  C9 04          CMP #TAPE_BlockIn_Error
-10840    F73A  D0 0E          BNE TAPE_BASLOAD_Fname_Check
-10841    
-10842    F73C  A9 5E          LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
-10843    F73E  85 E7          STA TOE_MemptrLo
-10844    F740  A9 F4          LDA #>TMSG_HeaderError
-10845    F742  85 E8          STA TOE_MemptrHi
-10846    F744  20 60 FF       JSR TOE_PrintStr_vec
-10847    F747  4C 0C F7       JMP TAPE_LOAD_Header_B
-10848      
-10849    
-10850    TAPE_BASLOAD_Fname_Check
-10851    F74A  20 CB F4       JSR F_TAPE_PrintFound					; Tell the user what we found.
-10852      
-10853    F74D  20 AE F4       JSR F_TAPE_CompareFileNames				; Check if our file is the right name
-10854    F750  90 BA          BCC TAPE_LOAD_Header_B
-10855      
-10856    F752  AD 12 09       LDA TAPE_FileType					; We're only interested in loading BASIC files.
-10857    F755  D0 B5          BNE TAPE_LOAD_Header_B
-10858    
-10859    TAPE_BASIC_Load_Stage
-10860    F757  AD 13 09       LDA TAPE_FileSizeLo					; Tell the system how big the file to load is.
-10861    F75A  8D 00 09       STA V_TAPE_BlockSize
-10862    F75D  AD 14 09       LDA TAPE_FileSizeHi
-10863    F760  8D 01 09       STA V_TAPE_BlockSize + 1
-10864      
-10865    F763  A9 00          LDA #<Ram_base					; Tell the system where to load the BASIC program. This should point to Ram_base
-10866    F765  85 E5          STA TAPE_BlockLo
-10867    F767  A9 0C          LDA #>Ram_base
-10868    F769  85 E6          STA TAPE_BlockHi
-10869      
-10870    F76B  A9 05          LDA #<TMSG_Loading					; Tell the user that we are loading.
-10871    F76D  85 E7          STA TOE_MemptrLo
-10872    F76F  A9 F4          LDA #>TMSG_Loading
-10873    F771  85 E8          STA TOE_MemptrHi
-10874    F773  20 60 FF       JSR TOE_PrintStr_vec
-10875      
-10876    F776  20 9F F9       JSR F_TAPE_BlockIn					; Load the BASIC program.
-10877      
-10878    F779  AD 0D 09       LDA TAPE_BlockIn_Status				; Branch on non load conditions
-10879    F77C  C9 02          CMP #TAPE_BlockIn_Escape
-10880    F77E  D0 03          BNE TAPE_Skip_EscHandler_B
-10881    F780  4C FD F6       JMP TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
-10882      
-10883    TAPE_Skip_EscHandler_B  
-10884    
-10885    F783  C9 01          CMP #TAPE_BlockIn_Complete
-10886    F785  F0 0E          BEQ TAPE_BASIC_LoadingDone
-10887    
-10888    F787  A9 5E          LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
-10889    F789  85 E7          STA TOE_MemptrLo
-10890    F78B  A9 F4          LDA #>TMSG_HeaderError
-10891    F78D  85 E8          STA TOE_MemptrHi
-10892    F78F  20 60 FF       JSR TOE_PrintStr_vec
-10893    F792  4C F1 F6       JMP TAPE_BlockIn_LoadErr
-10894      
-10895    TAPE_BASIC_LoadingDone  
-10896    F795  A9 00          LDA #<Ram_base					; Setup our pointer to the start of BASIC Program memory
-10897    F797  85 E5          STA TAPE_BlockLo
-10898    F799  A9 0C          LDA #>Ram_base
-10899    F79B  85 E6          STA TAPE_BlockHi
-10900      
-10901    F79D  20 EE F7       JSR F_TAPE_CalcChecksum				; Get our checksum value into TAPE_CS_Acc_Lo and Hi
-10902      
-10903    F7A0  AD 28 09       LDA TAPE_ChecksumLo					; First we check the low byte.
-10904    F7A3  CD 2A 09       CMP TAPE_CS_AccLo
-10905    F7A6  D0 26          BNE TAPE_CS_Fail
-10906      
-10907    F7A8  AD 29 09       LDA TAPE_ChecksumHi					; And then if necessary, we check the high byte.
-10908    F7AB  CD 2B 09       CMP TAPE_CS_AccHi
-10909    F7AE  D0 1E          BNE TAPE_CS_Fail
-10910    
-10911    F7B0  A9 D7          LDA #<TMSG_Ready					; Inform the user they are back in immediate mode.
-10912    F7B2  85 E7          STA TOE_MemptrLo
-10913    F7B4  A9 F3          LDA #>TMSG_Ready
-10914    F7B6  85 E8          STA TOE_MemptrHi
-10915    F7B8  20 60 FF       JSR TOE_PrintStr_vec
-10916    
-10917    TAPE_BASICload_exit
-10918    
-10919    F7BB  A5 E5          LDA TAPE_BlockLo					; Return the system to a useable state
-10920    F7BD  85 7B          STA Svarl
-10921    F7BF  85 7D          STA Sarryl
-10922    F7C1  85 7F          STA Earryl
-10923    F7C3  A5 E6          LDA TAPE_BlockHi
-10924    F7C5  85 7C          STA Svarh
-10925    F7C7  85 7E          STA Sarryh
-10926    F7C9  85 80          STA Earryh
-10927    F7CB  4C 17 C3       JMP LAB_1319						; Tidy up system.
-10928      
-10929    TAPE_CS_Fail
-10930    F7CE  A9 46          LDA #<TMSG_TapeError					; Inform the user of their loading error.
-10931    F7D0  85 E7          STA TOE_MemptrLo
-10932    F7D2  A9 F4          LDA #>TMSG_TapeError
-10933    F7D4  85 E8          STA TOE_MemptrHi
-10934    F7D6  20 60 FF       JSR TOE_PrintStr_vec
-10935    F7D9  80 E0          BRA TAPE_BASICload_exit
-10936      
+10804      
+10805    ;To BASIC 'LOAD' entry point.
+10806      
+10807    F_TAPE_LOAD_BASIC
+10808    
+10809    F70A  20 92 F5       JSR F_TAPE_GetName					; Get the filename string into our buffer
+10810    
+10811    TAPE_LOAD_Header_B  
+10812    
+10813    F70D  A9 EC          LDA #<TMSG_Searching					; Tell the user that we are searching.
+10814    F70F  85 E7          STA TOE_MemptrLo
+10815    F711  A9 F3          LDA #>TMSG_Searching
+10816    F713  85 E8          STA TOE_MemptrHi
+10817    F715  20 60 FF       JSR TOE_PrintStr_vec
+10818    
+10819    TAPE_LOAD_Header_Silent_B
+10820    
+10821    F718  A9 0E          LDA #<TAPE_Header_Buffer				; Point to start of header buffer
+10822    F71A  85 E5          STA TAPE_BlockLo
+10823    F71C  A9 09          LDA #>TAPE_Header_Buffer
+10824    F71E  85 E6          STA TAPE_BlockHi
+10825      
+10826    F720  A9 1C          LDA #<C_TAPE_HeaderSize				; Specify how big our header is.
+10827    F722  8D 00 09       STA V_TAPE_BlockSize
+10828    F725  A9 00          LDA #>C_TAPE_HeaderSize
+10829    F727  8D 01 09       STA V_TAPE_BlockSize + 1
+10830    
+10831    F72A  20 A0 F9       JSR F_TAPE_BlockIn					; Load the header block.
+10832      
+10833    F72D  AD 0D 09       LDA TAPE_BlockIn_Status				; Branch on non load conditions
+10834    F730  C9 02          CMP #TAPE_BlockIn_Escape
+10835    F732  F0 CA          BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+10836      
+10837    F734  20 3A F5       JSR F_TAPE_CheckHeaderID				; try again if not a valid header
+10838    F737  90 DF          BCC TAPE_LOAD_Header_Silent_B
+10839    
+10840    F739  C9 04          CMP #TAPE_BlockIn_Error
+10841    F73B  D0 0E          BNE TAPE_BASLOAD_Fname_Check
+10842    
+10843    F73D  A9 5F          LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
+10844    F73F  85 E7          STA TOE_MemptrLo
+10845    F741  A9 F4          LDA #>TMSG_HeaderError
+10846    F743  85 E8          STA TOE_MemptrHi
+10847    F745  20 60 FF       JSR TOE_PrintStr_vec
+10848    F748  4C 0D F7       JMP TAPE_LOAD_Header_B
+10849      
+10850    
+10851    TAPE_BASLOAD_Fname_Check
+10852    F74B  20 CC F4       JSR F_TAPE_PrintFound					; Tell the user what we found.
+10853      
+10854    F74E  20 AF F4       JSR F_TAPE_CompareFileNames				; Check if our file is the right name
+10855    F751  90 BA          BCC TAPE_LOAD_Header_B
+10856      
+10857    F753  AD 12 09       LDA TAPE_FileType					; We're only interested in loading BASIC files.
+10858    F756  D0 B5          BNE TAPE_LOAD_Header_B
+10859    
+10860    TAPE_BASIC_Load_Stage
+10861    F758  AD 13 09       LDA TAPE_FileSizeLo					; Tell the system how big the file to load is.
+10862    F75B  8D 00 09       STA V_TAPE_BlockSize
+10863    F75E  AD 14 09       LDA TAPE_FileSizeHi
+10864    F761  8D 01 09       STA V_TAPE_BlockSize + 1
+10865      
+10866    F764  A9 00          LDA #<Ram_base					; Tell the system where to load the BASIC program. This should point to Ram_base
+10867    F766  85 E5          STA TAPE_BlockLo
+10868    F768  A9 0C          LDA #>Ram_base
+10869    F76A  85 E6          STA TAPE_BlockHi
+10870      
+10871    F76C  A9 06          LDA #<TMSG_Loading					; Tell the user that we are loading.
+10872    F76E  85 E7          STA TOE_MemptrLo
+10873    F770  A9 F4          LDA #>TMSG_Loading
+10874    F772  85 E8          STA TOE_MemptrHi
+10875    F774  20 60 FF       JSR TOE_PrintStr_vec
+10876      
+10877    F777  20 A0 F9       JSR F_TAPE_BlockIn					; Load the BASIC program.
+10878      
+10879    F77A  AD 0D 09       LDA TAPE_BlockIn_Status				; Branch on non load conditions
+10880    F77D  C9 02          CMP #TAPE_BlockIn_Escape
+10881    F77F  D0 03          BNE TAPE_Skip_EscHandler_B
+10882    F781  4C FE F6       JMP TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+10883      
+10884    TAPE_Skip_EscHandler_B  
+10885    
+10886    F784  C9 01          CMP #TAPE_BlockIn_Complete
+10887    F786  F0 0E          BEQ TAPE_BASIC_LoadingDone
+10888    
+10889    F788  A9 5F          LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
+10890    F78A  85 E7          STA TOE_MemptrLo
+10891    F78C  A9 F4          LDA #>TMSG_HeaderError
+10892    F78E  85 E8          STA TOE_MemptrHi
+10893    F790  20 60 FF       JSR TOE_PrintStr_vec
+10894    F793  4C F2 F6       JMP TAPE_BlockIn_LoadErr
+10895      
+10896    TAPE_BASIC_LoadingDone  
+10897    F796  A9 00          LDA #<Ram_base					; Setup our pointer to the start of BASIC Program memory
+10898    F798  85 E5          STA TAPE_BlockLo
+10899    F79A  A9 0C          LDA #>Ram_base
+10900    F79C  85 E6          STA TAPE_BlockHi
+10901    
+10902    F79E  20 EF F7       JSR F_TAPE_CalcChecksum				; Get our checksum value into TAPE_CS_Acc_Lo and Hi
+10903      
+10904    F7A1  AD 28 09       LDA TAPE_ChecksumLo					; First we check the low byte.
+10905    F7A4  CD 2A 09       CMP TAPE_CS_AccLo
+10906    F7A7  D0 26          BNE TAPE_CS_Fail
+10907      
+10908    F7A9  AD 29 09       LDA TAPE_ChecksumHi					; And then if necessary, we check the high byte.
+10909    F7AC  CD 2B 09       CMP TAPE_CS_AccHi
+10910    F7AF  D0 1E          BNE TAPE_CS_Fail
+10911    
+10912    F7B1  A9 D8          LDA #<TMSG_Ready					; Inform the user they are back in immediate mode.
+10913    F7B3  85 E7          STA TOE_MemptrLo
+10914    F7B5  A9 F3          LDA #>TMSG_Ready
+10915    F7B7  85 E8          STA TOE_MemptrHi
+10916    F7B9  20 60 FF       JSR TOE_PrintStr_vec
+10917    
+10918    TAPE_BASICload_exit
+10919    
+10920    F7BC  A5 E5          LDA TAPE_BlockLo					; Return the system to a useable state
+10921    F7BE  85 7B          STA Svarl
+10922    F7C0  85 7D          STA Sarryl
+10923    F7C2  85 7F          STA Earryl
+10924    F7C4  A5 E6          LDA TAPE_BlockHi
+10925    F7C6  85 7C          STA Svarh
+10926    F7C8  85 7E          STA Sarryh
+10927    F7CA  85 80          STA Earryh
+10928    F7CC  4C 17 C3       JMP LAB_1319						; Tidy up system.
+10929      
+10930    TAPE_CS_Fail
+10931    F7CF  A9 47          LDA #<TMSG_TapeError					; Inform the user of their loading error.
+10932    F7D1  85 E7          STA TOE_MemptrLo
+10933    F7D3  A9 F4          LDA #>TMSG_TapeError
+10934    F7D5  85 E8          STA TOE_MemptrHi
+10935    F7D7  20 60 FF       JSR TOE_PrintStr_vec
+10936    F7DA  80 E0          BRA TAPE_BASICload_exit
 10937      
-10938    F_TAPE_Pause
-10939    
-10940    F7DB  EA             NOP
+10938      
+10939    F_TAPE_Pause
+10940    
 10941    F7DC  EA             NOP
 10942    F7DD  EA             NOP
 10943    F7DE  EA             NOP
@@ -10945,1479 +10945,1480 @@
 10945    F7E0  EA             NOP
 10946    F7E1  EA             NOP
 10947    F7E2  EA             NOP
-10948      
-10949    F7E3  CA             DEX
-10950    F7E4  E0 FF          CPX #$FF
-10951    F7E6  D0 F3          BNE F_TAPE_Pause
-10952      
-10953    F7E8  88             DEY
-10954    F7E9  C0 00          CPY #0
-10955    F7EB  D0 EE          BNE F_TAPE_Pause
-10956      
-10957    F7ED  60             RTS
-10958    
+10948    F7E3  EA             NOP
+10949      
+10950    F7E4  CA             DEX
+10951    F7E5  E0 FF          CPX #$FF
+10952    F7E7  D0 F3          BNE F_TAPE_Pause
+10953      
+10954    F7E9  88             DEY
+10955    F7EA  C0 00          CPY #0
+10956    F7EC  D0 EE          BNE F_TAPE_Pause
+10957      
+10958    F7EE  60             RTS
 10959    
-10960    F_TAPE_CalcChecksum
-10961    
-10962    F7EE  AE 00 09       LDX V_TAPE_BlockSize					; Set up our block counter
-10963    F7F1  AC 01 09       LDY V_TAPE_BlockSize + 1
-10964        
-10965    F7F4  A9 00          LDA #0						; Clear the checksum accumulator
-10966    F7F6  8D 2A 09       STA TAPE_CS_AccLo
-10967    F7F9  8D 2B 09       STA TAPE_CS_AccHi
-10968    
-10969    L_TAPE_CS_NEXT  
-10970    F7FC  AD 2A 09       LDA TAPE_CS_AccLo					; Add our byte to the checksum
-10971    F7FF  18             CLC
-10972    F800  72 E5          ADC (TAPE_BlockLo)
-10973    F802  8D 2A 09       STA TAPE_CS_AccLo
-10974    F805  AD 2B 09       LDA TAPE_CS_AccHi
-10975    F808  69 00          ADC #0
-10976    F80A  8D 2B 09       STA TAPE_CS_AccHi
-10977      
-10978    F80D  A5 E5          LDA TAPE_BlockLo					; Advance our pointer.
-10979    F80F  18             CLC
-10980    F810  69 01          ADC #1
-10981    F812  85 E5          STA TAPE_BlockLo
-10982    F814  A5 E6          LDA TAPE_BlockHi
-10983    F816  69 00          ADC #0
-10984    F818  85 E6          STA TAPE_BlockHi
-10985      
-10986    F81A  CA             DEX							; Repeat until 0
-10987    F81B  E0 FF          CPX #$FF
-10988    F81D  D0 01          BNE CS_No_Y_update  
-10989    F81F  88             DEY
-10990    CS_No_Y_update
-10991    F820  C0 00          CPY #0
-10992    F822  D0 D8          BNE L_TAPE_CS_NEXT
-10993    F824  E0 00          CPX #0
-10994    F826  D0 D4          BNE L_TAPE_CS_NEXT
-10995      
-10996    F828  60             RTS
-10997    
+10960    
+10961    F_TAPE_CalcChecksum
+10962    
+10963    F7EF  AE 00 09       LDX V_TAPE_BlockSize					; Set up our block counter
+10964    F7F2  AC 01 09       LDY V_TAPE_BlockSize + 1
+10965        
+10966    F7F5  A9 00          LDA #0						; Clear the checksum accumulator
+10967    F7F7  8D 2A 09       STA TAPE_CS_AccLo
+10968    F7FA  8D 2B 09       STA TAPE_CS_AccHi
+10969    
+10970    L_TAPE_CS_NEXT  
+10971    F7FD  AD 2A 09       LDA TAPE_CS_AccLo					; Add our byte to the checksum
+10972    F800  18             CLC
+10973    F801  72 E5          ADC (TAPE_BlockLo)
+10974    F803  8D 2A 09       STA TAPE_CS_AccLo
+10975    F806  AD 2B 09       LDA TAPE_CS_AccHi
+10976    F809  69 00          ADC #0
+10977    F80B  8D 2B 09       STA TAPE_CS_AccHi
+10978      
+10979    F80E  A5 E5          LDA TAPE_BlockLo					; Advance our pointer.
+10980    F810  18             CLC
+10981    F811  69 01          ADC #1
+10982    F813  85 E5          STA TAPE_BlockLo
+10983    F815  A5 E6          LDA TAPE_BlockHi
+10984    F817  69 00          ADC #0
+10985    F819  85 E6          STA TAPE_BlockHi
+10986      
+10987    F81B  CA             DEX							; Repeat until 0
+10988    F81C  E0 FF          CPX #$FF
+10989    F81E  D0 01          BNE CS_No_Y_update  
+10990    F820  88             DEY
+10991    CS_No_Y_update
+10992    F821  C0 00          CPY #0
+10993    F823  D0 D8          BNE L_TAPE_CS_NEXT
+10994    F825  E0 00          CPX #0
+10995    F827  D0 D4          BNE L_TAPE_CS_NEXT
+10996      
+10997    F829  60             RTS
 10998    
-10999    F_TAPE_GetBASIC_Size
-11000    
-11001    F829  38             SEC
-11002    F82A  A5 7B          LDA Svarl
-11003    F82C  E9 00          SBC #<Ram_base
-11004    F82E  8D 00 09       STA V_TAPE_BlockSize
-11005    F831  A5 7C          LDA Svarh
-11006    F833  E9 0C          SBC #>Ram_base
-11007    F835  8D 01 09       STA V_TAPE_BlockSize + 1
-11008      
-11009    F838  60             RTS
-11010    
+10999    
+11000    F_TAPE_GetBASIC_Size
+11001    
+11002    F82A  38             SEC
+11003    F82B  A5 7B          LDA Svarl
+11004    F82D  E9 00          SBC #<Ram_base
+11005    F82F  8D 00 09       STA V_TAPE_BlockSize
+11006    F832  A5 7C          LDA Svarh
+11007    F834  E9 0C          SBC #>Ram_base
+11008    F836  8D 01 09       STA V_TAPE_BlockSize + 1
+11009      
+11010    F839  60             RTS
 11011    
-11012    ;*****************************************************************************************
-11013    ;**                                                                                     **
-11014    ;**                Timing and Synchronization functions go here.                        **
-11015    ;**                ---------------------------------------------                        **
-11016    ;**                                                                                     **
-11017    ;*****************************************************************************************
-11018    
+11012    
+11013    ;*****************************************************************************************
+11014    ;**                                                                                     **
+11015    ;**                Timing and Synchronization functions go here.                        **
+11016    ;**                ---------------------------------------------                        **
+11017    ;**                                                                                     **
+11018    ;*****************************************************************************************
 11019    
-11020    ; Wait for 50uS.  Note that JSR's cost 6 cycles
-11021    
-11022    F_TAPE_Phasetime_pause
-11023    ; Each pass takes 10 cycles unless across a page boundary then it's 11 for an error of 10%!!
-11024    
-11025    ; Also, we need to make up the loss of 12 Cycles in calling it and in theory also the variable loading
-11026    ; at the time of the call.
-11027    
-11028    ; First we disregard 20 cycles, then we burn them at 10 cycles a pass.
-11029    
-11030    F839  A2 08          LDX #C_TAPE_Phasetime					; 2 Cycles
-11031    F83B  CA             DEX							; 2 Cycles saving 10
+11020    
+11021    ; Wait for 50uS.  Note that JSR's cost 6 cycles
+11022    
+11023    F_TAPE_Phasetime_pause
+11024    ; Each pass takes 10 cycles unless across a page boundary then it's 11 for an error of 10%!!
+11025    
+11026    ; Also, we need to make up the loss of 12 Cycles in calling it and in theory also the variable loading
+11027    ; at the time of the call.
+11028    
+11029    ; First we disregard 20 cycles, then we burn them at 10 cycles a pass.
+11030    
+11031    F83A  A2 08          LDX #C_TAPE_Phasetime					; 2 Cycles
 11032    F83C  CA             DEX							; 2 Cycles saving 10
-11033    F83D  EA             NOP							; 2 Cycles
+11033    F83D  CA             DEX							; 2 Cycles saving 10
 11034    F83E  EA             NOP							; 2 Cycles
 11035    F83F  EA             NOP							; 2 Cycles
 11036    F840  EA             NOP							; 2 Cycles
-11037      
-11038    TAPE_Phasetime_loop
-11039    F841  CA             DEX							; 2 Cycles
-11040    F842  EA             NOP							; 2 Cycles
+11037    F841  EA             NOP							; 2 Cycles
+11038      
+11039    TAPE_Phasetime_loop
+11040    F842  CA             DEX							; 2 Cycles
 11041    F843  EA             NOP							; 2 Cycles
 11042    F844  EA             NOP							; 2 Cycles
-11043    F845  D0 FA          BNE TAPE_Phasetime_loop				; 2 Cycles unless across pages.
-11044      
-11045    F847  60             RTS							; 6 Cycles
-11046      
+11043    F845  EA             NOP							; 2 Cycles
+11044    F846  D0 FA          BNE TAPE_Phasetime_loop				; 2 Cycles unless across pages.
+11045      
+11046    F848  60             RTS							; 6 Cycles
 11047      
 11048      
 11049      
-11050    ;*****************************************************************************************
-11051    ;**                                                                                     **
-11052    ;**             Output Generating Functions.  Spoiler, It's all bitbashed!              **
-11053    ;**             ----------------------------------------------------------              **
-11054    ;**                                                                                     **
-11055    ;*****************************************************************************************
-11056      
-11057        
-11058    ;===============================================================================================
-11059    ; TAPE Bit pulse generator  Takes the Z bit into consideration.
-11060    
+11050      
+11051    ;*****************************************************************************************
+11052    ;**                                                                                     **
+11053    ;**             Output Generating Functions.  Spoiler, It's all bitbashed!              **
+11054    ;**             ----------------------------------------------------------              **
+11055    ;**                                                                                     **
+11056    ;*****************************************************************************************
+11057      
+11058        
+11059    ;===============================================================================================
+11060    ; TAPE Bit pulse generator  Takes the Z bit into consideration.
 11061    
-11062    F_TAPE_BitGen
-11063    
-11064    F848  A0 08          LDY #C_TAPE_bitcycles					; Setup bitcycles loop
-11065      
-11066    TAPE_bitcycles_loop
-11067    F84A  48             PHA
-11068    F84B  C9 00          CMP #0
-11069    F84D  F0 05          BEQ TAPE_No_Pulse
-11070      
-11071    
-11072    F84F  A9 80          LDA #TAPE_out						; Set high phase
-11073    F851  8D 40 C0       STA TAPE_IOP
-11074    TAPE_No_Pulse
-11075    F854  20 39 F8       JSR F_TAPE_Phasetime_pause				; Wait hightone time which is eight times phase time.
-11076    F857  20 39 F8       JSR F_TAPE_Phasetime_pause				; This is so that the same loop can be used to capture the data for serial input
-11077    F85A  20 39 F8       JSR F_TAPE_Phasetime_pause
-11078    F85D  20 39 F8       JSR F_TAPE_Phasetime_pause
-11079    F860  20 39 F8       JSR F_TAPE_Phasetime_pause
-11080    F863  20 39 F8       JSR F_TAPE_Phasetime_pause
-11081    F866  20 39 F8       JSR F_TAPE_Phasetime_pause
-11082    F869  20 39 F8       JSR F_TAPE_Phasetime_pause
-11083      
-11084    
-11085      
-11086    
-11087    F86C  A9 00          LDA #0
-11088    F86E  8D 40 C0       STA TAPE_IOP						; Set low phase
-11089    F871  20 39 F8       JSR F_TAPE_Phasetime_pause				; Wait hightone time
-11090    F874  20 39 F8       JSR F_TAPE_Phasetime_pause
-11091    F877  20 39 F8       JSR F_TAPE_Phasetime_pause
-11092    F87A  20 39 F8       JSR F_TAPE_Phasetime_pause
-11093    F87D  20 39 F8       JSR F_TAPE_Phasetime_pause
-11094    F880  20 39 F8       JSR F_TAPE_Phasetime_pause
-11095    F883  20 39 F8       JSR F_TAPE_Phasetime_pause
-11096    F886  20 39 F8       JSR F_TAPE_Phasetime_pause
-11097      
-11098    F889  68             PLA
-11099    F88A  88             DEY
-11100    F88B  D0 BD          BNE TAPE_bitcycles_loop
-11101    
-11102    F88D  60             RTS
-11103      
+11062    
+11063    F_TAPE_BitGen
+11064    
+11065    F849  A0 08          LDY #C_TAPE_bitcycles					; Setup bitcycles loop
+11066      
+11067    TAPE_bitcycles_loop
+11068    F84B  48             PHA
+11069    F84C  C9 00          CMP #0
+11070    F84E  F0 05          BEQ TAPE_No_Pulse
+11071      
+11072    
+11073    F850  A9 80          LDA #TAPE_out						; Set high phase
+11074    F852  8D 40 C0       STA TAPE_IOP
+11075    TAPE_No_Pulse
+11076    F855  20 3A F8       JSR F_TAPE_Phasetime_pause				; Wait hightone time which is eight times phase time.
+11077    F858  20 3A F8       JSR F_TAPE_Phasetime_pause				; This is so that the same loop can be used to capture the data for serial input
+11078    F85B  20 3A F8       JSR F_TAPE_Phasetime_pause
+11079    F85E  20 3A F8       JSR F_TAPE_Phasetime_pause
+11080    F861  20 3A F8       JSR F_TAPE_Phasetime_pause
+11081    F864  20 3A F8       JSR F_TAPE_Phasetime_pause
+11082    F867  20 3A F8       JSR F_TAPE_Phasetime_pause
+11083    F86A  20 3A F8       JSR F_TAPE_Phasetime_pause
+11084      
+11085    
+11086      
+11087    
+11088    F86D  A9 00          LDA #0
+11089    F86F  8D 40 C0       STA TAPE_IOP						; Set low phase
+11090    F872  20 3A F8       JSR F_TAPE_Phasetime_pause				; Wait hightone time
+11091    F875  20 3A F8       JSR F_TAPE_Phasetime_pause
+11092    F878  20 3A F8       JSR F_TAPE_Phasetime_pause
+11093    F87B  20 3A F8       JSR F_TAPE_Phasetime_pause
+11094    F87E  20 3A F8       JSR F_TAPE_Phasetime_pause
+11095    F881  20 3A F8       JSR F_TAPE_Phasetime_pause
+11096    F884  20 3A F8       JSR F_TAPE_Phasetime_pause
+11097    F887  20 3A F8       JSR F_TAPE_Phasetime_pause
+11098      
+11099    F88A  68             PLA
+11100    F88B  88             DEY
+11101    F88C  D0 BD          BNE TAPE_bitcycles_loop
+11102    
+11103    F88E  60             RTS
 11104      
-11105    ;===============================================================================================  
-11106    ; Tape byte output routine LSb first.  Accumulator holds the current byte.
-11107    
-11108    F_TAPE_ByteOut
-11109    F88E  08             PHP								; Save and disable IRQ status.
-11110    F88F  78             SEI
-11111      
-11112    F890  48             PHA								; Generate start bit.
-11113    F891  A9 01          LDA #1
-11114    F893  20 48 F8       JSR F_TAPE_BitGen
-11115    F896  68             PLA
-11116    
-11117    F897  A2 08          LDX #8							; Set our bit counter for 8 bits.
-11118      
-11119    TAPE_Nextbit
-11120    F899  48             PHA								; Save the byte for later use.
-11121    F89A  DA             PHX								; Save our counter
-11122      
-11123    F89B  29 01          AND #1							; Keep just the bit of interest.
-11124    F89D  20 48 F8       JSR F_TAPE_BitGen						; Output our bit.
-11125    
-11126    F8A0  FA             PLX								; Recover our counter
-11127    F8A1  68             PLA								; Recover our working byte out
-11128      
-11129    F8A2  4A             LSR								; Move on to the next bit
-11130    F8A3  CA             DEX								; Decrement our counter
-11131      
-11132    F8A4  D0 F3          BNE TAPE_Nextbit						; Keep going until completed.
-11133      
-11134    F8A6  48             PHA								; Generate stop bit
-11135    F8A7  A9 00          LDA #0
-11136    F8A9  20 48 F8       JSR F_TAPE_BitGen
-11137    F8AC  A9 00          LDA #0							; Generate first guard bit
-11138    F8AE  20 48 F8       JSR F_TAPE_BitGen
-11139    F8B1  A9 00          LDA #0							; Generate second guard bit
-11140    F8B3  20 48 F8       JSR F_TAPE_BitGen
-11141    F8B6  A9 00          LDA #0							; Generate third guard bit!
-11142    F8B8  20 48 F8       JSR F_TAPE_BitGen
-11143    F8BB  A9 00          LDA #0							; Generate fourth guard bit!
-11144    F8BD  20 48 F8       JSR F_TAPE_BitGen
-11145    ;  LDA #0							; Generate fifth guard bit!
-11146    ;  JSR F_TAPE_BitGen
-11147    ;  LDA #0							; Generate sixth guard bit!
-11148    ;  JSR F_TAPE_BitGen
-11149    ;  LDA #0							; Generate seventh guard bit!
-11150    ;  JSR F_TAPE_BitGen
-11151    ;  LDA #0							; Generate EIGHTH guard bit!
-11152    ;  JSR F_TAPE_BitGen
-11153    F8C0  68             PLA
-11154      
-11155    F8C1  28             PLP								; Restore IRQ status
-11156      
-11157    F8C2  60             RTS
-11158    
+11105      
+11106    ;===============================================================================================  
+11107    ; Tape byte output routine LSb first.  Accumulator holds the current byte.
+11108    
+11109    F_TAPE_ByteOut
+11110    F88F  08             PHP								; Save and disable IRQ status.
+11111    F890  78             SEI
+11112      
+11113    F891  48             PHA								; Generate start bit.
+11114    F892  A9 01          LDA #1
+11115    F894  20 49 F8       JSR F_TAPE_BitGen
+11116    F897  68             PLA
+11117    
+11118    F898  A2 08          LDX #8							; Set our bit counter for 8 bits.
+11119      
+11120    TAPE_Nextbit
+11121    F89A  48             PHA								; Save the byte for later use.
+11122    F89B  DA             PHX								; Save our counter
+11123      
+11124    F89C  29 01          AND #1							; Keep just the bit of interest.
+11125    F89E  20 49 F8       JSR F_TAPE_BitGen						; Output our bit.
+11126    
+11127    F8A1  FA             PLX								; Recover our counter
+11128    F8A2  68             PLA								; Recover our working byte out
+11129      
+11130    F8A3  4A             LSR								; Move on to the next bit
+11131    F8A4  CA             DEX								; Decrement our counter
+11132      
+11133    F8A5  D0 F3          BNE TAPE_Nextbit						; Keep going until completed.
+11134      
+11135    F8A7  48             PHA								; Generate stop bit
+11136    F8A8  A9 00          LDA #0
+11137    F8AA  20 49 F8       JSR F_TAPE_BitGen
+11138    F8AD  A9 00          LDA #0							; Generate first guard bit
+11139    F8AF  20 49 F8       JSR F_TAPE_BitGen
+11140    F8B2  A9 00          LDA #0							; Generate second guard bit
+11141    F8B4  20 49 F8       JSR F_TAPE_BitGen
+11142    F8B7  A9 00          LDA #0							; Generate third guard bit!
+11143    F8B9  20 49 F8       JSR F_TAPE_BitGen
+11144    F8BC  A9 00          LDA #0							; Generate fourth guard bit!
+11145    F8BE  20 49 F8       JSR F_TAPE_BitGen
+11146    ;  LDA #0							; Generate fifth guard bit!
+11147    ;  JSR F_TAPE_BitGen
+11148    ;  LDA #0							; Generate sixth guard bit!
+11149    ;  JSR F_TAPE_BitGen
+11150    ;  LDA #0							; Generate seventh guard bit!
+11151    ;  JSR F_TAPE_BitGen
+11152    ;  LDA #0							; Generate EIGHTH guard bit!
+11153    ;  JSR F_TAPE_BitGen
+11154    F8C1  68             PLA
+11155      
+11156    F8C2  28             PLP								; Restore IRQ status
+11157      
+11158    F8C3  60             RTS
 11159    
-11160    ;===============================================================================================  
-11161    ; Block output routine
-11162    ;
-11163    ; This requires the starting address and number of bytes output to operate.
-11164    ; X contains the low byte of the count, Y contains the high byte and a two byte zero page variable
-11165    ; holds the starting address, which is incremented as used.
-11166    
-11167    F_TAPE_BlockOut
-11168    
-11169    F8C3  20 F1 F8       JSR F_TAPE_Leader						; Generate block leader
-11170    
-11171    F8C6  AE 00 09       LDX V_TAPE_BlockSize						; Get the low byte of BlockStart
-11172    F8C9  AC 01 09       LDY V_TAPE_BlockSize+1					; Get the high byte of BlockStart
-11173      
-11174    L_TAPE_BlockOut
-11175      
-11176    F8CC  B2 E5          LDA (TAPE_BlockLo)						; Get the byte to output to tape
-11177      
-11178    F8CE  DA             PHX
-11179    F8CF  5A             PHY
-11180    F8D0  20 8E F8       JSR F_TAPE_ByteOut						; Transmit the byte.
-11181    F8D3  7A             PLY
-11182    F8D4  FA             PLX
-11183      
-11184    F8D5  A5 E5          LDA TAPE_BlockLo						; Increment our byte pointer
-11185    F8D7  18             CLC
-11186    F8D8  69 01          ADC #1
-11187    F8DA  85 E5          STA TAPE_BlockLo
-11188    F8DC  A5 E6          LDA TAPE_BlockHi
-11189    F8DE  69 00          ADC #0
-11190    F8E0  85 E6          STA TAPE_BlockHi
-11191    
-11192    TAPE_BlockOut_DecCounter
-11193    F8E2  CA             DEX
-11194    F8E3  E0 FF          CPX #$FF
-11195    F8E5  D0 01          BNE TAPE_BlockOut_CheckZero_B
-11196    F8E7  88             DEY
-11197      
-11198    TAPE_BlockOut_CheckZero_B
-11199    F8E8  C0 00          CPY #0
-11200    F8EA  D0 E0          BNE L_TAPE_BlockOut
-11201    F8EC  E0 00          CPX #0
-11202    F8EE  D0 DC          BNE L_TAPE_BlockOut
-11203    
-11204    TAPE_BlockOut_Finish  
-11205    F8F0  60             RTS
-11206      
-11207    
-11208    ;===============================================================================================  
-11209    ; Tape leader_tone  
-11210    
-11211    F_TAPE_Leader
-11212    F8F1  A2 64          LDX #TAPE_Leader_Bytes				; Put the leader cycles low byte into X
-11213    
-11214    TAPE_leader_lp
-11215    F8F3  DA             PHX							; Save our cycle counter for later
-11216      
-11217    F8F4  A9 AA          LDA #C_TAPE_LeaderByte
-11218    F8F6  20 8E F8       JSR F_TAPE_ByteOut					; Send leader byte
-11219    
+11160    
+11161    ;===============================================================================================  
+11162    ; Block output routine
+11163    ;
+11164    ; This requires the starting address and number of bytes output to operate.
+11165    ; X contains the low byte of the count, Y contains the high byte and a two byte zero page variable
+11166    ; holds the starting address, which is incremented as used.
+11167    
+11168    F_TAPE_BlockOut
+11169    
+11170    F8C4  20 F2 F8       JSR F_TAPE_Leader						; Generate block leader
+11171    
+11172    F8C7  AE 00 09       LDX V_TAPE_BlockSize						; Get the low byte of BlockStart
+11173    F8CA  AC 01 09       LDY V_TAPE_BlockSize+1					; Get the high byte of BlockStart
+11174      
+11175    L_TAPE_BlockOut
+11176      
+11177    F8CD  B2 E5          LDA (TAPE_BlockLo)						; Get the byte to output to tape
+11178      
+11179    F8CF  DA             PHX
+11180    F8D0  5A             PHY
+11181    F8D1  20 8F F8       JSR F_TAPE_ByteOut						; Transmit the byte.
+11182    F8D4  7A             PLY
+11183    F8D5  FA             PLX
+11184      
+11185    F8D6  A5 E5          LDA TAPE_BlockLo						; Increment our byte pointer
+11186    F8D8  18             CLC
+11187    F8D9  69 01          ADC #1
+11188    F8DB  85 E5          STA TAPE_BlockLo
+11189    F8DD  A5 E6          LDA TAPE_BlockHi
+11190    F8DF  69 00          ADC #0
+11191    F8E1  85 E6          STA TAPE_BlockHi
+11192    
+11193    TAPE_BlockOut_DecCounter
+11194    F8E3  CA             DEX
+11195    F8E4  E0 FF          CPX #$FF
+11196    F8E6  D0 01          BNE TAPE_BlockOut_CheckZero_B
+11197    F8E8  88             DEY
+11198      
+11199    TAPE_BlockOut_CheckZero_B
+11200    F8E9  C0 00          CPY #0
+11201    F8EB  D0 E0          BNE L_TAPE_BlockOut
+11202    F8ED  E0 00          CPX #0
+11203    F8EF  D0 DC          BNE L_TAPE_BlockOut
+11204    
+11205    TAPE_BlockOut_Finish  
+11206    F8F1  60             RTS
+11207      
+11208    
+11209    ;===============================================================================================  
+11210    ; Tape leader_tone  
+11211    
+11212    F_TAPE_Leader
+11213    F8F2  A2 64          LDX #TAPE_Leader_Bytes				; Put the leader cycles low byte into X
+11214    
+11215    TAPE_leader_lp
+11216    F8F4  DA             PHX							; Save our cycle counter for later
+11217      
+11218    F8F5  A9 AA          LDA #C_TAPE_LeaderByte
+11219    F8F7  20 8F F8       JSR F_TAPE_ByteOut					; Send leader byte
 11220    
-11221    F8F9  FA             PLX							; Retrieve our counter
-11222    
-11223    F8FA  CA             DEX							; Decrement our counter
-11224    F8FB  D0 F6          BNE TAPE_leader_lp					; and loopback as necessary
-11225    F8FD  A9 55          LDA #C_TAPE_EndOfLeaderByte
-11226    F8FF  20 8E F8       JSR F_TAPE_ByteOut					; Send Terminating byte
-11227    
-11228    F902  60             RTS
-11229    
+11221    
+11222    F8FA  FA             PLX							; Retrieve our counter
+11223    
+11224    F8FB  CA             DEX							; Decrement our counter
+11225    F8FC  D0 F6          BNE TAPE_leader_lp					; and loopback as necessary
+11226    F8FE  A9 55          LDA #C_TAPE_EndOfLeaderByte
+11227    F900  20 8F F8       JSR F_TAPE_ByteOut					; Send Terminating byte
+11228    
+11229    F903  60             RTS
 11230    
-11231    ;*****************************************************************************************
-11232    ;**                                                                                     **
-11233    ;**              Input Generating Functions.  Spoiler, It's all bitbashed!              **
-11234    ;**              ---------------------------------------------------------              **
-11235    ;**                                                                                     **
-11236    ;*****************************************************************************************
-11237    
+11231    
+11232    ;*****************************************************************************************
+11233    ;**                                                                                     **
+11234    ;**              Input Generating Functions.  Spoiler, It's all bitbashed!              **
+11235    ;**              ---------------------------------------------------------              **
+11236    ;**                                                                                     **
+11237    ;*****************************************************************************************
 11238    
-11239    ;===============================================================================================  
-11240    ; Tape line status sampler, temporarily flipped  
-11241    
+11239    
+11240    ;===============================================================================================  
+11241    ; Tape line status sampler, temporarily flipped  
 11242    
-11243    F_TAPE_Sample_Tapeline
-11244    F903  AD 40 C0       LDA TAPE_IOP						; Get sample
-11245    F906  29 40          AND #TAPE_in
-11246      
-11247    F908  F0 02          BEQ TAPE_line_low					; Set or clear carry as needed.
-11248    F90A  38             SEC
-11249    F90B  60             RTS
-11250      
-11251    TAPE_line_low
-11252    F90C  18             CLC
-11253    F90D  60             RTS
-11254    
+11243    
+11244    F_TAPE_Sample_Tapeline
+11245    F904  AD 40 C0       LDA TAPE_IOP						; Get sample
+11246    F907  29 40          AND #TAPE_in
+11247      
+11248    F909  F0 02          BEQ TAPE_line_low					; Set or clear carry as needed.
+11249    F90B  38             SEC
+11250    F90C  60             RTS
+11251      
+11252    TAPE_line_low
+11253    F90D  18             CLC
+11254    F90E  60             RTS
 11255    
-11256    ;===============================================================================================
-11257    ; Pulse Decoding engine.  This is where deserialisation happens.
-11258    
-11259    TAPE_PulseDecoder
-11260    F90E  AD 08 09       LDA TAPE_StartDet					; If the start bit has been detected
-11261    F911  D0 1A          BNE TAPE_SamplePos_Check				; Seek rising edge and end otherwise
-11262      
-11263    F913  AD 06 09       LDA TAPE_Demod_Status					; Detect rising edge
-11264    F916  F0 14          BEQ TAPE_NotRising
-11265    F918  AD 07 09       LDA TAPE_Demod_Last
-11266    F91B  D0 0F          BNE TAPE_NotRising
-11267    
-11268    F91D  A9 01          LDA #1						; Store rising edge signal
-11269    F91F  8D 08 09       STA TAPE_StartDet
-11270    F922  A9 14          LDA #C_TAPE_Sample_Offset				; Start the counter for mid-bit
-11271    F924  8D 0C 09       STA TAPE_Sample_Position
-11272    F927  A9 0A          LDA #C_TAPE_BitsPerFrame
-11273    F929  8D 0A 09       STA TAPE_BitsToDecode
-11274    
-11275    TAPE_NotRising
-11276    F92C  60             RTS
-11277    
-11278    TAPE_SamplePos_Check
-11279    F92D  A9 00          LDA #0						; Are we at the bit sample position
-11280    F92F  CD 0C 09       CMP TAPE_Sample_Position
-11281    F932  F0 04          BEQ TAPE_AtStartBit
-11282      
-11283    F934  CE 0C 09       DEC TAPE_Sample_Position				; Decrement sample position end.
-11284    F937  60             RTS
-11285      
-11286    TAPE_AtStartBit						; At start bit?
-11287    F938  AD 0A 09       LDA TAPE_BitsToDecode
-11288    F93B  C9 0A          CMP #C_TAPE_BitsPerFrame
-11289    F93D  D0 17          BNE TAPE_AtStopBit
-11290      
-11291    F93F  AD 06 09       LDA TAPE_Demod_Status					; Branch on start bit state.
-11292    F942  D0 09          BNE TAPE_AdjustCountersStart
-11293      
-11294    F944  A9 00          LDA #0						; Path of invalid start bit.
-11295    F946  8D 08 09       STA TAPE_StartDet					; Clear start condition
-11296    F949  8D 09 09       STA TAPE_RX_Status					; and status register.
-11297    F94C  60             RTS
-11298      
-11299    TAPE_AdjustCountersStart
-11300    F94D  A9 36          LDA #C_TAPE_Bitlength					; Start the counter for the next bit to sample
-11301    F94F  8D 0C 09       STA TAPE_Sample_Position
-11302    F952  CE 0A 09       DEC TAPE_BitsToDecode
-11303    F955  60             RTS
-11304      
-11305    TAPE_AtStopBit						; Stop bit?
-11306    F956  AD 0A 09       LDA TAPE_BitsToDecode
-11307    F959  C9 01          CMP #1
-11308    F95B  D0 1B          BNE TAPE_AtDataBit
-11309    
-11310    F95D  AD 06 09       LDA TAPE_Demod_Status
-11311    F960  D0 0B          BNE TAPE_Overrun
-11312      
-11313    F962  A9 00          LDA #0						; Clear Start detect bit
-11314    F964  8D 08 09       STA TAPE_StartDet
-11315    F967  A9 04          LDA #TAPE_Stat_RXFull					; Indicate byte received
-11316    F969  8D 09 09       STA TAPE_RX_Status
-11317    F96C  60             RTS
-11318      
-11319    TAPE_Overrun
-11320    F96D  A9 00          LDA #0						; Clear Start detect bit
-11321    F96F  8D 08 09       STA TAPE_StartDet
-11322    F972  A9 01          LDA #TAPE_Stat_overrun				; Indicate byte received
-11323    F974  8D 09 09       STA TAPE_RX_Status
-11324    F977  60             RTS
-11325    
-11326    TAPE_AtDataBit
-11327    F978  AD 06 09       LDA TAPE_Demod_Status					; Shift our bit into the byte received LSb when not a stop bit
-11328    F97B  6A             ROR
-11329    F97C  6E 0B 09       ROR TAPE_ByteReceived
-11330      
-11331    
-11332    F97F  CE 0A 09       DEC TAPE_BitsToDecode					; Adjust counters accordingly
-11333    F982  A9 36          LDA #C_TAPE_Bitlength
-11334    F984  8D 0C 09       STA TAPE_Sample_Position
-11335     
-11336    F987  60             RTS
-11337      
+11256    
+11257    ;===============================================================================================
+11258    ; Pulse Decoding engine.  This is where deserialisation happens.
+11259    
+11260    TAPE_PulseDecoder
+11261    F90F  AD 08 09       LDA TAPE_StartDet					; If the start bit has been detected
+11262    F912  D0 1A          BNE TAPE_SamplePos_Check				; Seek rising edge and end otherwise
+11263      
+11264    F914  AD 06 09       LDA TAPE_Demod_Status					; Detect rising edge
+11265    F917  F0 14          BEQ TAPE_NotRising
+11266    F919  AD 07 09       LDA TAPE_Demod_Last
+11267    F91C  D0 0F          BNE TAPE_NotRising
+11268    
+11269    F91E  A9 01          LDA #1						; Store rising edge signal
+11270    F920  8D 08 09       STA TAPE_StartDet
+11271    F923  A9 14          LDA #C_TAPE_Sample_Offset				; Start the counter for mid-bit
+11272    F925  8D 0C 09       STA TAPE_Sample_Position
+11273    F928  A9 0A          LDA #C_TAPE_BitsPerFrame
+11274    F92A  8D 0A 09       STA TAPE_BitsToDecode
+11275    
+11276    TAPE_NotRising
+11277    F92D  60             RTS
+11278    
+11279    TAPE_SamplePos_Check
+11280    F92E  A9 00          LDA #0						; Are we at the bit sample position
+11281    F930  CD 0C 09       CMP TAPE_Sample_Position
+11282    F933  F0 04          BEQ TAPE_AtStartBit
+11283      
+11284    F935  CE 0C 09       DEC TAPE_Sample_Position				; Decrement sample position end.
+11285    F938  60             RTS
+11286      
+11287    TAPE_AtStartBit						; At start bit?
+11288    F939  AD 0A 09       LDA TAPE_BitsToDecode
+11289    F93C  C9 0A          CMP #C_TAPE_BitsPerFrame
+11290    F93E  D0 17          BNE TAPE_AtStopBit
+11291      
+11292    F940  AD 06 09       LDA TAPE_Demod_Status					; Branch on start bit state.
+11293    F943  D0 09          BNE TAPE_AdjustCountersStart
+11294      
+11295    F945  A9 00          LDA #0						; Path of invalid start bit.
+11296    F947  8D 08 09       STA TAPE_StartDet					; Clear start condition
+11297    F94A  8D 09 09       STA TAPE_RX_Status					; and status register.
+11298    F94D  60             RTS
+11299      
+11300    TAPE_AdjustCountersStart
+11301    F94E  A9 36          LDA #C_TAPE_Bitlength					; Start the counter for the next bit to sample
+11302    F950  8D 0C 09       STA TAPE_Sample_Position
+11303    F953  CE 0A 09       DEC TAPE_BitsToDecode
+11304    F956  60             RTS
+11305      
+11306    TAPE_AtStopBit						; Stop bit?
+11307    F957  AD 0A 09       LDA TAPE_BitsToDecode
+11308    F95A  C9 01          CMP #1
+11309    F95C  D0 1B          BNE TAPE_AtDataBit
+11310    
+11311    F95E  AD 06 09       LDA TAPE_Demod_Status
+11312    F961  D0 0B          BNE TAPE_Overrun
+11313      
+11314    F963  A9 00          LDA #0						; Clear Start detect bit
+11315    F965  8D 08 09       STA TAPE_StartDet
+11316    F968  A9 04          LDA #TAPE_Stat_RXFull					; Indicate byte received
+11317    F96A  8D 09 09       STA TAPE_RX_Status
+11318    F96D  60             RTS
+11319      
+11320    TAPE_Overrun
+11321    F96E  A9 00          LDA #0						; Clear Start detect bit
+11322    F970  8D 08 09       STA TAPE_StartDet
+11323    F973  A9 01          LDA #TAPE_Stat_overrun				; Indicate byte received
+11324    F975  8D 09 09       STA TAPE_RX_Status
+11325    F978  60             RTS
+11326    
+11327    TAPE_AtDataBit
+11328    F979  AD 06 09       LDA TAPE_Demod_Status					; Shift our bit into the byte received LSb when not a stop bit
+11329    F97C  6A             ROR
+11330    F97D  6E 0B 09       ROR TAPE_ByteReceived
+11331      
+11332    
+11333    F980  CE 0A 09       DEC TAPE_BitsToDecode					; Adjust counters accordingly
+11334    F983  A9 36          LDA #C_TAPE_Bitlength
+11335    F985  8D 0C 09       STA TAPE_Sample_Position
+11336     
+11337    F988  60             RTS
 11338      
-11339    
+11339      
 11340    
-11341    ;*****************************************************************************************
-11342    ;**                                                                                     **
-11343    ;**           Tape Input Functions.  These are all hand calibrated so take care.        **
-11344    ;**           ------------------------------------------------------------------        **
-11345    ;**                                                                                     **
-11346    ;*****************************************************************************************
-11347    
+11341    
+11342    ;*****************************************************************************************
+11343    ;**                                                                                     **
+11344    ;**           Tape Input Functions.  These are all hand calibrated so take care.        **
+11345    ;**           ------------------------------------------------------------------        **
+11346    ;**                                                                                     **
+11347    ;*****************************************************************************************
 11348    
 11349    
 11350    
 11351    
-11352    F_TAPE_FindStart
-11353    F988  20 53 FA       JSR F_TAPE_GetByte
-11354    F98B  AD 09 09       LDA TAPE_RX_Status
-11355      
-11356    F98E  C9 08          CMP #TAPE_Stat_Escape						; Break on Escape condition
-11357    F990  D0 01          BNE TAPE_LeaderNoBreak
-11358      
-11359    F992  60             RTS
-11360      
-11361    TAPE_LeaderNoBreak
-11362    F993  C9 01          CMP #TAPE_Stat_overrun
-11363    F995  F0 F1          BEQ F_TAPE_FindStart
-11364      
-11365    F997  AD 0B 09       LDA TAPE_ByteReceived
-11366    F99A  C9 55          CMP #C_TAPE_EndOfLeaderByte					; Keep trying until end of leader byte is received
-11367    F99C  D0 EA          BNE F_TAPE_FindStart
-11368      
-11369    F99E  60             RTS
-11370    
+11352    
+11353    F_TAPE_FindStart
+11354    F989  20 54 FA       JSR F_TAPE_GetByte
+11355    F98C  AD 09 09       LDA TAPE_RX_Status
+11356      
+11357    F98F  C9 08          CMP #TAPE_Stat_Escape						; Break on Escape condition
+11358    F991  D0 01          BNE TAPE_LeaderNoBreak
+11359      
+11360    F993  60             RTS
+11361      
+11362    TAPE_LeaderNoBreak
+11363    F994  C9 01          CMP #TAPE_Stat_overrun
+11364    F996  F0 F1          BEQ F_TAPE_FindStart
+11365      
+11366    F998  AD 0B 09       LDA TAPE_ByteReceived
+11367    F99B  C9 55          CMP #C_TAPE_EndOfLeaderByte					; Keep trying until end of leader byte is received
+11368    F99D  D0 EA          BNE F_TAPE_FindStart
+11369      
+11370    F99F  60             RTS
 11371    
 11372    
 11373    
-11374    ;===============================================================================================  
-11375    ; Block read routine
-11376    ;
-11377    ; This requires the starting address and number of bytes output to operate.
-11378    ; X contains the low byte of the count, Y contains the high byte and a two byte zero page variable
-11379    ; holds the starting address, which is incremented as used.
-11380    
-11381    F_TAPE_BlockIn
-11382    
-11383    F99F  20 88 F9       JSR F_TAPE_FindStart						; Follow the leader signal
-11384      
-11385    F9A2  AD 09 09       LDA TAPE_RX_Status
-11386    F9A5  C9 08          CMP #TAPE_Stat_Escape
-11387    F9A7  F0 1D          BEQ TAPE_BlockIn_Sig_Escape
-11388      
-11389    F9A9  AE 00 09       LDX V_TAPE_BlockSize						; Get the low byte of BlockStart
-11390    F9AC  AC 01 09       LDY V_TAPE_BlockSize+1					; Get the high byte of BlockStart
-11391      
-11392    F9AF  A9 00          LDA #0							; Initialise BlockIn's status register
-11393    F9B1  8D 0D 09       STA TAPE_BlockIn_Status
-11394      
-11395    L_TAPE_BlockIn
-11396    
-11397    F9B4  DA             PHX								; Get a byte from the tape interface
-11398    F9B5  5A             PHY
-11399    F9B6  20 53 FA       JSR F_TAPE_GetByte
-11400    F9B9  7A             PLY
-11401    F9BA  FA             PLX
-11402      
-11403    F9BB  AD 09 09       LDA TAPE_RX_Status						; failing gracefully upon bad events.
-11404    F9BE  C9 04          CMP #TAPE_Stat_RXFull
-11405    F9C0  F0 10          BEQ TAPE_BlockIn_Store
-11406      
-11407    F9C2  C9 08          CMP #TAPE_Stat_Escape
-11408    F9C4  D0 06          BNE TAPE_BlockIn_CheckError
-11409      
-11410    TAPE_BlockIn_Sig_Escape  
-11411    F9C6  A9 02          LDA #TAPE_BlockIn_Escape
-11412    F9C8  8D 0D 09       STA TAPE_BlockIn_Status
-11413    F9CB  60             RTS								; Escape
-11414      
-11415    TAPE_BlockIn_CheckError  
-11416    F9CC  A9 04          LDA #TAPE_BlockIn_Error
-11417    F9CE  8D 0D 09       STA TAPE_BlockIn_Status
-11418    F9D1  60             RTS								; Failed  
-11419      
-11420    TAPE_BlockIn_Store
-11421    F9D2  AD 0B 09       LDA TAPE_ByteReceived						; Store our received byte to our current pointer address.
-11422    F9D5  92 E5          STA (TAPE_BlockLo)
-11423    
-11424    F9D7  A5 E5          LDA TAPE_BlockLo						; Increment our byte pointer
-11425    F9D9  18             CLC
-11426    F9DA  69 01          ADC #1
-11427    F9DC  85 E5          STA TAPE_BlockLo
-11428    F9DE  A5 E6          LDA TAPE_BlockHi
-11429    F9E0  69 00          ADC #0
-11430    F9E2  85 E6          STA TAPE_BlockHi
-11431    
-11432    TAPE_BlockIn_DecCounter
-11433    F9E4  CA             DEX
-11434    F9E5  E0 FF          CPX #$FF
-11435    F9E7  D0 01          BNE TAPE_CheckBlockInCounterZero_B
-11436    F9E9  88             DEY
-11437    
-11438    TAPE_CheckBlockInCounterZero_B  
-11439    F9EA  C0 00          CPY #0
-11440    F9EC  D0 C6          BNE L_TAPE_BlockIn
-11441    F9EE  E0 00          CPX #0
-11442    F9F0  D0 C2          BNE L_TAPE_BlockIn
-11443    
-11444    TAPE_BlockIn_Finish
-11445    F9F2  A9 01          LDA #TAPE_BlockIn_Complete					; Indicate tast completion
-11446    F9F4  8D 0D 09       STA TAPE_BlockIn_Status
-11447    F9F7  60             RTS
-11448       
-11449      
-11450    F_TAPE_VerifyBlock
-11451    
-11452    F9F8  20 88 F9       JSR F_TAPE_FindStart						; Follow the leader signal
-11453      
-11454    F9FB  AD 09 09       LDA TAPE_RX_Status
-11455    F9FE  C9 08          CMP #TAPE_Stat_Escape
-11456    FA00  F0 1D          BEQ TAPE_Verify_Sig_Escape
-11457      
-11458    FA02  AE 00 09       LDX V_TAPE_BlockSize						; Get the low byte of BlockStart
-11459    FA05  AC 01 09       LDY V_TAPE_BlockSize+1					; Get the high byte of BlockStart
-11460      
-11461    FA08  A9 01          LDA #TAPE_Verify_Good						; Initialise Verify's status register
-11462    FA0A  8D 30 09       STA V_TAPE_Verify_Status
-11463      
-11464    L_TAPE_BlockVerify
-11465    
-11466    FA0D  DA             PHX								; Get a byte from the tape interface
-11467    FA0E  5A             PHY
-11468    FA0F  20 53 FA       JSR F_TAPE_GetByte
-11469    FA12  7A             PLY
-11470    FA13  FA             PLX
-11471      
-11472    FA14  AD 09 09       LDA TAPE_RX_Status						; did we capture a good byte?
-11473    FA17  C9 04          CMP #TAPE_Stat_RXFull
-11474    FA19  F0 10          BEQ TAPE_Verify_Check
-11475      
-11476    FA1B  C9 08          CMP #TAPE_Stat_Escape						; Did we press escape?
-11477    FA1D  D0 06          BNE TAPE_Verify_CheckError
-11478      
-11479    TAPE_Verify_Sig_Escape  
-11480    FA1F  A9 02          LDA #TAPE_Verify_Escape					; Signal that we pressed escape and return.
-11481    FA21  8D 30 09       STA V_TAPE_Verify_Status
-11482    FA24  60             RTS
-11483      
-11484    TAPE_Verify_CheckError						; Signal the encountered error and return.
-11485    FA25  A9 04          LDA #TAPE_Verify_Error
-11486    FA27  8D 30 09       STA V_TAPE_Verify_Status
-11487    FA2A  60             RTS  
-11488      
-11489    TAPE_Verify_Check
-11490    FA2B  AD 0B 09       LDA TAPE_ByteReceived						; Compare our fectched byte with the one in BASIC memory.
-11491    FA2E  D2 E5          CMP (TAPE_BlockLo)
-11492    FA30  D0 F3          BNE TAPE_Verify_CheckError					; Signal inconsistency as an error.
-11493      
-11494    FA32  A5 E5          LDA TAPE_BlockLo						; Increment our byte pointer
-11495    FA34  18             CLC
-11496    FA35  69 01          ADC #1
-11497    FA37  85 E5          STA TAPE_BlockLo
-11498    FA39  A5 E6          LDA TAPE_BlockHi
-11499    FA3B  69 00          ADC #0
-11500    FA3D  85 E6          STA TAPE_BlockHi
-11501    
-11502    TAPE_Verify_DecCounter
-11503    FA3F  CA             DEX
-11504    FA40  E0 FF          CPX #$FF
-11505    FA42  D0 01          BNE TAPE_CheckCounterZero_B
-11506    FA44  88             DEY
-11507      
-11508    TAPE_CheckCounterZero_B
-11509    FA45  C0 00          CPY #0							; Check to see if we have done yet.
-11510    FA47  D0 C4          BNE L_TAPE_BlockVerify
-11511    FA49  E0 00          CPX #0
-11512    FA4B  D0 C0          BNE L_TAPE_BlockVerify
-11513      
-11514    TAPE_Verify_Finish
-11515    FA4D  A9 01          LDA #TAPE_Verify_Good						; Indicate test completion
-11516    FA4F  8D 30 09       STA V_TAPE_Verify_Status
-11517    FA52  60             RTS
-11518    
+11374    
+11375    ;===============================================================================================  
+11376    ; Block read routine
+11377    ;
+11378    ; This requires the starting address and number of bytes output to operate.
+11379    ; X contains the low byte of the count, Y contains the high byte and a two byte zero page variable
+11380    ; holds the starting address, which is incremented as used.
+11381    
+11382    F_TAPE_BlockIn
+11383    
+11384    F9A0  20 89 F9       JSR F_TAPE_FindStart						; Follow the leader signal
+11385      
+11386    F9A3  AD 09 09       LDA TAPE_RX_Status
+11387    F9A6  C9 08          CMP #TAPE_Stat_Escape
+11388    F9A8  F0 1D          BEQ TAPE_BlockIn_Sig_Escape
+11389      
+11390    F9AA  AE 00 09       LDX V_TAPE_BlockSize						; Get the low byte of BlockStart
+11391    F9AD  AC 01 09       LDY V_TAPE_BlockSize+1					; Get the high byte of BlockStart
+11392      
+11393    F9B0  A9 00          LDA #0							; Initialise BlockIn's status register
+11394    F9B2  8D 0D 09       STA TAPE_BlockIn_Status
+11395      
+11396    L_TAPE_BlockIn
+11397    
+11398    F9B5  DA             PHX								; Get a byte from the tape interface
+11399    F9B6  5A             PHY
+11400    F9B7  20 54 FA       JSR F_TAPE_GetByte
+11401    F9BA  7A             PLY
+11402    F9BB  FA             PLX
+11403      
+11404    F9BC  AD 09 09       LDA TAPE_RX_Status						; failing gracefully upon bad events.
+11405    F9BF  C9 04          CMP #TAPE_Stat_RXFull
+11406    F9C1  F0 10          BEQ TAPE_BlockIn_Store
+11407      
+11408    F9C3  C9 08          CMP #TAPE_Stat_Escape
+11409    F9C5  D0 06          BNE TAPE_BlockIn_CheckError
+11410      
+11411    TAPE_BlockIn_Sig_Escape  
+11412    F9C7  A9 02          LDA #TAPE_BlockIn_Escape
+11413    F9C9  8D 0D 09       STA TAPE_BlockIn_Status
+11414    F9CC  60             RTS								; Escape
+11415      
+11416    TAPE_BlockIn_CheckError  
+11417    F9CD  A9 04          LDA #TAPE_BlockIn_Error
+11418    F9CF  8D 0D 09       STA TAPE_BlockIn_Status
+11419    F9D2  60             RTS								; Failed  
+11420      
+11421    TAPE_BlockIn_Store
+11422    F9D3  AD 0B 09       LDA TAPE_ByteReceived						; Store our received byte to our current pointer address.
+11423    F9D6  92 E5          STA (TAPE_BlockLo)
+11424    
+11425    F9D8  A5 E5          LDA TAPE_BlockLo						; Increment our byte pointer
+11426    F9DA  18             CLC
+11427    F9DB  69 01          ADC #1
+11428    F9DD  85 E5          STA TAPE_BlockLo
+11429    F9DF  A5 E6          LDA TAPE_BlockHi
+11430    F9E1  69 00          ADC #0
+11431    F9E3  85 E6          STA TAPE_BlockHi
+11432    
+11433    TAPE_BlockIn_DecCounter
+11434    F9E5  CA             DEX
+11435    F9E6  E0 FF          CPX #$FF
+11436    F9E8  D0 01          BNE TAPE_CheckBlockInCounterZero_B
+11437    F9EA  88             DEY
+11438    
+11439    TAPE_CheckBlockInCounterZero_B  
+11440    F9EB  C0 00          CPY #0
+11441    F9ED  D0 C6          BNE L_TAPE_BlockIn
+11442    F9EF  E0 00          CPX #0
+11443    F9F1  D0 C2          BNE L_TAPE_BlockIn
+11444    
+11445    TAPE_BlockIn_Finish
+11446    F9F3  A9 01          LDA #TAPE_BlockIn_Complete					; Indicate tast completion
+11447    F9F5  8D 0D 09       STA TAPE_BlockIn_Status
+11448    F9F8  60             RTS
+11449       
+11450      
+11451    F_TAPE_VerifyBlock
+11452    
+11453    F9F9  20 89 F9       JSR F_TAPE_FindStart						; Follow the leader signal
+11454      
+11455    F9FC  AD 09 09       LDA TAPE_RX_Status
+11456    F9FF  C9 08          CMP #TAPE_Stat_Escape
+11457    FA01  F0 1D          BEQ TAPE_Verify_Sig_Escape
+11458      
+11459    FA03  AE 00 09       LDX V_TAPE_BlockSize						; Get the low byte of BlockStart
+11460    FA06  AC 01 09       LDY V_TAPE_BlockSize+1					; Get the high byte of BlockStart
+11461      
+11462    FA09  A9 01          LDA #TAPE_Verify_Good						; Initialise Verify's status register
+11463    FA0B  8D 30 09       STA V_TAPE_Verify_Status
+11464      
+11465    L_TAPE_BlockVerify
+11466    
+11467    FA0E  DA             PHX								; Get a byte from the tape interface
+11468    FA0F  5A             PHY
+11469    FA10  20 54 FA       JSR F_TAPE_GetByte
+11470    FA13  7A             PLY
+11471    FA14  FA             PLX
+11472      
+11473    FA15  AD 09 09       LDA TAPE_RX_Status						; did we capture a good byte?
+11474    FA18  C9 04          CMP #TAPE_Stat_RXFull
+11475    FA1A  F0 10          BEQ TAPE_Verify_Check
+11476      
+11477    FA1C  C9 08          CMP #TAPE_Stat_Escape						; Did we press escape?
+11478    FA1E  D0 06          BNE TAPE_Verify_CheckError
+11479      
+11480    TAPE_Verify_Sig_Escape  
+11481    FA20  A9 02          LDA #TAPE_Verify_Escape					; Signal that we pressed escape and return.
+11482    FA22  8D 30 09       STA V_TAPE_Verify_Status
+11483    FA25  60             RTS
+11484      
+11485    TAPE_Verify_CheckError						; Signal the encountered error and return.
+11486    FA26  A9 04          LDA #TAPE_Verify_Error
+11487    FA28  8D 30 09       STA V_TAPE_Verify_Status
+11488    FA2B  60             RTS  
+11489      
+11490    TAPE_Verify_Check
+11491    FA2C  AD 0B 09       LDA TAPE_ByteReceived						; Compare our fectched byte with the one in BASIC memory.
+11492    FA2F  D2 E5          CMP (TAPE_BlockLo)
+11493    FA31  D0 F3          BNE TAPE_Verify_CheckError					; Signal inconsistency as an error.
+11494      
+11495    FA33  A5 E5          LDA TAPE_BlockLo						; Increment our byte pointer
+11496    FA35  18             CLC
+11497    FA36  69 01          ADC #1
+11498    FA38  85 E5          STA TAPE_BlockLo
+11499    FA3A  A5 E6          LDA TAPE_BlockHi
+11500    FA3C  69 00          ADC #0
+11501    FA3E  85 E6          STA TAPE_BlockHi
+11502    
+11503    TAPE_Verify_DecCounter
+11504    FA40  CA             DEX
+11505    FA41  E0 FF          CPX #$FF
+11506    FA43  D0 01          BNE TAPE_CheckCounterZero_B
+11507    FA45  88             DEY
+11508      
+11509    TAPE_CheckCounterZero_B
+11510    FA46  C0 00          CPY #0							; Check to see if we have done yet.
+11511    FA48  D0 C4          BNE L_TAPE_BlockVerify
+11512    FA4A  E0 00          CPX #0
+11513    FA4C  D0 C0          BNE L_TAPE_BlockVerify
+11514      
+11515    TAPE_Verify_Finish
+11516    FA4E  A9 01          LDA #TAPE_Verify_Good						; Indicate test completion
+11517    FA50  8D 30 09       STA V_TAPE_Verify_Status
+11518    FA53  60             RTS
 11519    
-11520    ;===============================================================================================
-11521    ; Byte Reader.
-11522    
-11523    F_TAPE_GetByte
-11524    
-11525    ; First some initial housekeeping
-11526    
-11527    FA53  08             PHP							; Save and disable IRQ status
-11528    FA54  78             SEI
-11529    
-11530    FA55  A9 00          LDA #0
-11531    FA57  8D 06 09       STA TAPE_Demod_Status					; Start our bit demod with zero.
-11532    FA5A  8D 07 09       STA TAPE_Demod_Last					; Set our initial demod status too.
-11533    FA5D  8D 05 09       STA TAPE_LineUptime					; Set our initial uptime counter to zero.
-11534    FA60  8D 09 09       STA TAPE_RX_Status					; Clear our Status register
-11535      
-11536    TAPE_pulselatch
-11537      
-11538    FA63  AD 09 09       LDA TAPE_RX_Status
-11539    FA66  D0 0A          BNE TAPE_ByteCaptured					; Check status for received byte.
-11540      
-11541    FA68  20 3A F0       JSR ACIA1in						; Just in case the user needs to get out of this loop
-11542    FA6B  90 07          BCC TAPE_ContLoop					; Caught in a landsliiiide, no escape TO re-al-ih-teeeee!
-11543    FA6D  A9 08          LDA #TAPE_Stat_Escape
-11544    FA6F  8D 09 09       STA TAPE_RX_Status
-11545      
-11546    
-11547    TAPE_ByteCaptured
-11548    FA72  28             PLP							; Restore IRQ status
-11549      
-11550    FA73  60             RTS							; Done
-11551    
+11520    
+11521    ;===============================================================================================
+11522    ; Byte Reader.
+11523    
+11524    F_TAPE_GetByte
+11525    
+11526    ; First some initial housekeeping
+11527    
+11528    FA54  08             PHP							; Save and disable IRQ status
+11529    FA55  78             SEI
+11530    
+11531    FA56  A9 00          LDA #0
+11532    FA58  8D 06 09       STA TAPE_Demod_Status					; Start our bit demod with zero.
+11533    FA5B  8D 07 09       STA TAPE_Demod_Last					; Set our initial demod status too.
+11534    FA5E  8D 05 09       STA TAPE_LineUptime					; Set our initial uptime counter to zero.
+11535    FA61  8D 09 09       STA TAPE_RX_Status					; Clear our Status register
+11536      
+11537    TAPE_pulselatch
+11538      
+11539    FA64  AD 09 09       LDA TAPE_RX_Status
+11540    FA67  D0 0A          BNE TAPE_ByteCaptured					; Check status for received byte.
+11541      
+11542    FA69  20 3A F0       JSR ACIA1in						; Just in case the user needs to get out of this loop
+11543    FA6C  90 07          BCC TAPE_ContLoop					; Caught in a landsliiiide, no escape TO re-al-ih-teeeee!
+11544    FA6E  A9 08          LDA #TAPE_Stat_Escape
+11545    FA70  8D 09 09       STA TAPE_RX_Status
+11546      
+11547    
+11548    TAPE_ByteCaptured
+11549    FA73  28             PLP							; Restore IRQ status
+11550      
+11551    FA74  60             RTS							; Done
 11552    
-11553    ; Services that use the pulse decoded go here.
-11554    
-11555    TAPE_ContLoop
-11556      ; JSR TAPE_TestOutput					; Set our status
-11557    FA74  20 0E F9       JSR TAPE_PulseDecoder					; We gotta do something with these pulses right...?
-11558    
-11559    FA77  AD 06 09       LDA TAPE_Demod_Status					; Update some variables
-11560    FA7A  8D 07 09       STA TAPE_Demod_Last
-11561    
-11562    ; =-=-=-=-=-=-=-=-----------------=-=-=-=-=-=-=-=---------=-=-=-=-=-=-=-=-
-11563    ;
-11564    ; The actual pulse demodulation code starts here
-11565    ;
-11566    ; =-=-=-=-=-=-=-=-----------------=-=-=-=-=-=-=-=---------=-=-=-=-=-=-=-=-
-11567      
-11568    FA7D  20 39 F8       JSR F_TAPE_Phasetime_pause				; and delay for our respective looptime
-11569      
-11570    FA80  20 03 F9       JSR F_TAPE_Sample_Tapeline				; Update status
-11571    FA83  90 0A          BCC TAPE_DontSet
-11572      
-11573    FA85  A9 01          LDA #1
-11574    FA87  8D 06 09       STA TAPE_Demod_Status					; Set our line status to up
-11575    FA8A  A9 0A          LDA #10						; THIS WAS WORKING AT 7
-11576    FA8C  8D 05 09       STA TAPE_LineUptime					; Reset our latch counter
-11577      
-11578    TAPE_DontSet
-11579    FA8F  AD 05 09       LDA TAPE_LineUptime
-11580    FA92  F0 06          BEQ TAPE_AtMinimum
-11581      
-11582    FA94  CE 05 09       DEC TAPE_LineUptime
-11583    FA97  4C 63 FA       JMP TAPE_pulselatch
-11584        
-11585    TAPE_AtMinimum
-11586    FA9A  A9 00          LDA #0						; Clear our line status
-11587    FA9C  8D 06 09       STA TAPE_Demod_Status
-11588    FA9F  4C 63 FA       JMP TAPE_pulselatch
-11589    
+11553    
+11554    ; Services that use the pulse decoded go here.
+11555    
+11556    TAPE_ContLoop
+11557      ; JSR TAPE_TestOutput					; Set our status
+11558    FA75  20 0F F9       JSR TAPE_PulseDecoder					; We gotta do something with these pulses right...?
+11559    
+11560    FA78  AD 06 09       LDA TAPE_Demod_Status					; Update some variables
+11561    FA7B  8D 07 09       STA TAPE_Demod_Last
+11562    
+11563    ; =-=-=-=-=-=-=-=-----------------=-=-=-=-=-=-=-=---------=-=-=-=-=-=-=-=-
+11564    ;
+11565    ; The actual pulse demodulation code starts here
+11566    ;
+11567    ; =-=-=-=-=-=-=-=-----------------=-=-=-=-=-=-=-=---------=-=-=-=-=-=-=-=-
+11568      
+11569    FA7E  20 3A F8       JSR F_TAPE_Phasetime_pause				; and delay for our respective looptime
+11570      
+11571    FA81  20 04 F9       JSR F_TAPE_Sample_Tapeline				; Update status
+11572    FA84  90 0A          BCC TAPE_DontSet
+11573      
+11574    FA86  A9 01          LDA #1
+11575    FA88  8D 06 09       STA TAPE_Demod_Status					; Set our line status to up
+11576    FA8B  A9 0A          LDA #10						; THIS WAS WORKING AT 7
+11577    FA8D  8D 05 09       STA TAPE_LineUptime					; Reset our latch counter
+11578      
+11579    TAPE_DontSet
+11580    FA90  AD 05 09       LDA TAPE_LineUptime
+11581    FA93  F0 06          BEQ TAPE_AtMinimum
+11582      
+11583    FA95  CE 05 09       DEC TAPE_LineUptime
+11584    FA98  4C 64 FA       JMP TAPE_pulselatch
+11585        
+11586    TAPE_AtMinimum
+11587    FA9B  A9 00          LDA #0						; Clear our line status
+11588    FA9D  8D 06 09       STA TAPE_Demod_Status
+11589    FAA0  4C 64 FA       JMP TAPE_pulselatch
 11590    
-11591      .INCLUDE "AY_DRIVER.asm"
-11592    ; AY-3-891x Register Driver
-11593    ;
-11594    ; By Duncan Gunn.
-11595    
+11591    
+11592      .INCLUDE "AY_DRIVER.asm"
+11593    ; AY-3-891x Register Driver
+11594    ;
+11595    ; By Duncan Gunn.
 11596    
-11597    ; AY_6522 Registers
-11598    
-11599      C0E0             AY_6522_Base	 	=	$C0E0
-11600      C0E0             AY_6522_ORB		=	AY_6522_Base
-11601      C0E1             AY_6522_ORA		=	AY_6522_Base + $01
-11602      C0E2             AY_6522_DDRB		=	AY_6522_Base + $02
-11603      C0E3             AY_6522_DDRA		=	AY_6522_Base + $03
-11604      C0E4             AY_6522_T1C_L		=	AY_6522_Base + $04
-11605      C0E5             AY_6522_T1C_H		=	AY_6522_Base + $05
-11606      C0E6             AY_6522_L1L_L		=	AY_6522_Base + $06
-11607      C0E7             AY_6522_L1L_H		=	AY_6522_Base + $07
-11608      C0E8             AY_6522_T2C_L		=	AY_6522_Base + $08
-11609      C0E9             AY_6522_T2C_H		=	AY_6522_Base + $09
-11610      C0EA             AY_6522_SR		=	AY_6522_Base + $0A
-11611      C0EB             AY_6522_ACR		=	AY_6522_Base + $0B
-11612      C0EC             AY_6522_PCR		=	AY_6522_Base + $0C
-11613      C0ED             AY_6522_IFR		=	AY_6522_Base + $0D
-11614      C0EE             AY_6522_IER		=	AY_6522_Base + $0E
-11615      C0EF             AY_6522_ORA_IRA		=	AY_6522_Base + $0F
-11616    
+11597    
+11598    ; AY_6522 Registers
+11599    
+11600      C0E0             AY_6522_Base	 	=	$C0E0
+11601      C0E0             AY_6522_ORB		=	AY_6522_Base
+11602      C0E1             AY_6522_ORA		=	AY_6522_Base + $01
+11603      C0E2             AY_6522_DDRB		=	AY_6522_Base + $02
+11604      C0E3             AY_6522_DDRA		=	AY_6522_Base + $03
+11605      C0E4             AY_6522_T1C_L		=	AY_6522_Base + $04
+11606      C0E5             AY_6522_T1C_H		=	AY_6522_Base + $05
+11607      C0E6             AY_6522_L1L_L		=	AY_6522_Base + $06
+11608      C0E7             AY_6522_L1L_H		=	AY_6522_Base + $07
+11609      C0E8             AY_6522_T2C_L		=	AY_6522_Base + $08
+11610      C0E9             AY_6522_T2C_H		=	AY_6522_Base + $09
+11611      C0EA             AY_6522_SR		=	AY_6522_Base + $0A
+11612      C0EB             AY_6522_ACR		=	AY_6522_Base + $0B
+11613      C0EC             AY_6522_PCR		=	AY_6522_Base + $0C
+11614      C0ED             AY_6522_IFR		=	AY_6522_Base + $0D
+11615      C0EE             AY_6522_IER		=	AY_6522_Base + $0E
+11616      C0EF             AY_6522_ORA_IRA		=	AY_6522_Base + $0F
 11617    
-11618    ; AY_6522 HW Mappings.
-11619    
-11620      C0E0             AY_DATAPORT		=	AY_6522_ORB
-11621      C0E2             AY_DDR_DATA		=	AY_6522_DDRB
-11622    
-11623      C0E1             AY_CTRLPORT		=	AY_6522_ORA
-11624      C0E3             AY_DDR_CTRL		=	AY_6522_DDRA
-11625    
-11626      0001             AY_CTRL_bit_BC1		= 	@00000001
-11627      0002             AY_CTRL_bit_BDIR	=	@00000010
-11628    
-11629      0003             AY_CTRL_dir		=	AY_CTRL_bit_BC1 | AY_CTRL_bit_BDIR	; Set relevant port bits as outputs
-11630      00FF             AY_DATA_out		=	$FF
-11631      0000             AY_DATA_in		=	$0
-11632    
+11618    
+11619    ; AY_6522 HW Mappings.
+11620    
+11621      C0E0             AY_DATAPORT		=	AY_6522_ORB
+11622      C0E2             AY_DDR_DATA		=	AY_6522_DDRB
+11623    
+11624      C0E1             AY_CTRLPORT		=	AY_6522_ORA
+11625      C0E3             AY_DDR_CTRL		=	AY_6522_DDRA
+11626    
+11627      0001             AY_CTRL_bit_BC1		= 	@00000001
+11628      0002             AY_CTRL_bit_BDIR	=	@00000010
+11629    
+11630      0003             AY_CTRL_dir		=	AY_CTRL_bit_BC1 | AY_CTRL_bit_BDIR	; Set relevant port bits as outputs
+11631      00FF             AY_DATA_out		=	$FF
+11632      0000             AY_DATA_in		=	$0
 11633    
 11634    
-11635    ; AY Registers
-11636    
-11637      0000             AY_CH_A_TP_FINE		= $0
-11638      0001             AY_CH_A_TP_COARSE	= $1	; Bottom four bits only
-11639      0002             AY_CH_B_TP_FINE		= $2
-11640      0003             AY_CH_B_TP_COARSE	= $3	; Bottom four bits only
-11641      0004             AY_CH_C_TP_FINE		= $4
-11642      0005             AY_CH_C_TP_COARSE	= $5
-11643      0006             AY_NOISE_PERIOD		= $6	; Bottom five bits only
-11644      0007             AY_NOT_ENABLE		= $7	; Bitfield: See table 1 below
-11645      0008             AY_CH_A_AMP		= $8	; M (Bit 5) when set uses the Envelope gen, otherwise B3-B0 sets the volume
-11646      0009             AY_CH_B_AMP		= $9	; See channel A
-11647      000A             AY_CH_C_AMP		= $A	; See channel A
-11648      000B             AY_ENV_P_FINE		= $B	
-11649      000C             AY_ENV_P_COARSE		= $C
-11650      000D             AY_ENV_SH_CYC		= $D	; See table 2 below
-11651      000E             AY_PORTA_REG		= $E	; Not implemented for the AY-3-8912
-11652      000F             AY_PORTB_REG		= $F	; Not implemented for the AY-3-8912
-11653    
+11635    
+11636    ; AY Registers
+11637    
+11638      0000             AY_CH_A_TP_FINE		= $0
+11639      0001             AY_CH_A_TP_COARSE	= $1	; Bottom four bits only
+11640      0002             AY_CH_B_TP_FINE		= $2
+11641      0003             AY_CH_B_TP_COARSE	= $3	; Bottom four bits only
+11642      0004             AY_CH_C_TP_FINE		= $4
+11643      0005             AY_CH_C_TP_COARSE	= $5
+11644      0006             AY_NOISE_PERIOD		= $6	; Bottom five bits only
+11645      0007             AY_NOT_ENABLE		= $7	; Bitfield: See table 1 below
+11646      0008             AY_CH_A_AMP		= $8	; M (Bit 5) when set uses the Envelope gen, otherwise B3-B0 sets the volume
+11647      0009             AY_CH_B_AMP		= $9	; See channel A
+11648      000A             AY_CH_C_AMP		= $A	; See channel A
+11649      000B             AY_ENV_P_FINE		= $B	
+11650      000C             AY_ENV_P_COARSE		= $C
+11651      000D             AY_ENV_SH_CYC		= $D	; See table 2 below
+11652      000E             AY_PORTA_REG		= $E	; Not implemented for the AY-3-8912
+11653      000F             AY_PORTB_REG		= $F	; Not implemented for the AY-3-8912
 11654    
-11655    ; Table 1.  AY_NOT_ENABLE bitfield.
-11656    ;
-11657    ; +---------+-----------+-----------+
-11658    ; | IN/nOUT |   nNOISE  |   nTONE   |
-11659    ; +----+----+---+---+---+---+---+---+
-11660    ; |IOB |IOA | C | B | A | C | B | A |
-11661    ; +----+----+---+---+---+---+---+---+
-11662    
-11663      0020             AY_bit_nNOISE_C		= @00100000
-11664      0010             AY_bit_nNOISE_B		= @00010000
-11665      0008             AY_bit_nNOISE_A		= @00001000
-11666      0004             AY_bit_nTONE_C		= @00000100
-11667      0002             AY_bit_nTONE_B		= @00000010
-11668      0001             AY_bit_nTONE_A		= @00000001
-11669    
+11655    
+11656    ; Table 1.  AY_NOT_ENABLE bitfield.
+11657    ;
+11658    ; +---------+-----------+-----------+
+11659    ; | IN/nOUT |   nNOISE  |   nTONE   |
+11660    ; +----+----+---+---+---+---+---+---+
+11661    ; |IOB |IOA | C | B | A | C | B | A |
+11662    ; +----+----+---+---+---+---+---+---+
+11663    
+11664      0020             AY_bit_nNOISE_C		= @00100000
+11665      0010             AY_bit_nNOISE_B		= @00010000
+11666      0008             AY_bit_nNOISE_A		= @00001000
+11667      0004             AY_bit_nTONE_C		= @00000100
+11668      0002             AY_bit_nTONE_B		= @00000010
+11669      0001             AY_bit_nTONE_A		= @00000001
 11670    
-11671    ; Table 2.  Envelope shape/cycle bitfield.
-11672    ;
-11673    ; +--------+--------+--------+--------+--------+--------+--------+--------+
-11674    ; |   B7   |   B6   |   B5   |   B4   |   B3   |   B2   |   B1   |   B0   |
-11675    ; +--------+--------+--------+--------+--------+--------+--------+--------+
-11676    ; |          B7-B4 Not used.          | Cont   | Attack | Alt    | Hold   |
-11677    ; +--------+--------+--------+--------+--------+--------+--------+--------+
-11678    ;
-11679    ; CONTinue causes the pattern to cycle when set.
-11680    ; Setting Attack makes the envelope counter count up, but when cleared causes a count down instead.
-11681    ; Setting ALTernate causes the counter to reverse direction at the end of each cycle.
-11682    ; Setting HOLD limits the envelope generator to one cycle
-11683    
-11684      0008             AY_bit_CONT		= @00001000
-11685      0004             AY_bit_ATTACK		= @00000100
-11686      0002             AY_bit_ALT		= @00000010
-11687      0001             AY_bit_HOLD		= @00000001
-11688    
+11671    
+11672    ; Table 2.  Envelope shape/cycle bitfield.
+11673    ;
+11674    ; +--------+--------+--------+--------+--------+--------+--------+--------+
+11675    ; |   B7   |   B6   |   B5   |   B4   |   B3   |   B2   |   B1   |   B0   |
+11676    ; +--------+--------+--------+--------+--------+--------+--------+--------+
+11677    ; |          B7-B4 Not used.          | Cont   | Attack | Alt    | Hold   |
+11678    ; +--------+--------+--------+--------+--------+--------+--------+--------+
+11679    ;
+11680    ; CONTinue causes the pattern to cycle when set.
+11681    ; Setting Attack makes the envelope counter count up, but when cleared causes a count down instead.
+11682    ; Setting ALTernate causes the counter to reverse direction at the end of each cycle.
+11683    ; Setting HOLD limits the envelope generator to one cycle
+11684    
+11685      0008             AY_bit_CONT		= @00001000
+11686      0004             AY_bit_ATTACK		= @00000100
+11687      0002             AY_bit_ALT		= @00000010
+11688      0001             AY_bit_HOLD		= @00000001
 11689    
-11690    ; AY control modes
-11691    
-11692      0000             AY_INACK		= 0
-11693      0001             AY_READ			= AY_CTRL_bit_BC1
-11694      0002             AY_WRITE		= AY_CTRL_bit_BDIR
-11695      0003             AY_LAT_ADDR		= AY_CTRL_bit_BC1 | AY_CTRL_bit_BDIR
-11696    
+11690    
+11691    ; AY control modes
+11692    
+11693      0000             AY_INACK		= 0
+11694      0001             AY_READ			= AY_CTRL_bit_BC1
+11695      0002             AY_WRITE		= AY_CTRL_bit_BDIR
+11696      0003             AY_LAT_ADDR		= AY_CTRL_bit_BC1 | AY_CTRL_bit_BDIR
 11697    
-11698    ; AY Soundcard memory allocations.
-11699    
-11700      0A00             AY_Memstart		= $A00
-11701      0A00             AY_Reg			= AY_Memstart
-11702      0A01             AY_Data			= AY_Reg + 1
-11703    
+11698    
+11699    ; AY Soundcard memory allocations.
+11700    
+11701      0A00             AY_Memstart		= $A00
+11702      0A00             AY_Reg			= AY_Memstart
+11703      0A01             AY_Data			= AY_Reg + 1
 11704    
-11705    ; AY_Initialisation routine.
-11706    
-11707    AY_Init
-11708    FAA2  A9 00          LDA #0
-11709    FAA4  8D E1 C0       STA AY_CTRLPORT	; Let's make our control port inactive first.
-11710    FAA7  A9 03          LDA #AY_CTRL_dir
-11711    FAA9  8D E3 C0       STA AY_DDR_CTRL
-11712      
-11713    
-11714    FAAC  A2 0F          LDX #$F		; Clear all the registers
-11715    AY_Init_Loop
-11716    
-11717    FAAE  A9 00          LDA #0
-11718    FAB0  20 F2 FA       JSR AY_wr_to_reg
-11719    FAB3  CA             DEX
-11720    FAB4  D0 F8          BNE AY_Init_Loop
-11721    FAB6  60             RTS
-11722      
-11723    
-11724    ; AY register read-write primitives
-11725    ;
-11726    
-11727    ; Writes the register address to the AY
-11728    ;
-11729    ; Takes A as the register parameter. Corrupts A
-11730    AY_wr_reg
-11731    FAB7  8D E0 C0       STA AY_DATAPORT	; Place our register value on the AY bus
-11732      
-11733    FABA  A9 FF          LDA #AY_DATA_out
-11734    FABC  8D E2 C0       STA AY_DDR_DATA	; And ensure the bus is an output.
-11735      
-11736    FABF  A9 03          LDA #AY_LAT_ADDR	; Latch our data to the AY
-11737    FAC1  8D E1 C0       STA AY_CTRLPORT
-11738      ;NOP
+11705    
+11706    ; AY_Initialisation routine.
+11707    
+11708    AY_Init
+11709    FAA3  A9 00          LDA #0
+11710    FAA5  8D E1 C0       STA AY_CTRLPORT	; Let's make our control port inactive first.
+11711    FAA8  A9 03          LDA #AY_CTRL_dir
+11712    FAAA  8D E3 C0       STA AY_DDR_CTRL
+11713      
+11714    
+11715    FAAD  A2 0F          LDX #$F		; Clear all the registers
+11716    AY_Init_Loop
+11717    
+11718    FAAF  A9 00          LDA #0
+11719    FAB1  20 F3 FA       JSR AY_wr_to_reg
+11720    FAB4  CA             DEX
+11721    FAB5  D0 F8          BNE AY_Init_Loop
+11722    FAB7  60             RTS
+11723      
+11724    
+11725    ; AY register read-write primitives
+11726    ;
+11727    
+11728    ; Writes the register address to the AY
+11729    ;
+11730    ; Takes A as the register parameter. Corrupts A
+11731    AY_wr_reg
+11732    FAB8  8D E0 C0       STA AY_DATAPORT	; Place our register value on the AY bus
+11733      
+11734    FABB  A9 FF          LDA #AY_DATA_out
+11735    FABD  8D E2 C0       STA AY_DDR_DATA	; And ensure the bus is an output.
+11736      
+11737    FAC0  A9 03          LDA #AY_LAT_ADDR	; Latch our data to the AY
+11738    FAC2  8D E1 C0       STA AY_CTRLPORT
 11739      ;NOP
-11740    FAC4  A9 00          LDA #AY_INACK		; And ensure out bus goes inactive again.
-11741    FAC6  8D E1 C0       STA AY_CTRLPORT
-11742    FAC9  60             RTS
-11743    
-11744    ; Writes data to the currently selected register
-11745    ;
-11746    ; Takes A as the register parameter. Corrupts A
-11747    AY_wr_data
-11748    FACA  8D E0 C0       STA AY_DATAPORT	; Place our data on the AY bus
-11749    
-11750    FACD  A9 FF          LDA #AY_DATA_out
-11751    FACF  8D E2 C0       STA AY_DDR_DATA
-11752        
-11753    FAD2  A9 02          LDA #AY_WRITE
-11754    FAD4  8D E1 C0       STA AY_CTRLPORT
-11755      ;NOP
+11740      ;NOP
+11741    FAC5  A9 00          LDA #AY_INACK		; And ensure out bus goes inactive again.
+11742    FAC7  8D E1 C0       STA AY_CTRLPORT
+11743    FACA  60             RTS
+11744    
+11745    ; Writes data to the currently selected register
+11746    ;
+11747    ; Takes A as the register parameter. Corrupts A
+11748    AY_wr_data
+11749    FACB  8D E0 C0       STA AY_DATAPORT	; Place our data on the AY bus
+11750    
+11751    FACE  A9 FF          LDA #AY_DATA_out
+11752    FAD0  8D E2 C0       STA AY_DDR_DATA
+11753        
+11754    FAD3  A9 02          LDA #AY_WRITE
+11755    FAD5  8D E1 C0       STA AY_CTRLPORT
 11756      ;NOP
-11757    FAD7  A9 00          LDA #AY_INACK		; And ensure the bus is an output.
-11758    FAD9  8D E1 C0       STA AY_CTRLPORT
-11759    FADC  60             RTS
-11760    
-11761    ; Read register		; Corrupts Y, returns the result in A.
-11762    AY_rd_data
-11763    FADD  A9 00          LDA #AY_DATA_in	; Make our bus an input so that the AY can drive it.
-11764    FADF  8D E2 C0       STA AY_DDR_DATA
-11765      
-11766    FAE2  A9 01          LDA #AY_READ		; Set our AY to output it's register contents
-11767    FAE4  8D E1 C0       STA AY_CTRLPORT
-11768      
-11769    FAE7  AD E0 C0       LDA AY_DATAPORT	; Grab those contents and put them in Y
-11770    FAEA  A8             TAY
-11771      
-11772    FAEB  A9 00          LDA #AY_INACK		; Put our AY but back inactive.
-11773    FAED  8D E1 C0       STA AY_CTRLPORT
-11774      
-11775    FAF0  98             TYA			; Put our result back into A
-11776      
-11777    FAF1  60             RTS			; Were finished.
-11778      
+11757      ;NOP
+11758    FAD8  A9 00          LDA #AY_INACK		; And ensure the bus is an output.
+11759    FADA  8D E1 C0       STA AY_CTRLPORT
+11760    FADD  60             RTS
+11761    
+11762    ; Read register		; Corrupts Y, returns the result in A.
+11763    AY_rd_data
+11764    FADE  A9 00          LDA #AY_DATA_in	; Make our bus an input so that the AY can drive it.
+11765    FAE0  8D E2 C0       STA AY_DDR_DATA
+11766      
+11767    FAE3  A9 01          LDA #AY_READ		; Set our AY to output it's register contents
+11768    FAE5  8D E1 C0       STA AY_CTRLPORT
+11769      
+11770    FAE8  AD E0 C0       LDA AY_DATAPORT	; Grab those contents and put them in Y
+11771    FAEB  A8             TAY
+11772      
+11773    FAEC  A9 00          LDA #AY_INACK		; Put our AY but back inactive.
+11774    FAEE  8D E1 C0       STA AY_CTRLPORT
+11775      
+11776    FAF1  98             TYA			; Put our result back into A
+11777      
+11778    FAF2  60             RTS			; Were finished.
 11779      
-11780    ; The 'All in one' function.
-11781    ;
-11782    AY_wr_to_reg
-11783    FAF2  48             PHA
-11784    FAF3  8A             TXA
-11785      
-11786    FAF4  20 B7 FA       JSR AY_wr_reg
-11787    FAF7  68             PLA
-11788    FAF8  20 CA FA       JSR AY_wr_data
-11789    FAFB  60             RTS
-11790      
-11791    
-11792    ; For the users of BASIC, here's the easier read/write functions. 
-11793    
-11794    AY_Userwrite
-11795    FAFC  AD 01 0A       LDA AY_Data
-11796    FAFF  AE 00 0A       LDX AY_Reg
-11797    FB02  20 F2 FA       JSR AY_wr_to_reg
-11798    FB05  60             RTS
-11799      
-11800    AY_Userread
-11801    FB06  AD 00 0A       LDA AY_Reg		; Select our register of interest.
-11802    FB09  20 B7 FA       JSR AY_wr_reg
-11803      
-11804    FB0C  20 DD FA       JSR AY_rd_data	; Get the contents of the register of interest.
-11805    FB0F  8D 01 0A       STA AY_Data
-11806    FB12  60             RTS
-11807      .INCLUDE "IRQ_Handler.asm"
-11808    ; IRQ Manager.
-11809    ;
-11810    ; Interrupt request handling and masking on per device basis.
-11811    
+11780      
+11781    ; The 'All in one' function.
+11782    ;
+11783    AY_wr_to_reg
+11784    FAF3  48             PHA
+11785    FAF4  8A             TXA
+11786      
+11787    FAF5  20 B8 FA       JSR AY_wr_reg
+11788    FAF8  68             PLA
+11789    FAF9  20 CB FA       JSR AY_wr_data
+11790    FAFC  60             RTS
+11791      
+11792    
+11793    ; For the users of BASIC, here's the easier read/write functions. 
+11794    
+11795    AY_Userwrite
+11796    FAFD  AD 01 0A       LDA AY_Data
+11797    FB00  AE 00 0A       LDX AY_Reg
+11798    FB03  20 F3 FA       JSR AY_wr_to_reg
+11799    FB06  60             RTS
+11800      
+11801    AY_Userread
+11802    FB07  AD 00 0A       LDA AY_Reg		; Select our register of interest.
+11803    FB0A  20 B8 FA       JSR AY_wr_reg
+11804      
+11805    FB0D  20 DE FA       JSR AY_rd_data	; Get the contents of the register of interest.
+11806    FB10  8D 01 0A       STA AY_Data
+11807    FB13  60             RTS
+11808      .INCLUDE "IRQ_Handler.asm"
+11809    ; IRQ Manager.
+11810    ;
+11811    ; Interrupt request handling and masking on per device basis.
 11812    
-11813    ; System constants
-11814    
-11815      0000             IRQH_Version_C		= 0					; Version 0 (Pre-release)
-11816    
+11813    
+11814    ; System constants
+11815    
+11816      0000             IRQH_Version_C		= 0					; Version 0 (Pre-release)
 11817    
-11818    ; IRQ Handler command codes
-11819    ;
-11820      0000             IRQH_Service_CMD	= 0					; Request IRQ Service
-11821      0001             IRQH_Shutdown_CMD	= 1					; Shutdown IRQ gracefully
-11822      0002             IRQH_Reset_CMD		= 2					; Reset the IRQ handler.
-11823    
+11818    
+11819    ; IRQ Handler command codes
+11820    ;
+11821      0000             IRQH_Service_CMD	= 0					; Request IRQ Service
+11822      0001             IRQH_Shutdown_CMD	= 1					; Shutdown IRQ gracefully
+11823      0002             IRQH_Reset_CMD		= 2					; Reset the IRQ handler.
 11824    
-11825    ; IRQ Memory table
-11826    ;
-11827      0A20             IRQH_Table_Base		= $A20 					; Beginning of IRQ Handler Memory.
-11828      0A20             IRQH_CallList		= IRQH_Table_Base			; All sixteen bytes for eight addresses.
-11829      0A30             IRQH_CallReg		= IRQH_CallList + 16			; Two bytes containing an address being transferred.
-11830      0A32             IRQH_ClaimsList		= IRQH_CallReg + 2			; Byte with list of calls that returned and IRQ Claim
-11831      0A33             IRQH_MaskByte		= IRQH_ClaimsList + 1			; Byte containing IRQ Table entry mask bits. IRQ entry LSb is IRQ entry 0.
-11832      0A34             IRQH_WorkingMask	= IRQH_MaskByte + 1			; Walking bit for masking and setting purposes.
-11833      0A35             IRQH_CurrentEntry	= IRQH_WorkingMask + 1			; Pointer for IRQ Table entries.
-11834      0A36             IRQH_CMD_Table		= IRQH_CurrentEntry + 1			; Table of IRQ handler commands with parameter space.  16 bytes.
-11835    
-11836      0016             IRQH_zero_range_C	= IRQH_CurrentEntry+17-IRQH_CallReg	; Amount to zero after IRQH_CallList.
-11837    
-11838    ; Table current size is 21 bytes.
-11839    
+11825    
+11826    ; IRQ Memory table
+11827    ;
+11828      0A20             IRQH_Table_Base		= $A20 					; Beginning of IRQ Handler Memory.
+11829      0A20             IRQH_CallList		= IRQH_Table_Base			; All sixteen bytes for eight addresses.
+11830      0A30             IRQH_CallReg		= IRQH_CallList + 16			; Two bytes containing an address being transferred.
+11831      0A32             IRQH_ClaimsList		= IRQH_CallReg + 2			; Byte with list of calls that returned and IRQ Claim
+11832      0A33             IRQH_MaskByte		= IRQH_ClaimsList + 1			; Byte containing IRQ Table entry mask bits. IRQ entry LSb is IRQ entry 0.
+11833      0A34             IRQH_WorkingMask	= IRQH_MaskByte + 1			; Walking bit for masking and setting purposes.
+11834      0A35             IRQH_CurrentEntry	= IRQH_WorkingMask + 1			; Pointer for IRQ Table entries.
+11835      0A36             IRQH_CMD_Table		= IRQH_CurrentEntry + 1			; Table of IRQ handler commands with parameter space.  16 bytes.
+11836    
+11837      0016             IRQH_zero_range_C	= IRQH_CurrentEntry+17-IRQH_CallReg	; Amount to zero after IRQH_CallList.
+11838    
+11839    ; Table current size is 21 bytes.
 11840    
-11841    ; IRQ Handler Initialisation Call
-11842    
-11843    IRQH_Handler_Init_F
-11844    FB13  78             SEI						; Disable IRQ's so we don't break anything already happening.
-11845      
-11846    FB14  A9 3B          LDA #<IRQH_Null_F				; Put the null IRQ Function address into IRQ_CallReg
-11847    FB16  8D 30 0A       STA IRQH_CallReg
-11848    FB19  A9 FB          LDA #>IRQH_Null_F
-11849    FB1B  8D 31 0A       STA IRQH_CallReg + 1
-11850      
-11851    FB1E  A9 07          LDA #7					; Point at the last table entry
-11852    FB20  A8             TAY
-11853    
-11854    IRQH_FillTable_L
-11855    FB21  20 47 FB       JSR IRQH_SetIRQ_F				; Iterate copy to whole table
-11856      
-11857    FB24  98             TYA
-11858    FB25  38             SEC
-11859    FB26  E9 01          SBC #1
-11860    FB28  A8             TAY
-11861      
-11862    FB29  B0 F6          BCS IRQH_FillTable_L
-11863      
-11864    FB2B  A9 00          LDA #0					; Clear rest of the IRQ Handler's structure.
-11865    FB2D  A2 00          LDX #0
-11866      
-11867    IRQH_FillRemaining_L
-11868    FB2F  A9 00          LDA #0
-11869    FB31  9D 30 0A       STA IRQH_CallReg,X
-11870    FB34  E8             INX
-11871      
-11872    FB35  8A             TXA						; Stop when the table is full.
-11873    FB36  C9 16          CMP #IRQH_zero_range_C
-11874    FB38  D0 F5          BNE IRQH_FillRemaining_L
-11875      
-11876    FB3A  60             RTS						; Return to caller.
-11877      
+11841    
+11842    ; IRQ Handler Initialisation Call
+11843    
+11844    IRQH_Handler_Init_F
+11845    FB14  78             SEI						; Disable IRQ's so we don't break anything already happening.
+11846      
+11847    FB15  A9 3C          LDA #<IRQH_Null_F				; Put the null IRQ Function address into IRQ_CallReg
+11848    FB17  8D 30 0A       STA IRQH_CallReg
+11849    FB1A  A9 FB          LDA #>IRQH_Null_F
+11850    FB1C  8D 31 0A       STA IRQH_CallReg + 1
+11851      
+11852    FB1F  A9 07          LDA #7					; Point at the last table entry
+11853    FB21  A8             TAY
+11854    
+11855    IRQH_FillTable_L
+11856    FB22  20 48 FB       JSR IRQH_SetIRQ_F				; Iterate copy to whole table
+11857      
+11858    FB25  98             TYA
+11859    FB26  38             SEC
+11860    FB27  E9 01          SBC #1
+11861    FB29  A8             TAY
+11862      
+11863    FB2A  B0 F6          BCS IRQH_FillTable_L
+11864      
+11865    FB2C  A9 00          LDA #0					; Clear rest of the IRQ Handler's structure.
+11866    FB2E  A2 00          LDX #0
+11867      
+11868    IRQH_FillRemaining_L
+11869    FB30  A9 00          LDA #0
+11870    FB32  9D 30 0A       STA IRQH_CallReg,X
+11871    FB35  E8             INX
+11872      
+11873    FB36  8A             TXA						; Stop when the table is full.
+11874    FB37  C9 16          CMP #IRQH_zero_range_C
+11875    FB39  D0 F5          BNE IRQH_FillRemaining_L
+11876      
+11877    FB3B  60             RTS						; Return to caller.
 11878      
-11879    ; IRQ Null function
-11880    
-11881    IRQH_Null_F
-11882    FB3B  AD 34 0A       LDA IRQH_WorkingMask				; Get our Working position
-11883      
-11884    FB3E  49 FF          EOR #$FF					; Unset our Claim bit.
-11885    FB40  2D 32 0A       AND IRQH_ClaimsList
-11886    FB43  8D 32 0A       STA IRQH_ClaimsList
-11887      
-11888    FB46  60             RTS
-11889      
-11890    
-11891    ; Function to atomically add an IRQ to the IRQ Table.
-11892    
-11893    IRQH_SetIRQ_F
-11894    
-11895    FB47  08             PHP						; Assure atomic
-11896    FB48  78             SEI
-11897      
-11898    FB49  0A             ASL						; Multiply our pointer by two as the table uses words not bytes.
-11899      
-11900    FB4A  AA             TAX						; Transfer our table reference to index X
-11901      
-11902    FB4B  AD 30 0A       LDA IRQH_CallReg				; Get our call low-byte
-11903    FB4E  9D 20 0A       STA IRQH_CallList,X				; Store our low byte
-11904      
-11905    FB51  AD 31 0A       LDA IRQH_CallReg + 1				; Get our call high-byte
-11906    FB54  E8             INX
-11907    FB55  9D 20 0A       STA IRQH_CallList,X				; Store our high byte.
-11908      
-11909    FB58  28             PLP						; End atomic operation
-11910    FB59  60             RTS
-11911      
+11879      
+11880    ; IRQ Null function
+11881    
+11882    IRQH_Null_F
+11883    FB3C  AD 34 0A       LDA IRQH_WorkingMask				; Get our Working position
+11884      
+11885    FB3F  49 FF          EOR #$FF					; Unset our Claim bit.
+11886    FB41  2D 32 0A       AND IRQH_ClaimsList
+11887    FB44  8D 32 0A       STA IRQH_ClaimsList
+11888      
+11889    FB47  60             RTS
+11890      
+11891    
+11892    ; Function to atomically add an IRQ to the IRQ Table.
+11893    
+11894    IRQH_SetIRQ_F
+11895    
+11896    FB48  08             PHP						; Assure atomic
+11897    FB49  78             SEI
+11898      
+11899    FB4A  0A             ASL						; Multiply our pointer by two as the table uses words not bytes.
+11900      
+11901    FB4B  AA             TAX						; Transfer our table reference to index X
+11902      
+11903    FB4C  AD 30 0A       LDA IRQH_CallReg				; Get our call low-byte
+11904    FB4F  9D 20 0A       STA IRQH_CallList,X				; Store our low byte
+11905      
+11906    FB52  AD 31 0A       LDA IRQH_CallReg + 1				; Get our call high-byte
+11907    FB55  E8             INX
+11908    FB56  9D 20 0A       STA IRQH_CallList,X				; Store our high byte.
+11909      
+11910    FB59  28             PLP						; End atomic operation
+11911    FB5A  60             RTS
 11912      
-11913    ; Function to atomically clear an IRQ from the table
-11914    
-11915    IRQH_ClrIRQ_F
-11916    FB5A  08             PHP						; Assure atomic
-11917    FB5B  78             SEI
-11918    
-11919    FB5C  0A             ASL						; Multiply our pointer by two
-11920    FB5D  AA             TAX						; and place it in X
-11921    
-11922    FB5E  A9 3B          LDA #<IRQH_Null_F				; Transfer our Null function address to the table
-11923    FB60  9D 20 0A       STA IRQH_CallList,X
-11924    FB63  A9 FB          LDA #>IRQH_Null_F
-11925    FB65  E8             INX
-11926    FB66  9D 20 0A       STA IRQH_CallList,X
-11927      
-11928    FB69  28             PLP						; End atomic operation
-11929    FB6A  60             RTS
-11930      
+11913      
+11914    ; Function to atomically clear an IRQ from the table
+11915    
+11916    IRQH_ClrIRQ_F
+11917    FB5B  08             PHP						; Assure atomic
+11918    FB5C  78             SEI
+11919    
+11920    FB5D  0A             ASL						; Multiply our pointer by two
+11921    FB5E  AA             TAX						; and place it in X
+11922    
+11923    FB5F  A9 3C          LDA #<IRQH_Null_F				; Transfer our Null function address to the table
+11924    FB61  9D 20 0A       STA IRQH_CallList,X
+11925    FB64  A9 FB          LDA #>IRQH_Null_F
+11926    FB66  E8             INX
+11927    FB67  9D 20 0A       STA IRQH_CallList,X
+11928      
+11929    FB6A  28             PLP						; End atomic operation
+11930    FB6B  60             RTS
 11931      
-11932    ; IRQ Handler function.
-11933    
-11934    IRQH_ProcessIRQs
-11935    FB6B  48             PHA						; Save processor registers
-11936    FB6C  DA             PHX
-11937    FB6D  5A             PHY
-11938      
-11939    FB6E  D8             CLD						; We have no idea what mode the processor was in when this was called so let's clear it.
-11940      
-11941    FB6F  AD 33 0A       LDA IRQH_MaskByte				; Get IRQ mask
-11942    FB72  F0 29          BEQ IRQH_FinishIRQs_B				; and quit early if all disabled.
-11943      
-11944    FB74  A9 01          LDA #1					; Put 1 into our working mask
-11945    FB76  8D 34 0A       STA IRQH_WorkingMask				
-11946    
-11947    FB79  A2 00          LDX #0					; Start with X at table entry 0
-11948      
-11949    IRQH_CheckCall_B  
-11950    FB7B  AD 33 0A       LDA IRQH_MaskByte				; Check if we need to call that table entry or not
-11951    FB7E  2D 34 0A       AND IRQH_WorkingMask
-11952    FB81  F0 0A          BEQ IRQH_SkipCall_B
-11953      
-11954    
-11955    FB83  A9 FB          LDA #>IRQH_Return_B				; Place our return address-1 on the stack for the ensuing RTS (which adds 1)
-11956    FB85  48             PHA
-11957    FB86  A9 8C          LDA #<IRQH_Return_B
-11958    FB88  48             PHA
-11959      
-11960    FB89  7C 20 0A       JMP (IRQH_CallList,X)				; Make the call, including the table offset
-11961      
-11962    IRQH_Return_B					; Since the 65C02 won't JSR to our chosen address, this is the return address
-11963    FB8C  EA             NOP						; non executed packer.  It's cheaper than the arithmetic approach.
-11964    
-11965    IRQH_SkipCall_B
-11966    FB8D  EE 35 0A       INC IRQH_CurrentEntry				; Advance to the next table entry
-11967    FB90  E8             INX
+11932      
+11933    ; IRQ Handler function.
+11934    
+11935    IRQH_ProcessIRQs
+11936    FB6C  48             PHA						; Save processor registers
+11937    FB6D  DA             PHX
+11938    FB6E  5A             PHY
+11939      
+11940    FB6F  D8             CLD						; We have no idea what mode the processor was in when this was called so let's clear it.
+11941      
+11942    FB70  AD 33 0A       LDA IRQH_MaskByte				; Get IRQ mask
+11943    FB73  F0 29          BEQ IRQH_FinishIRQs_B				; and quit early if all disabled.
+11944      
+11945    FB75  A9 01          LDA #1					; Put 1 into our working mask
+11946    FB77  8D 34 0A       STA IRQH_WorkingMask				
+11947    
+11948    FB7A  A2 00          LDX #0					; Start with X at table entry 0
+11949      
+11950    IRQH_CheckCall_B  
+11951    FB7C  AD 33 0A       LDA IRQH_MaskByte				; Check if we need to call that table entry or not
+11952    FB7F  2D 34 0A       AND IRQH_WorkingMask
+11953    FB82  F0 0A          BEQ IRQH_SkipCall_B
+11954      
+11955    
+11956    FB84  A9 FB          LDA #>IRQH_Return_B				; Place our return address-1 on the stack for the ensuing RTS (which adds 1)
+11957    FB86  48             PHA
+11958    FB87  A9 8D          LDA #<IRQH_Return_B
+11959    FB89  48             PHA
+11960      
+11961    FB8A  7C 20 0A       JMP (IRQH_CallList,X)				; Make the call, including the table offset
+11962      
+11963    IRQH_Return_B					; Since the 65C02 won't JSR to our chosen address, this is the return address
+11964    FB8D  EA             NOP						; non executed packer.  It's cheaper than the arithmetic approach.
+11965    
+11966    IRQH_SkipCall_B
+11967    FB8E  EE 35 0A       INC IRQH_CurrentEntry				; Advance to the next table entry
 11968    FB91  E8             INX
-11969      
-11970    FB92  8A             TXA						; Have we processed them all?
-11971    FB93  C9 10          CMP #16					; If so, we shall go to the finish-line.
-11972    FB95  F0 06          BEQ IRQH_FinishIRQs_B
-11973      
-11974    FB97  18             CLC						; Move our working mask to the next IRQ
-11975    FB98  2E 34 0A       ROL IRQH_WorkingMask
-11976      
-11977    FB9B  80 DE          BRA IRQH_CheckCall_B				; Check the next call.
-11978      
-11979    IRQH_FinishIRQs_B
-11980    FB9D  7A             PLY						; Retrieve processor registers
-11981    FB9E  FA             PLX
-11982    FB9F  68             PLA
-11983      
-11984    FBA0  40             RTI
-11985      
+11969    FB92  E8             INX
+11970      
+11971    FB93  8A             TXA						; Have we processed them all?
+11972    FB94  C9 10          CMP #16					; If so, we shall go to the finish-line.
+11973    FB96  F0 06          BEQ IRQH_FinishIRQs_B
+11974      
+11975    FB98  18             CLC						; Move our working mask to the next IRQ
+11976    FB99  2E 34 0A       ROL IRQH_WorkingMask
+11977      
+11978    FB9C  80 DE          BRA IRQH_CheckCall_B				; Check the next call.
+11979      
+11980    IRQH_FinishIRQs_B
+11981    FB9E  7A             PLY						; Retrieve processor registers
+11982    FB9F  FA             PLX
+11983    FBA0  68             PLA
+11984      
+11985    FBA1  40             RTI
 11986      
-11987    ; Function to return table base address and version number.
-11988    ; Used for keeping programs compatible over generational changes.
-11989    
-11990    IRQH_SystemReport_F
-11991    
-11992    FBA1  A9 00          LDA #IRQH_Version_C
-11993    FBA3  A2 20          LDX #<IRQH_Table_Base
-11994    FBA5  A0 0A          LDY #>IRQH_Table_Base
-11995    FBA7  60             RTS
-11996      .INCLUDE "COUNTDOWN_IRQ.asm"
-11997    ; Countdown IRQ.
-11998    
-11999    ; Adds a system countdown timer.  This is to be driven from the timer on the GPIO card.
-12000    
+11987      
+11988    ; Function to return table base address and version number.
+11989    ; Used for keeping programs compatible over generational changes.
+11990    
+11991    IRQH_SystemReport_F
+11992    
+11993    FBA2  A9 00          LDA #IRQH_Version_C
+11994    FBA4  A2 20          LDX #<IRQH_Table_Base
+11995    FBA6  A0 0A          LDY #>IRQH_Table_Base
+11996    FBA8  60             RTS
+11997      .INCLUDE "COUNTDOWN_IRQ.asm"
+11998    ; Countdown IRQ.
+11999    
+12000    ; Adds a system countdown timer.  This is to be driven from the timer on the GPIO card.
 12001    
-12002    ; Variables
-12003    
-12004      0A46             CTR_V			= IRQH_CMD_Table+16		; This is our counter variable base address.
-12005      0A48             CTR_LOAD_VAL_V		= CTR_V + 2			; This is the interval between counts in PHI2 ticks
-12006    
+12002    
+12003    ; Variables
+12004    
+12005      0A46             CTR_V			= IRQH_CMD_Table+16		; This is our counter variable base address.
+12006      0A48             CTR_LOAD_VAL_V		= CTR_V + 2			; This is the interval between counts in PHI2 ticks
 12007    
-12008    ; Constants
-12009    
-12010      9C3F             TIM_DELAY_C		= 39999		; This is the value we are going to use to set the timer. 10ms @4MHz
-12011    
+12008    
+12009    ; Constants
+12010    
+12011      9C3F             TIM_DELAY_C		= 39999		; This is the value we are going to use to set the timer. 10ms @4MHz
 12012    
-12013    ; Hardware constants
-12014    
-12015      C044             TIM_T1L			= TAPE_IOBASE + 4
-12016      C045             TIM_T1H			= TAPE_IOBASE + 5
-12017    
-12018      C04B             TIM_ACR			= TAPE_IOBASE + $B
-12019      C04D             TIM_IFR			= TAPE_IOBASE + $D
-12020      C04E             TIM_IER			= TAPE_IOBASE + $E
-12021    
-12022      0080             IFR_IRQ_FLAG		= @10000000
-12023      0040             IFR_TIM1_FLAG		= @01000000
-12024    
+12013    
+12014    ; Hardware constants
+12015    
+12016      C044             TIM_T1L			= TAPE_IOBASE + 4
+12017      C045             TIM_T1H			= TAPE_IOBASE + 5
+12018    
+12019      C04B             TIM_ACR			= TAPE_IOBASE + $B
+12020      C04D             TIM_IFR			= TAPE_IOBASE + $D
+12021      C04E             TIM_IER			= TAPE_IOBASE + $E
+12022    
+12023      0080             IFR_IRQ_FLAG		= @10000000
+12024      0040             IFR_TIM1_FLAG		= @01000000
 12025    
-12026    INIT_COUNTDOWN_IRQ
-12027      
-12028    FBA8  08             PHP					; Add our interrupt guard
-12029    FBA9  78             SEI
-12030      
-12031    FBAA  0D 33 0A       ORA IRQH_MaskByte			; Mark our IRQ as active.
-12032    FBAD  8D 33 0A       STA IRQH_MaskByte
-12033      
-12034    FBB0  A9 3F          LDA #<TIM_DELAY_C			; Load timer value to our variable
-12035    FBB2  8D 48 0A       STA CTR_LOAD_VAL_V
-12036    FBB5  A9 9C          LDA #>TIM_DELAY_C
-12037    FBB7  8D 49 0A       STA CTR_LOAD_VAL_V + 1
-12038      
-12039    FBBA  AD 4B C0       LDA TIM_ACR
-12040    FBBD  09 40          ORA #@01000000			; Load Auxilliary Control Register with continuous interrupts on T1 with latching
-12041    FBBF  8D 4B C0       STA TIM_ACR
-12042      
-12043    FBC2  AD 4E C0       LDA TIM_IER				; Start our interrupts running
-12044    FBC5  09 C0          ORA #@11000000
-12045    FBC7  8D 4E C0       STA TIM_IER
-12046      
-12047    FBCA  20 21 FC       JSR TIM_Update_T1_F
-12048      
-12049    FBCD  28             PLP					; Restore our IRQ status
-12050    
-12051    FBCE  60             RTS
-12052      
+12026    
+12027    INIT_COUNTDOWN_IRQ
+12028      
+12029    FBA9  08             PHP					; Add our interrupt guard
+12030    FBAA  78             SEI
+12031      
+12032    FBAB  0D 33 0A       ORA IRQH_MaskByte			; Mark our IRQ as active.
+12033    FBAE  8D 33 0A       STA IRQH_MaskByte
+12034      
+12035    FBB1  A9 3F          LDA #<TIM_DELAY_C			; Load timer value to our variable
+12036    FBB3  8D 48 0A       STA CTR_LOAD_VAL_V
+12037    FBB6  A9 9C          LDA #>TIM_DELAY_C
+12038    FBB8  8D 49 0A       STA CTR_LOAD_VAL_V + 1
+12039      
+12040    FBBB  AD 4B C0       LDA TIM_ACR
+12041    FBBE  09 40          ORA #@01000000			; Load Auxilliary Control Register with continuous interrupts on T1 with latching
+12042    FBC0  8D 4B C0       STA TIM_ACR
+12043      
+12044    FBC3  AD 4E C0       LDA TIM_IER				; Start our interrupts running
+12045    FBC6  09 C0          ORA #@11000000
+12046    FBC8  8D 4E C0       STA TIM_IER
+12047      
+12048    FBCB  20 22 FC       JSR TIM_Update_T1_F
+12049      
+12050    FBCE  28             PLP					; Restore our IRQ status
+12051    
+12052    FBCF  60             RTS
 12053      
-12054    
-12055    COUNTDOWN_IRQ
-12056    
-12057    FBCF  BD 36 0A       LDA IRQH_CMD_Table,X			; Process command shutdown command when asked.
-12058    FBD2  C9 01          CMP #IRQH_Shutdown_CMD
-12059    FBD4  F0 2F          BEQ COUNTDOWN_IRQ_SHUTDOWN
-12060      
-12061    FBD6  AD 4D C0       LDA TIM_IFR				; Check whether this is our interrupt to claim
-12062    FBD9  29 C0          AND #IFR_IRQ_FLAG | IFR_TIM1_FLAG
-12063    FBDB  C9 C0          CMP #IFR_IRQ_FLAG | IFR_TIM1_FLAG
-12064      
-12065    FBDD  D0 25          BNE TIM_NOT_OUR_IRQ_B			; Branch politely if it isn't ours.
-12066      
-12067    FBDF  AD 46 0A       LDA CTR_V				; When we reach zero, shutdown.
-12068    FBE2  0D 47 0A       ORA CTR_V + 1
-12069    FBE5  F0 1E          BEQ COUNTDOWN_IRQ_SHUTDOWN
-12070    
-12071    FBE7  38             SEC					; Update our countdown counter.
-12072    FBE8  AD 46 0A       LDA CTR_V
-12073    FBEB  E9 01          SBC #1
-12074    FBED  8D 46 0A       STA CTR_V
-12075    FBF0  AD 47 0A       LDA CTR_V + 1
-12076    FBF3  E9 00          SBC #0
-12077    FBF5  8D 47 0A       STA CTR_V + 1
-12078      
-12079    FBF8  AD 44 C0       LDA TIM_T1L				; Read to this register to clear the interrupt.
-12080      
-12081    FBFB  AD 34 0A       LDA IRQH_WorkingMask			; Set our claims bit.
-12082    FBFE  0D 32 0A       ORA IRQH_ClaimsList
-12083    FC01  8D 32 0A       STA IRQH_ClaimsList
-12084    
-12085    TIM_NOT_OUR_IRQ_B
-12086    FC04  60             RTS					; IRQ Handler done
-12087    
-12088        
-12089    COUNTDOWN_IRQ_SHUTDOWN
-12090    
-12091    FC05  AD 44 C0       LDA TIM_T1L				; Read this register to clear the interrupt
-12092    
-12093    FC08  AD 4B C0       LDA TIM_ACR				; Disable Timer 1
-12094    FC0B  29 3F          AND #@00111111			; only affecting our specific hardware
-12095    FC0D  8D 4B C0       STA TIM_ACR
-12096      
-12097    FC10  A9 40          LDA #IFR_TIM1_FLAG			; Disable Our interrupt
-12098    FC12  8D 4E C0       STA TIM_IER
-12099      
-12100    FC15  AD 34 0A       LDA IRQH_WorkingMask			; Unset our IRQ from the handler
-12101    FC18  49 FF          EOR #$FF
-12102    FC1A  2D 33 0A       AND IRQH_MaskByte
-12103    FC1D  8D 33 0A       STA IRQH_MaskByte
-12104        
-12105    FC20  60             RTS					; IRQ Handler done.
-12106      
+12054      
+12055    
+12056    COUNTDOWN_IRQ
+12057    
+12058    FBD0  BD 36 0A       LDA IRQH_CMD_Table,X			; Process command shutdown command when asked.
+12059    FBD3  C9 01          CMP #IRQH_Shutdown_CMD
+12060    FBD5  F0 2F          BEQ COUNTDOWN_IRQ_SHUTDOWN
+12061      
+12062    FBD7  AD 4D C0       LDA TIM_IFR				; Check whether this is our interrupt to claim
+12063    FBDA  29 C0          AND #IFR_IRQ_FLAG | IFR_TIM1_FLAG
+12064    FBDC  C9 C0          CMP #IFR_IRQ_FLAG | IFR_TIM1_FLAG
+12065      
+12066    FBDE  D0 25          BNE TIM_NOT_OUR_IRQ_B			; Branch politely if it isn't ours.
+12067      
+12068    FBE0  AD 46 0A       LDA CTR_V				; When we reach zero, shutdown.
+12069    FBE3  0D 47 0A       ORA CTR_V + 1
+12070    FBE6  F0 1E          BEQ COUNTDOWN_IRQ_SHUTDOWN
+12071    
+12072    FBE8  38             SEC					; Update our countdown counter.
+12073    FBE9  AD 46 0A       LDA CTR_V
+12074    FBEC  E9 01          SBC #1
+12075    FBEE  8D 46 0A       STA CTR_V
+12076    FBF1  AD 47 0A       LDA CTR_V + 1
+12077    FBF4  E9 00          SBC #0
+12078    FBF6  8D 47 0A       STA CTR_V + 1
+12079      
+12080    FBF9  AD 44 C0       LDA TIM_T1L				; Read to this register to clear the interrupt.
+12081      
+12082    FBFC  AD 34 0A       LDA IRQH_WorkingMask			; Set our claims bit.
+12083    FBFF  0D 32 0A       ORA IRQH_ClaimsList
+12084    FC02  8D 32 0A       STA IRQH_ClaimsList
+12085    
+12086    TIM_NOT_OUR_IRQ_B
+12087    FC05  60             RTS					; IRQ Handler done
+12088    
+12089        
+12090    COUNTDOWN_IRQ_SHUTDOWN
+12091    
+12092    FC06  AD 44 C0       LDA TIM_T1L				; Read this register to clear the interrupt
+12093    
+12094    FC09  AD 4B C0       LDA TIM_ACR				; Disable Timer 1
+12095    FC0C  29 3F          AND #@00111111			; only affecting our specific hardware
+12096    FC0E  8D 4B C0       STA TIM_ACR
+12097      
+12098    FC11  A9 40          LDA #IFR_TIM1_FLAG			; Disable Our interrupt
+12099    FC13  8D 4E C0       STA TIM_IER
+12100      
+12101    FC16  AD 34 0A       LDA IRQH_WorkingMask			; Unset our IRQ from the handler
+12102    FC19  49 FF          EOR #$FF
+12103    FC1B  2D 33 0A       AND IRQH_MaskByte
+12104    FC1E  8D 33 0A       STA IRQH_MaskByte
+12105        
+12106    FC21  60             RTS					; IRQ Handler done.
 12107      
 12108      
-12109    TIM_Update_T1_F
-12110    
-12111    FC21  08             PHP					; Save IRQ state and disable interrupts
-12112    FC22  78             SEI
-12113      
-12114    FC23  AD 48 0A       LDA CTR_LOAD_VAL_V			; Load timer
-12115    FC26  8D 44 C0       STA TIM_T1L
-12116    FC29  AD 49 0A       LDA CTR_LOAD_VAL_V + 1
-12117    FC2C  8D 45 C0       STA TIM_T1H				; Count commences from here (if running)
-12118      
-12119    FC2F  28             PLP					; Restore IRQ status
-12120      
-12121    FC30  60             RTS
-12122    
+12109      
+12110    TIM_Update_T1_F
+12111    
+12112    FC22  08             PHP					; Save IRQ state and disable interrupts
+12113    FC23  78             SEI
+12114      
+12115    FC24  AD 48 0A       LDA CTR_LOAD_VAL_V			; Load timer
+12116    FC27  8D 44 C0       STA TIM_T1L
+12117    FC2A  AD 49 0A       LDA CTR_LOAD_VAL_V + 1
+12118    FC2D  8D 45 C0       STA TIM_T1H				; Count commences from here (if running)
+12119      
+12120    FC30  28             PLP					; Restore IRQ status
+12121      
+12122    FC31  60             RTS
 12123    
-12124    ; reset vector points here
-12125    
-12126    RES_vec
-12127    FC31  78             SEI					; Ensure IRQ's are turned off.
-12128    FC32  D8             CLD					; clear decimal mode
-12129    FC33  A2 FF          LDX #$FF				; empty stack
-12130    FC35  9A             TXS					; set the stack
-12131    
+12124    
+12125    ; reset vector points here
+12126    
+12127    RES_vec
+12128    FC32  78             SEI					; Ensure IRQ's are turned off.
+12129    FC33  D8             CLD					; clear decimal mode
+12130    FC34  A2 FF          LDX #$FF				; empty stack
+12131    FC36  9A             TXS					; set the stack
 12132    
-12133    ; Set up system timing function
-12134    
-12135    FC36  20 DB FF       JSR IRQH_Handler_Init_vec		; Initialise the IRQ Handler
-12136    
-12137    FC39  A9 CF          LDA #<COUNTDOWN_IRQ			; Put the test IRQ address into the table at IRQ Location 0
-12138    FC3B  8D 30 0A       STA IRQH_CallReg
-12139    FC3E  A9 FB          LDA #>COUNTDOWN_IRQ
-12140    FC40  8D 31 0A       STA IRQH_CallReg + 1
-12141    FC43  A9 00          LDA #0
-12142    FC45  20 DE FF       JSR IRQH_SetIRQ_vec
-12143       
-12144    FC48  58             CLI					; Enable IRQs globally.
-12145    
-12146    FC49  20 A5 F3       JSR TPB_delay
-12147      
-12148    FC4C  A9 02          LDA #ANSI_out_sw                    ; Set our default output options for ANSI output mode.
-12149    ;  LDA #ACIA_out_sw                   ; Set our default output options for ACIA output mode.
-12150    FC4E  8D E0 05       STA os_outsel                       ; to the ANSI card only.
-12151    FC51  A9 01          LDA #LF_filt_sw1
-12152    FC53  8D E1 05       STA os_infilt                       ; Switch on $A filtering on the ACIA.
-12153      
-12154    FC56  20 00 F0       JSR INI_ACIA1                       ; Init ACIA1. We currently need this for the keyboard.
-12155    FC59  20 0E F0       JSR INI_ACIA2                       ; Init ACIA2. Just in case.
-12156    FC5C  20 90 FF       JSR ANSI_init_vec                   ; Initialise the ANSI text video card.
-12157    FC5F  20 96 FF       JSR TPB_init_vec                    ; Init Tower Peripheral Bus
-12158    FC62  20 A2 FA       JSR AY_Init                         ; Initialise the AY sound system.
-12159      
-12160    ; set up vectors and interrupt code, copy them to page 2
-12161    
-12162    FC65  A0 73          LDY #END_CODE-LAB_vec               ; set index/count
-12163    LAB_stlp
-12164    FC67  B9 94 FC       LDA LAB_vec-1,Y                     ; get byte from interrupt code
-12165    FC6A  99 04 02       STA VEC_IN-1,Y                      ; save to RAM
-12166    FC6D  88             DEY                                 ; decrement index/count
-12167    FC6E  D0 F7          BNE LAB_stlp                        ; loop if more to do
-12168    
-12169      
-12170    ; Initialise filing system
-12171    
-12172    FC70  20 C9 FF       JSR TAPE_init_vec                   ; Initialise TowerTAPE filing system.
-12173        
-12174    ; now do the signon message
-12175    
-12176    FC73  A0 00          LDY #0
-12177    LAB_signon
-12178    
-12179    FC75  B9 08 FD       LDA LAB_mess,Y                      ; get byte from sign on message
-12180    FC78  F0 06          BEQ LAB_nokey                       ; exit loop if done
-12181    
-12182    FC7A  20 02 E2       JSR V_OUTP                          ; output character
-12183    FC7D  C8             INY                                 ; increment index
-12184    FC7E  D0 F5          BNE LAB_signon                      ; loop, branch always
-12185    
-12186    LAB_nokey
-12187    FC80  20 FF E1       JSR V_INPT                          ; call scan input device
-12188    FC83  90 FB          BCC LAB_nokey                       ; loop if no key
-12189    
-12190    FC85  29 DF          AND #$DF                            ; mask xx0x xxxx, ensure upper case
-12191    FC87  C9 57          CMP #'W'                            ; compare with [W]arm start
-12192    FC89  F0 07          BEQ LAB_dowarm                      ; branch if [W]arm start
-12193    
-12194    FC8B  C9 43          CMP #'C'                            ; compare with [C]old start.
-12195    FC8D  D0 E6          BNE LAB_signon                      ; loop if not [C]old start
-12196    
-12197    FC8F  4C 00 C1       JMP LAB_COLD                        ; do EhBASIC cold start
-12198    
-12199    LAB_dowarm
-12200    FC92  4C 00 00       JMP LAB_WARM                        ; do EhBASIC warm start
-12201    
+12133    
+12134    ; Set up system timing function
+12135    
+12136    FC37  20 DB FF       JSR IRQH_Handler_Init_vec		; Initialise the IRQ Handler
+12137    
+12138    FC3A  A9 D0          LDA #<COUNTDOWN_IRQ			; Put the test IRQ address into the table at IRQ Location 0
+12139    FC3C  8D 30 0A       STA IRQH_CallReg
+12140    FC3F  A9 FB          LDA #>COUNTDOWN_IRQ
+12141    FC41  8D 31 0A       STA IRQH_CallReg + 1
+12142    FC44  A9 00          LDA #0
+12143    FC46  20 DE FF       JSR IRQH_SetIRQ_vec
+12144       
+12145    FC49  58             CLI					; Enable IRQs globally.
+12146    
+12147    FC4A  20 A5 F3       JSR TPB_delay
+12148      
+12149    FC4D  A9 02          LDA #ANSI_out_sw                    ; Set our default output options for ANSI output mode.
+12150    ;  LDA #ACIA_out_sw                   ; Set our default output options for ACIA output mode.
+12151    FC4F  8D E0 05       STA os_outsel                       ; to the ANSI card only.
+12152    FC52  A9 01          LDA #LF_filt_sw1
+12153    FC54  8D E1 05       STA os_infilt                       ; Switch on $A filtering on the ACIA.
+12154      
+12155    FC57  20 00 F0       JSR INI_ACIA1                       ; Init ACIA1. We currently need this for the keyboard.
+12156    FC5A  20 0E F0       JSR INI_ACIA2                       ; Init ACIA2. Just in case.
+12157    FC5D  20 90 FF       JSR ANSI_init_vec                   ; Initialise the ANSI text video card.
+12158    FC60  20 96 FF       JSR TPB_init_vec                    ; Init Tower Peripheral Bus
+12159    FC63  20 A3 FA       JSR AY_Init                         ; Initialise the AY sound system.
+12160      
+12161    ; set up vectors and interrupt code, copy them to page 2
+12162    
+12163    FC66  A0 73          LDY #END_CODE-LAB_vec               ; set index/count
+12164    LAB_stlp
+12165    FC68  B9 95 FC       LDA LAB_vec-1,Y                     ; get byte from interrupt code
+12166    FC6B  99 04 02       STA VEC_IN-1,Y                      ; save to RAM
+12167    FC6E  88             DEY                                 ; decrement index/count
+12168    FC6F  D0 F7          BNE LAB_stlp                        ; loop if more to do
+12169    
+12170      
+12171    ; Initialise filing system
+12172    
+12173    FC71  20 C9 FF       JSR TAPE_init_vec                   ; Initialise TowerTAPE filing system.
+12174        
+12175    ; now do the signon message
+12176    
+12177    FC74  A0 00          LDY #0
+12178    LAB_signon
+12179    
+12180    FC76  B9 09 FD       LDA LAB_mess,Y                      ; get byte from sign on message
+12181    FC79  F0 06          BEQ LAB_nokey                       ; exit loop if done
+12182    
+12183    FC7B  20 02 E2       JSR V_OUTP                          ; output character
+12184    FC7E  C8             INY                                 ; increment index
+12185    FC7F  D0 F5          BNE LAB_signon                      ; loop, branch always
+12186    
+12187    LAB_nokey
+12188    FC81  20 FF E1       JSR V_INPT                          ; call scan input device
+12189    FC84  90 FB          BCC LAB_nokey                       ; loop if no key
+12190    
+12191    FC86  29 DF          AND #$DF                            ; mask xx0x xxxx, ensure upper case
+12192    FC88  C9 57          CMP #'W'                            ; compare with [W]arm start
+12193    FC8A  F0 07          BEQ LAB_dowarm                      ; branch if [W]arm start
+12194    
+12195    FC8C  C9 43          CMP #'C'                            ; compare with [C]old start.
+12196    FC8E  D0 E6          BNE LAB_signon                      ; loop if not [C]old start
+12197    
+12198    FC90  4C 00 C1       JMP LAB_COLD                        ; do EhBASIC cold start
+12199    
+12200    LAB_dowarm
+12201    FC93  4C 00 00       JMP LAB_WARM                        ; do EhBASIC warm start
 12202    
-12203    ; EhBASIC vector tables
-12204    
-12205    LAB_vec
-12206      .word ACIA1in                       ; byte in from ACIA1
-12207      .word WR_char                       ; byte out to ACIA1
-12208      .word TAPE_LOAD_BASIC_vec           ; null load vector for EhBASIC
-12209      .word TAPE_SAVE_BASIC_vec           ; save vector for EhBASIC
-12210      .word TAPE_VERIFY_BASIC_vec         ; verify vector for EhBASIC
-12211      
-12212    
-12213    ; EhBASIC IRQ support
-12214    
-12215    IRQ_CODE
-12216    FC9F  48             PHA                                 ; save A
-12217    FCA0  A5 DF          LDA IrqBase                         ; get the IRQ flag byte
-12218    FCA2  4A             LSR                                 ; shift the set b7 to b6, and on down ...
-12219    FCA3  05 DF          ORA IrqBase                         ; OR the original back in
-12220    FCA5  85 DF          STA IrqBase                         ; save the new IRQ flag byte
-12221    FCA7  68             PLA                                 ; restore A
-12222    FCA8  40             RTI
-12223    
+12203    
+12204    ; EhBASIC vector tables
+12205    
+12206    LAB_vec
+12207      .word ACIA1in                       ; byte in from ACIA1
+12208      .word WR_char                       ; byte out to ACIA1
+12209      .word TAPE_LOAD_BASIC_vec           ; null load vector for EhBASIC
+12210      .word TAPE_SAVE_BASIC_vec           ; save vector for EhBASIC
+12211      .word TAPE_VERIFY_BASIC_vec         ; verify vector for EhBASIC
+12212      
+12213    
+12214    ; EhBASIC IRQ support
+12215    
+12216    IRQ_CODE
+12217    FCA0  48             PHA                                 ; save A
+12218    FCA1  A5 DF          LDA IrqBase                         ; get the IRQ flag byte
+12219    FCA3  4A             LSR                                 ; shift the set b7 to b6, and on down ...
+12220    FCA4  05 DF          ORA IrqBase                         ; OR the original back in
+12221    FCA6  85 DF          STA IrqBase                         ; save the new IRQ flag byte
+12222    FCA8  68             PLA                                 ; restore A
+12223    FCA9  40             RTI
 12224    
-12225    ; EhBASIC NMI support
-12226    
-12227    NMI_CODE
-12228    FCA9  48             PHA                                 ; save A
-12229    FCAA  A5 DC          LDA NmiBase                         ; get the NMI flag byte
-12230    FCAC  4A             LSR                                 ; shift the set b7 to b6, and on down ...
-12231    FCAD  05 DC          ORA NmiBase                         ; OR the original back in
-12232    FCAF  85 DC          STA NmiBase                         ; save the new NMI flag byte
-12233    FCB1  68             PLA                                 ; restore A
-12234    FCB2  40             RTI
-12235    
+12225    
+12226    ; EhBASIC NMI support
+12227    
+12228    NMI_CODE
+12229    FCAA  48             PHA                                 ; save A
+12230    FCAB  A5 DC          LDA NmiBase                         ; get the NMI flag byte
+12231    FCAD  4A             LSR                                 ; shift the set b7 to b6, and on down ...
+12232    FCAE  05 DC          ORA NmiBase                         ; OR the original back in
+12233    FCB0  85 DC          STA NmiBase                         ; save the new NMI flag byte
+12234    FCB2  68             PLA                                 ; restore A
+12235    FCB3  40             RTI
 12236    
-12237    ; OS output stream management support.
-12238    
-12239    WR_char
-12240    FCB3  08             PHP                                 ; Save our registers in case we need 'em
-12241    FCB4  DA             PHX
-12242    FCB5  5A             PHY
-12243    FCB6  48             PHA
+12237    
+12238    ; OS output stream management support.
+12239    
+12240    WR_char
+12241    FCB4  08             PHP                                 ; Save our registers in case we need 'em
+12242    FCB5  DA             PHX
+12243    FCB6  5A             PHY
 12244    FCB7  48             PHA
-12245       
-12246    FCB8  A9 01          LDA #ACIA1_out_sw
-12247    FCBA  2C E0 05       BIT os_outsel
-12248    FCBD  F0 05          BEQ no_ACIA1
-12249    FCBF  68             PLA
-12250    FCC0  20 1C F0       JSR ACIA1out                         ; Print to ACIA1
-12251    
-12252    FCC3  48             PHA
-12253    no_ACIA1  
-12254    FCC4  A9 08          LDA #ACIA2_out_sw
-12255    FCC6  2C E0 05       BIT os_outsel
-12256    FCC9  F0 05          BEQ no_ACIA2
-12257    FCCB  68             PLA
-12258    FCCC  20 2B F0       JSR ACIA2out                         ; Print to ACIA1
-12259      
-12260    FCCF  48             PHA
-12261    no_ACIA2
-12262    FCD0  A9 02          LDA #ANSI_out_sw
-12263    FCD2  2C E0 05       BIT os_outsel
-12264    FCD5  F0 05          BEQ no_ANSI
-12265    FCD7  68             PLA
-12266    FCD8  20 93 FF       JSR ANSI_write_vec                  ; Print to ANSI video card
-12267        
-12268    FCDB  48             PHA
-12269    no_ANSI
-12270    FCDC  A9 04          LDA #TPB_out_sw
-12271    FCDE  2C E0 05       BIT os_outsel
-12272    FCE1  F0 05          BEQ no_TPB_LPT
-12273    FCE3  68             PLA
-12274    FCE4  20 99 FF       JSR TPB_LPT_write_vec               ; Print to TPB LPT card
-12275    
-12276    FCE7  48             PHA  
-12277    no_TPB_LPT                            ; "Print" to the TAPE interface
-12278    FCE8  A9 10          LDA #TAPE_out_sw
-12279    FCEA  2C E0 05       BIT os_outsel
-12280    FCED  F0 06          BEQ MON_EndWRITE_B                  ; Dont write to tape unless selected.
-12281    FCEF  68             PLA
-12282    FCF0  20 C0 FF       JSR TAPE_ByteOut_vec
-12283      
-12284    FCF3  80 01          BRA MON_EndWRITE_B2
-12285    
-12286    MON_EndWRITE_B
-12287    FCF5  68             PLA                                   ; Clean up stack including restoring P and return.
-12288    MON_EndWRITE_B2
-12289    FCF6  68             PLA
-12290    FCF7  7A             PLY
-12291    FCF8  FA             PLX
-12292    FCF9  28             PLP
-12293    FCFA  60             RTS
-12294      
+12245    FCB8  48             PHA
+12246       
+12247    FCB9  A9 01          LDA #ACIA1_out_sw
+12248    FCBB  2C E0 05       BIT os_outsel
+12249    FCBE  F0 05          BEQ no_ACIA1
+12250    FCC0  68             PLA
+12251    FCC1  20 1C F0       JSR ACIA1out                         ; Print to ACIA1
+12252    
+12253    FCC4  48             PHA
+12254    no_ACIA1  
+12255    FCC5  A9 08          LDA #ACIA2_out_sw
+12256    FCC7  2C E0 05       BIT os_outsel
+12257    FCCA  F0 05          BEQ no_ACIA2
+12258    FCCC  68             PLA
+12259    FCCD  20 2B F0       JSR ACIA2out                         ; Print to ACIA1
+12260      
+12261    FCD0  48             PHA
+12262    no_ACIA2
+12263    FCD1  A9 02          LDA #ANSI_out_sw
+12264    FCD3  2C E0 05       BIT os_outsel
+12265    FCD6  F0 05          BEQ no_ANSI
+12266    FCD8  68             PLA
+12267    FCD9  20 93 FF       JSR ANSI_write_vec                  ; Print to ANSI video card
+12268        
+12269    FCDC  48             PHA
+12270    no_ANSI
+12271    FCDD  A9 04          LDA #TPB_out_sw
+12272    FCDF  2C E0 05       BIT os_outsel
+12273    FCE2  F0 05          BEQ no_TPB_LPT
+12274    FCE4  68             PLA
+12275    FCE5  20 99 FF       JSR TPB_LPT_write_vec               ; Print to TPB LPT card
+12276    
+12277    FCE8  48             PHA  
+12278    no_TPB_LPT                            ; "Print" to the TAPE interface
+12279    FCE9  A9 10          LDA #TAPE_out_sw
+12280    FCEB  2C E0 05       BIT os_outsel
+12281    FCEE  F0 06          BEQ MON_EndWRITE_B                  ; Dont write to tape unless selected.
+12282    FCF0  68             PLA
+12283    FCF1  20 C0 FF       JSR TAPE_ByteOut_vec
+12284      
+12285    FCF4  80 01          BRA MON_EndWRITE_B2
+12286    
+12287    MON_EndWRITE_B
+12288    FCF6  68             PLA                                   ; Clean up stack including restoring P and return.
+12289    MON_EndWRITE_B2
+12290    FCF7  68             PLA
+12291    FCF8  7A             PLY
+12292    FCF9  FA             PLX
+12293    FCFA  28             PLP
+12294    FCFB  60             RTS
 12295      
-12296    ; Tower string printing routine.
-12297    TOE_PrintStr
-12298    FCFB  A0 00          LDY #0					; Initialise loop index.
-12299    TOE_PrintStr_L
-12300    FCFD  B1 E7          LDA (TOE_MemptrLo),Y				; Print character.
-12301    FCFF  F0 06          BEQ TOE_DonePrinting
-12302    FD01  20 02 E2       JSR V_OUTP
-12303    FD04  C8             INY
-12304    FD05  80 F6          BRA TOE_PrintStr_L
-12305    
-12306    TOE_DonePrinting
-12307    FD07  60             RTS
-12308      
-12309    END_CODE
-12310    
-12311    LAB_mess
-12312                                          ; sign on string
-12313    
-12314      .byte "Tower of Eightness OS 18.9.2021.1",$0D,$0A,$0D,$0A
-12315      .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
-12316    
+12296      
+12297    ; Tower string printing routine.
+12298    TOE_PrintStr
+12299    FCFC  A0 00          LDY #0					; Initialise loop index.
+12300    TOE_PrintStr_L
+12301    FCFE  B1 E7          LDA (TOE_MemptrLo),Y				; Print character.
+12302    FD00  F0 06          BEQ TOE_DonePrinting
+12303    FD02  20 02 E2       JSR V_OUTP
+12304    FD05  C8             INY
+12305    FD06  80 F6          BRA TOE_PrintStr_L
+12306    
+12307    TOE_DonePrinting
+12308    FD08  60             RTS
+12309      
+12310    END_CODE
+12311    
+12312    LAB_mess
+12313                                          ; sign on string
+12314    
+12315      .byte "Tower of Eightness OS 4.10.2021.1",$0D,$0A,$0D,$0A
+12316      .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
 12317    
-12318    ; ToE OS Vectors
-12319    
-12320    FF60                 *= $FF60
-12321    ; Stream output vector.  
-12322    
-12323    TOE_PrintStr_vec
-12324    FF60  4C FB FC       JMP TOE_PrintStr         ; FF60
-12325    
-12326      
-12327    ; ... existing vectors continue from here.
-12328    
-12329    FF90                 *= $FF90
-12330    
-12331    ; ANSI Card vectors
-12332    
-12333    ANSI_init_vec
-12334    FF90  4C 6F F0       JMP ANSI_INIT            ; FF90
-12335    ANSI_write_vec
-12336    FF93  4C 91 F0       JMP ANSI_write           ; FF93
-12337      
-12338    
-12339    ; Tower Peripheral Bus vectors
-12340    
-12341    TPB_init_vec
-12342    FF96  4C B5 F0       JMP TPB_INIT             ; FF96
-12343    TPB_LPT_write_vec
-12344    FF99  4C 77 F3       JMP TPB_LPT_write        ; FF99
-12345    TPB_tx_byte_vec
-12346    FF9C  4C 3F F2       JMP TPB_tx_byte          ; FF9C
-12347    TPB_tx_block_vec
-12348    FF9F  4C DA F2       JMP TPB_tx_block         ; FF9F
-12349    TPB_ATN_handler_vec
-12350    FFA2  4C 09 F2       JMP TPB_ATN_handler      ; FFA2
-12351    TPB_rx_byte_vec  
-12352    FFA5  4C 84 F2       JMP TPB_rx_byte          ; FFA5
-12353    TPB_rx_block_vec
-12354    FFA8  4C 1E F3       JMP TPB_rx_block         ; FFA8
-12355    TPB_Dev_Presence_vec
-12356    FFAB  4C C5 F1       JMP TPB_Dev_Presence     ; FFAB
-12357    TPB_Req_Dev_Type_vec
-12358    FFAE  4C 46 F1       JMP TPB_Req_Dev_Type     ; FFAE
-12359    TPB_dev_select_vec
-12360    FFB1  4C 5D F3       JMP TPB_dev_select       ; FFB1
-12361    TPB_Ctrl_Blk_Wr_vec
-12362    FFB4  4C D9 F0       JMP TPB_Ctrl_Blk_Wr      ; FFB4
-12363    TPB_Ctrl_Blk_Rd_vec
-12364    FFB7  4C 0F F1       JMP TPB_Ctrl_Blk_Rd      ; FFB7
-12365    
+12318    
+12319    ; ToE OS Vectors
+12320    
+12321    FF60                 *= $FF60
+12322    ; Stream output vector.  
+12323    
+12324    TOE_PrintStr_vec
+12325    FF60  4C FC FC       JMP TOE_PrintStr         ; FF60
+12326    
+12327      
+12328    ; ... existing vectors continue from here.
+12329    
+12330    FF90                 *= $FF90
+12331    
+12332    ; ANSI Card vectors
+12333    
+12334    ANSI_init_vec
+12335    FF90  4C 6F F0       JMP ANSI_INIT            ; FF90
+12336    ANSI_write_vec
+12337    FF93  4C 91 F0       JMP ANSI_write           ; FF93
+12338      
+12339    
+12340    ; Tower Peripheral Bus vectors
+12341    
+12342    TPB_init_vec
+12343    FF96  4C B5 F0       JMP TPB_INIT             ; FF96
+12344    TPB_LPT_write_vec
+12345    FF99  4C 77 F3       JMP TPB_LPT_write        ; FF99
+12346    TPB_tx_byte_vec
+12347    FF9C  4C 3F F2       JMP TPB_tx_byte          ; FF9C
+12348    TPB_tx_block_vec
+12349    FF9F  4C DA F2       JMP TPB_tx_block         ; FF9F
+12350    TPB_ATN_handler_vec
+12351    FFA2  4C 09 F2       JMP TPB_ATN_handler      ; FFA2
+12352    TPB_rx_byte_vec  
+12353    FFA5  4C 84 F2       JMP TPB_rx_byte          ; FFA5
+12354    TPB_rx_block_vec
+12355    FFA8  4C 1E F3       JMP TPB_rx_block         ; FFA8
+12356    TPB_Dev_Presence_vec
+12357    FFAB  4C C5 F1       JMP TPB_Dev_Presence     ; FFAB
+12358    TPB_Req_Dev_Type_vec
+12359    FFAE  4C 46 F1       JMP TPB_Req_Dev_Type     ; FFAE
+12360    TPB_dev_select_vec
+12361    FFB1  4C 5D F3       JMP TPB_dev_select       ; FFB1
+12362    TPB_Ctrl_Blk_Wr_vec
+12363    FFB4  4C D9 F0       JMP TPB_Ctrl_Blk_Wr      ; FFB4
+12364    TPB_Ctrl_Blk_Rd_vec
+12365    FFB7  4C 0F F1       JMP TPB_Ctrl_Blk_Rd      ; FFB7
 12366    
-12367    ; TAPE subsystem vectors
-12368    
-12369    TAPE_Leader_vec
-12370    FFBA  4C F1 F8       JMP F_TAPE_Leader        ; FFBA
-12371    TAPE_BlockOut_vec
-12372    FFBD  4C C3 F8       JMP F_TAPE_BlockOut      ; FFBD
-12373    TAPE_ByteOut_vec
-12374    FFC0  4C 8E F8       JMP F_TAPE_ByteOut       ; FFC0
-12375    TAPE_BlockIn_vec
-12376    FFC3  4C 9F F9       JMP F_TAPE_BlockIn       ; FFC3
-12377    TAPE_ByteIn_vec
-12378    FFC6  4C 53 FA       JMP F_TAPE_GetByte       ; FFC6
-12379    TAPE_init_vec
-12380    FFC9  4C 9A F4       JMP F_TAPE_Init          ; FFC9
-12381    TAPE_SAVE_BASIC_vec  
-12382    FFCC  4C CB F5       JMP F_TAPE_SAVE_BASIC    ; FFCC
-12383    TAPE_LOAD_BASIC_vec  
-12384    FFCF  4C 09 F7       JMP F_TAPE_LOAD_BASIC    ; FFCF
-12385    TAPE_VERIFY_BASIC_vec
-12386    FFD2  4C 4D F6       JMP F_TAPE_VERIFY_BASIC  ; FFD2
-12387    
+12367    
+12368    ; TAPE subsystem vectors
+12369    
+12370    TAPE_Leader_vec
+12371    FFBA  4C F2 F8       JMP F_TAPE_Leader        ; FFBA
+12372    TAPE_BlockOut_vec
+12373    FFBD  4C C4 F8       JMP F_TAPE_BlockOut      ; FFBD
+12374    TAPE_ByteOut_vec
+12375    FFC0  4C 8F F8       JMP F_TAPE_ByteOut       ; FFC0
+12376    TAPE_BlockIn_vec
+12377    FFC3  4C A0 F9       JMP F_TAPE_BlockIn       ; FFC3
+12378    TAPE_ByteIn_vec
+12379    FFC6  4C 54 FA       JMP F_TAPE_GetByte       ; FFC6
+12380    TAPE_init_vec
+12381    FFC9  4C 9B F4       JMP F_TAPE_Init          ; FFC9
+12382    TAPE_SAVE_BASIC_vec  
+12383    FFCC  4C CC F5       JMP F_TAPE_SAVE_BASIC    ; FFCC
+12384    TAPE_LOAD_BASIC_vec  
+12385    FFCF  4C 0A F7       JMP F_TAPE_LOAD_BASIC    ; FFCF
+12386    TAPE_VERIFY_BASIC_vec
+12387    FFD2  4C 4E F6       JMP F_TAPE_VERIFY_BASIC  ; FFD2
 12388    
-12389    ; AY Soundcard vectors.
-12390      
-12391    AY_Userwrite_vec           ; FFD5
-12392    FFD5  4C FC FA       JMP AY_Userwrite
-12393    AY_Userread_vec            ; FFD8
-12394    FFD8  4C 06 FB       JMP AY_Userread
-12395    
+12389    
+12390    ; AY Soundcard vectors.
+12391      
+12392    AY_Userwrite_vec           ; FFD5
+12393    FFD5  4C FD FA       JMP AY_Userwrite
+12394    AY_Userread_vec            ; FFD8
+12395    FFD8  4C 07 FB       JMP AY_Userread
 12396    
-12397    ; IRQ Handler Subsystem vectors
-12398      
-12399    IRQH_Handler_Init_vec	   ; FFDB
-12400    FFDB  4C 13 FB       JMP IRQH_Handler_Init_F
-12401    IRQH_SetIRQ_vec		   ; FFDE
-12402    FFDE  4C 47 FB       JMP IRQH_SetIRQ_F
-12403    IRQH_ClrIRQ_vec		   ; FFE1
-12404    FFE1  4C 5A FB       JMP IRQH_ClrIRQ_F
-12405    IRQH_SystemReport_vec	   ; FFE4
-12406    FFE4  4C A1 FB       JMP IRQH_SystemReport_F
-12407      
-12408    ; Timer System vectors
-12409    
-12410    INIT_COUNTDOWN_IRQ_vec	   ; FFE7
-12411    FFE7  4C A8 FB       JMP INIT_COUNTDOWN_IRQ
-12412      
-12413    
-12414    ; Processor hardware vectors.  These are fixed in hardware and cannot be moved.
-12415    
-12416    FFFA                 *= $FFFA
-12417    
-12418      .word NMI_vec                ; NMI vector
-12419      .word RES_vec                ; RESET vector
-12420      .word IRQ_vec                ; IRQ vector
-12421    
+12397    
+12398    ; IRQ Handler Subsystem vectors
+12399      
+12400    IRQH_Handler_Init_vec	   ; FFDB
+12401    FFDB  4C 14 FB       JMP IRQH_Handler_Init_F
+12402    IRQH_SetIRQ_vec		   ; FFDE
+12403    FFDE  4C 48 FB       JMP IRQH_SetIRQ_F
+12404    IRQH_ClrIRQ_vec		   ; FFE1
+12405    FFE1  4C 5B FB       JMP IRQH_ClrIRQ_F
+12406    IRQH_SystemReport_vec	   ; FFE4
+12407    FFE4  4C A2 FB       JMP IRQH_SystemReport_F
+12408      
+12409    ; Timer System vectors
+12410    
+12411    INIT_COUNTDOWN_IRQ_vec	   ; FFE7
+12412    FFE7  4C A9 FB       JMP INIT_COUNTDOWN_IRQ
+12413      
+12414    
+12415    ; Processor hardware vectors.  These are fixed in hardware and cannot be moved.
+12416    
+12417    FFFA                 *= $FFFA
+12418    
+12419      .word NMI_vec                ; NMI vector
+12420      .word RES_vec                ; RESET vector
+12421      .word IRQ_vec                ; IRQ vector
 12422    
 12423    
+12424    
