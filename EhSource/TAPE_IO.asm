@@ -108,7 +108,9 @@ V_TAPE_bitcycles		= V_TAPE_Bitlength + 1		; Number of cycles to a bit variable
 
 V_TAPE_Verify_Status		= V_TAPE_bitcycles + 1		; Status register for the F_TAPE_Verify function.
 V_TAPE_Fname_Buffer		= V_TAPE_Verify_Status + 1	; Filename Buffer for null terminated filename.
-
+V_TAPE_LOADSAVE_Type		= V_TAPE_Fname_Buffer + 17	; LOAD or SAVE type being currently handled.
+V_TAPE_Address_Buff		= V_TAPE_LOADSAVE_Type + 1	; Address for LOAD and SAVE operations.
+V_TAPE_Size_Buff		= V_TAPE_Address_Buff + 2
 
 ; Some more handy constants
 
@@ -120,7 +122,7 @@ C_TAPE_HeaderSize		= TAPE_Header_End - TAPE_Header_Buffer + 1
 
 
 
-; Next is $943.
+; Next is $946.
 
 ; +-------------------------------------------------------------------------------------------+
 ; +                                                                                           +
@@ -133,19 +135,18 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System",$0D,$0A
-  .BYTE "V2.11",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.3",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
 
-  .BYTE $D,$A
   .BYTE "Ready",$D,$A,0
   
   
 TMSG_Saving
 
   .BYTE $D,$A
-  .BYTE "Saving ",0
+  .BYTE "Saving ",$D,$A,0
   
   
 TMSG_Searching
@@ -488,58 +489,127 @@ TAPE_NameToBuffer_B
 ; Print Filename in header
 
 F_TAPE_PrintFname_in_Header
+  LDA #34
+  JSR V_OUTP
   LDA #<TAPE_FileName				; Print our Filename in the header space
   STA TOE_MemptrLo
   LDA #>TAPE_FileName 
   STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec  
+  JSR TOE_PrintStr_vec
+  LDA #34
+  JSR V_OUTP
   RTS
   
 
-; Saves A BASIC program.  Meant to be called from within BASIC
+; Saves A BASIC program or binary block.  Meant to be called from within BASIC
 ;
 
 F_TAPE_SAVE_BASIC
 
-  JSR F_TAPE_GetName
-  JSR F_TAPE_Fname_Buf_to_Header			; Put it in the header
+  JSR F_TAPE_GetName					; Get the filename from the command stream
+  JSR F_TAPE_Fname_Buf_to_Header			; and put it in the header.
   
   JSR F_TAPE_WriteHeaderID				; Include the Header ID 'HEAD'
+
+  LDA #C_TAPE_FType_BASIC				; Initially set the type to BASIC.  Depending on following params, this may get changed.
+  STA V_TAPE_LOADSAVE_Type
   
+  LDA #<Ram_base					; Store the BASIC load address to our buffer too.
+  STA V_TAPE_Address_Buff				; This also might get changed.
+  LDA #>Ram_base
+  STA V_TAPE_Address_Buff + 1
+  
+  JSR F_TAPE_GetBASIC_Size				; Find out how big our BASIC program is.
+  
+  LDA V_TAPE_BlockSize					; Transfer it to the size buffer.
+  STA V_TAPE_Size_Buff
+  LDA V_TAPE_BlockSize + 1
+  STA V_TAPE_Size_Buff + 1
+  
+  
+  
+  JSR LAB_GBYT						; Find out if we have extra parameters or not,
+  							; firstly checking if we have a null.
+  BEQ B_TAPE_SAVE					; If we have null, we can continue as SAVEing BASIC otherwise it's binary.
+  
+
+; BINARY case.
+  
+  JSR   LAB_EVNM					; evaluate expression and check is numeric,
+							; else do type mismatch
+  JSR   LAB_F2FX					; save integer part of FAC1 in temporary integer
+
+  JSR   LAB_1C01					; scan for "," , else do syntax error then warm start
+      							
+  LDA   Itempl						; save our specified base address
+  STA V_TAPE_Address_Buff
+  LDA   Itemph
+  STA V_TAPE_Address_Buff + 1
+  
+  JSR   LAB_EVNM					; Get and store our binary file size
+  							; If this parameter is missing you will get a Syntax Error.
+  JSR   LAB_F2FX					; save integer part of FAC1 in temporary integer
+  
+  JSR LAB_GBYT						; FINDME:- Loose the comma ready for the next paramter.
+  							; This may not be necessary or right.
+  
+  LDA Itempl						; Replace the size in the buffer with the one from BASIC
+  STA V_TAPE_Size_Buff
+  LDA Itemph
+  STA V_TAPE_Size_Buff + 1
+  
+  LDA #C_TAPE_FType_BINARY				; Set the type to BINARY
+  STA V_TAPE_LOADSAVE_Type
+  
+  ; NOTE:- By this point, the address and size buffers should contain correct parameters alongside the file type info.
+  
+  
+; Now do the SAVE
+
+; By this point the Address and size are stored in their relevant buffers.
+
+B_TAPE_SAVE
+
   LDA #<TMSG_Saving					; Tell the user that we are saving.
   STA TOE_MemptrLo
   LDA #>TMSG_Saving
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
   
-  JSR F_TAPE_PrintFname_in_Header			; Print our filename.
+  JSR F_TAPE_PrintFname_in_Header			; Print our "Filename".
 
-  JSR F_TAPE_GetBASIC_Size				; Measure our program
+
+; Provide the necessary parameters for the F_TAPE_CalcChecksum to work
   
-  LDA V_TAPE_BlockSize					; Save our program size to the header
+  LDA V_TAPE_Size_Buff					; Save our program size to the header and to V_TAPE_BlockSize
   STA TAPE_FileSizeLo
-  LDA V_TAPE_BlockSize + 1
-  STA TAPE_FileSizeHi
+  STA V_TAPE_BlockSize
+  LDA V_TAPE_Size_Buff + 1
+  STA TAPE_FileSizeHi  
+  STA V_TAPE_BlockSize + 1
   
-  LDA #<Ram_base					; Get our starting pointer for calculating our checksum loaded.
+  LDA V_TAPE_Address_Buff				; Get our starting pointer for calculating our checksum loaded.
   STA TAPE_BlockLo
-  LDA #>Ram_base
+  LDA V_TAPE_Address_Buff + 1
   STA TAPE_BlockHi
   
   JSR F_TAPE_CalcChecksum				; Get our checksum value
 
-  LDA TAPE_CS_AccLo					; Store our calculated Checksum
+  LDA TAPE_CS_AccLo					; Store our calculated Checksum in the header structure.
   STA TAPE_ChecksumLo
   LDA TAPE_CS_AccHi
   STA TAPE_ChecksumHi
   
-  LDA #<Ram_base					; Include the start of basic to the load address in the header
-  STA TAPE_LoadAddrLo
-  LDA #>Ram_base
+  LDA V_TAPE_Address_Buff				; Include the LOAD address in the header.  It remains to be seen how we establish
+  STA TAPE_LoadAddrLo					; Load to SAVE'd address implied by the header.
+  LDA V_TAPE_Address_Buff + 1
   STA TAPE_LoadAddrHi
   
-  LDA #C_TAPE_FType_BASIC				; Setup the file type in the header to BASIC
+  LDA V_TAPE_LOADSAVE_Type				; Setup the file type in the header too.
   STA TAPE_FileType
+  
+  
+  ; Setup for F_TAPE_BlockOut to write the header to tape and then write it out.
   
   LDA #<TAPE_Header_Buffer				; Setup our block pointer to the start of the header
   STA TAPE_BlockLo
@@ -553,9 +623,13 @@ F_TAPE_SAVE_BASIC
   
   JSR F_TAPE_BlockOut					; Write our block to tape
   
+  
+  ; Include a decent pause between the header and the main block.
+  
   LDX #<C_TAPE_Interblock_pause				; Wait a little before writing the actual program data block.
   LDY #>C_TAPE_Interblock_pause
   JSR F_TAPE_Pause
+  
   
   LDA TAPE_LoadAddrLo					; Transfer our start address to our Block pointer
   STA TAPE_BlockLo
@@ -580,6 +654,47 @@ F_TAPE_VERIFY_BASIC
 
   JSR F_TAPE_GetName					; Get the filename string into our buffer
 
+  ; Initial BASIC case.
+
+  LDA #<Ram_base					; Store the BASIC load address to our buffer too.
+  STA V_TAPE_Address_Buff				; This also might get changed.
+  LDA #>Ram_base
+  STA V_TAPE_Address_Buff + 1
+  
+  JSR F_TAPE_GetBASIC_Size				; Get our BASIC size.
+  
+  LDA V_TAPE_BlockSize					; Transfer it to the size buffer.
+  STA V_TAPE_Size_Buff
+  LDA V_TAPE_BlockSize + 1
+  STA V_TAPE_Size_Buff + 1
+  
+  LDA #C_TAPE_FType_BASIC				; Set the type to BASIC
+  STA V_TAPE_LOADSAVE_Type
+
+
+  ; Identify if we are dealing with binary by it's extra parameters.
+   
+  JSR LAB_GBYT						; Find out if we have extra parameters or not,
+  							; firstly checking if we have a null.
+  BEQ TAPE_VERIFY_Searching_B				; If we have null, we can continue as SAVEing BASIC otherwise it's binary.
+  
+  ; BINARY case.
+  
+  JSR   LAB_EVNM					; evaluate expression and check is numeric,
+							; else do type mismatch
+  JSR   LAB_F2FX					; save integer part of FAC1 in temporary integer
+    							
+  LDA   Itempl						; save our specified base address
+  STA V_TAPE_Address_Buff
+  LDA   Itemph
+  STA V_TAPE_Address_Buff + 1
+  
+  LDA #C_TAPE_FType_BINARY				; Set the type to BINARY
+  STA V_TAPE_LOADSAVE_Type
+  
+  
+  ; Now go verify!
+  
 TAPE_VERIFY_Searching_B
 
   LDA #<TMSG_Searching					; Tell the user that we are searching.
@@ -602,6 +717,7 @@ TAPE_VERIFY_Header_B
   
   JSR F_TAPE_BlockIn					; Load the header block.
   
+  CMP #TAPE_BlockIn_Escape
   BNE TAPE_BlockIn_EscNotPressed_B
   JMP TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
 
@@ -611,7 +727,7 @@ TAPE_BlockIn_EscNotPressed_B
   BCC TAPE_VERIFY_Header_B
 
   CMP #TAPE_Verify_Error
-  BNE TAPE_BASVERIFY_Fname_Check
+  BNE TAPE_VERIFY_Fname_Check
 
   LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
   STA TOE_MemptrLo
@@ -622,18 +738,34 @@ TAPE_BlockIn_EscNotPressed_B
   JMP TAPE_VERIFY_Header_B				; Keep coming back until the header is read valid or the user presses escape
 
 
-TAPE_BASVERIFY_Fname_Check
+TAPE_VERIFY_Fname_Check
   JSR F_TAPE_PrintFound
   
   JSR F_TAPE_CompareFileNames
   BCC TAPE_VERIFY_Header_B
   
-  LDA TAPE_FileType					; We're only interested in verifying BASIC files.
+  LDA TAPE_FileType					; We're only interested in verifying the right type of file.
+  CMP V_TAPE_LOADSAVE_Type
   BNE TAPE_VERIFY_Header_B
   
-TAPE_BASIC_Verify_Stage
+TAPE_Verify_Stage
 
-  JSR F_TAPE_GetBASIC_Size				; Put our BASIC program size into V_TAPE_BlockSize.
+  LDA TAPE_FileSizeLo					; Put our file size into V_TAPE_BlockSize.
+  STA V_TAPE_BlockSize
+  LDA TAPE_FileSizeHi
+  STA V_TAPE_BlockSize + 1
+
+  LDA V_TAPE_LOADSAVE_Type
+  CMP #C_TAPE_FType_BINARY
+  
+  BEQ B_TAPE_Verify_SkipBASIC_Sizing
+
+  LDA V_TAPE_Size_Buff					; Put our measured BASIC size into V_TAPE_BlockSize
+  STA V_TAPE_BlockSize
+  LDA V_TAPE_Size_Buff + 1
+  STA V_TAPE_BlockSize + 1
+
+B_TAPE_Verify_SkipBASIC_Sizing
 
   LDA TAPE_FileSizeLo					; Check our file is the same size as our stored program.
   CMP V_TAPE_BlockSize
@@ -647,9 +779,9 @@ TAPE_BASIC_Verify_Stage
   LDA TAPE_FileSizeHi
   STA V_TAPE_BlockSize + 1
   
-  LDA #<Ram_base					; Tell the system where to start verifying the BASIC program,
-  STA TAPE_BlockLo					; this should point to Ram_base.
-  LDA #>Ram_base
+  LDA V_TAPE_Address_Buff				; Tell the system where to start verifying the data,
+  STA TAPE_BlockLo					; this should point to Ram_base for BASIC or as specified for binary.
+  LDA V_TAPE_Address_Buff + 1
   STA TAPE_BlockHi
   
   LDA #<TMSG_Verifying					; Tell the user that we are verifying.
@@ -658,14 +790,14 @@ TAPE_BASIC_Verify_Stage
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec 
     
-  JSR F_TAPE_VerifyBlock				; Verify the BASIC program.
+  JSR F_TAPE_VerifyBlock				; Verify the data in memory against the block on tape.
 
-  LDA V_TAPE_Verify_Status				; Branch on non load conditions
+  LDA V_TAPE_Verify_Status				; Check our status
   CMP #TAPE_Verify_Escape
   BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
   
   CMP #TAPE_Verify_Error				; Check if verify passed or not.
-  BNE TAPE_BASIC_Verify_OK
+  BNE TAPE_Verify_OK
   
 TAPE_Verify_Error_B  
   LDA #<TMSG_VerifyError				; Inform the user of the verification error.
@@ -675,14 +807,14 @@ TAPE_Verify_Error_B
   JSR TOE_PrintStr_vec
   RTS
   
-TAPE_BASIC_Verify_OK
+TAPE_Verify_OK
   LDA #<TMSG_Verified					; Inform the user of verification success.
   STA TOE_MemptrLo
   LDA #>TMSG_Verified
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
 
-TAPE_BASIC_Verify_Done  
+TAPE_Verify_Done  
   RTS
   
 
@@ -716,6 +848,45 @@ TAPE_BlockIn_EscHandler
 F_TAPE_LOAD_BASIC
 
   JSR F_TAPE_GetName					; Get the filename string into our buffer
+  
+  LDA #C_TAPE_FType_BASIC				; Initially set the type to BASIC
+  STA V_TAPE_LOADSAVE_Type
+  
+  LDA #<Ram_base					; Store the BASIC load address to our buffer too.
+  STA V_TAPE_Address_Buff
+  LDA #>Ram_base
+  STA V_TAPE_Address_Buff + 1
+
+
+  JSR LAB_GBYT						; Find out if we have extra parameters or not.						; Firstly checking if we have a null.
+  BEQ TAPE_LOAD_Header_B				; Since we have nothing, we can continue as LOADing BASIC
+  
+
+; Handle BINARY case.
+  
+  JSR   LAB_EVNM					; evaluate expression and check is numeric,
+							; else do type mismatch
+  JSR   LAB_F2FX					; save integer part of FAC1 in temporary integer
+
+; These next two lines are not needed for LOADs to memory, only SAVEs from memory.
+
+							; scan for "," and get byte, else do Syntax error then warm start
+
+      							; JSR   LAB_1C01          ; scan for "," , else do syntax error then warm start
+      							
+
+; Setup for a binary LOAD
+      							
+  LDA   Itempl						; save our specified base address
+  STA V_TAPE_Address_Buff
+  LDA   Itemph
+  STA V_TAPE_Address_Buff + 1
+  
+  LDA #C_TAPE_FType_BINARY				; Set the type to BINARY
+  STA V_TAPE_LOADSAVE_Type
+
+
+; Handle the Header
 
 TAPE_LOAD_Header_B  
 
@@ -763,7 +934,8 @@ TAPE_BASLOAD_Fname_Check
   JSR F_TAPE_CompareFileNames				; Check if our file is the right name
   BCC TAPE_LOAD_Header_B
   
-  LDA TAPE_FileType					; We're only interested in loading BASIC files.
+  LDA TAPE_FileType					; We're only interested in loading the appropriate file type.
+  CMP V_TAPE_LOADSAVE_Type
   BNE TAPE_LOAD_Header_B
 
 TAPE_BASIC_Load_Stage
@@ -772,9 +944,9 @@ TAPE_BASIC_Load_Stage
   LDA TAPE_FileSizeHi
   STA V_TAPE_BlockSize + 1
   
-  LDA #<Ram_base					; Tell the system where to load the BASIC program. This should point to Ram_base
+  LDA V_TAPE_Address_Buff				; Tell the system where to load to. This should point to Ram_base for BASIC
   STA TAPE_BlockLo
-  LDA #>Ram_base
+  LDA V_TAPE_Address_Buff + 1
   STA TAPE_BlockHi
   
   LDA #<TMSG_Loading					; Tell the user that we are loading.
@@ -783,7 +955,7 @@ TAPE_BASIC_Load_Stage
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
   
-  JSR F_TAPE_BlockIn					; Load the BASIC program.
+  JSR F_TAPE_BlockIn					; Load the code block that follows
   
   LDA TAPE_BlockIn_Status				; Branch on non load conditions
   CMP #TAPE_BlockIn_Escape
@@ -795,17 +967,12 @@ TAPE_Skip_EscHandler_B
   CMP #TAPE_BlockIn_Complete
   BEQ TAPE_BASIC_LoadingDone
 
-  LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
-  STA TOE_MemptrLo
-  LDA #>TMSG_HeaderError
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
   JMP TAPE_BlockIn_LoadErr
   
 TAPE_BASIC_LoadingDone  
-  LDA #<Ram_base					; Setup our pointer to the start of BASIC Program memory
+  LDA V_TAPE_Address_Buff				; Setup our pointer to the start of our LOADed memory
   STA TAPE_BlockLo
-  LDA #>Ram_base
+  LDA V_TAPE_Address_Buff + 1
   STA TAPE_BlockHi
 
   JSR F_TAPE_CalcChecksum				; Get our checksum value into TAPE_CS_Acc_Lo and Hi
@@ -818,14 +985,21 @@ TAPE_BASIC_LoadingDone
   CMP TAPE_CS_AccHi
   BNE TAPE_CS_Fail
 
-  LDA #<TMSG_Ready					; Inform the user they are back in immediate mode.
+TAPE_BASICload_exit
+
+  LDA V_TAPE_LOADSAVE_Type
+  CMP #C_TAPE_FType_BASIC
+  BEQ B_Setup_NEWBASIC_Prog
+  RTS
+  
+B_Setup_NEWBASIC_Prog
+
+  LDA #<TMSG_Ready					; Tell the user that we are saving.
   STA TOE_MemptrLo
   LDA #>TMSG_Ready
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
-
-TAPE_BASICload_exit
-
+    
   LDA TAPE_BlockLo					; Return the system to a useable state
   STA Svarl
   STA Sarryl
@@ -905,6 +1079,8 @@ CS_No_Y_update
   
   RTS
 
+
+; Calculate the size of the BASIC program and store it in V_TAPE_BlockSize
 
 F_TAPE_GetBASIC_Size
 
@@ -1097,22 +1273,23 @@ L_TAPE_BlockOut
   STA TAPE_BlockLo
   LDA TAPE_BlockHi
   ADC #0
-  STA TAPE_BlockHi
+  STA TAPE_BlockHi  
 
-TAPE_BlockOut_DecCounter
-  DEX
-  CPX #$FF
-  BNE TAPE_BlockOut_CheckZero_B
-  DEY
   
 TAPE_BlockOut_CheckZero_B
   CPY #0
-  BNE L_TAPE_BlockOut
+  BNE B_TAPE_BlockOut_Decrement
   CPX #0
-  BNE L_TAPE_BlockOut
+  BNE B_TAPE_BlockOut_Decrement
 
-TAPE_BlockOut_Finish  
   RTS
+
+B_TAPE_BlockOut_Decrement
+  DEX
+  CPX #$FF
+  BNE L_TAPE_BlockOut
+  DEY
+  BRA L_TAPE_BlockOut
   
 
 ;===============================================================================================  
