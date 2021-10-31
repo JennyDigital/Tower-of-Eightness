@@ -108,7 +108,7 @@ V_TAPE_bitcycles		= V_TAPE_Bitlength + 1		; Number of cycles to a bit variable
 
 V_TAPE_Verify_Status		= V_TAPE_bitcycles + 1		; Status register for the F_TAPE_Verify function.
 V_TAPE_Fname_Buffer		= V_TAPE_Verify_Status + 1	; Filename Buffer for null terminated filename.
-V_TAPE_LOADSAVE_Type		= V_TAPE_Fname_Buffer + 17	; LOAD or SAVE type being currently handled.
+V_TAPE_LOADSAVE_Type		= V_TAPE_Fname_Buffer + 18	; LOAD or SAVE type being currently handled.
 V_TAPE_Address_Buff		= V_TAPE_LOADSAVE_Type + 1	; Address for LOAD and SAVE operations.
 V_TAPE_Size_Buff		= V_TAPE_Address_Buff + 2
 
@@ -122,7 +122,7 @@ C_TAPE_HeaderSize		= TAPE_Header_End - TAPE_Header_Buffer + 1
 
 
 
-; Next is $946.
+; Next is $947.
 
 ; +-------------------------------------------------------------------------------------------+
 ; +                                                                                           +
@@ -135,7 +135,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System",$0D,$0A
-  .BYTE "V2.3",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.31",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
