@@ -1,0 +1,2 @@
+If your keyboard sips power at 300mA or less, or you use a switching 7805 replacement regulator, use this case, otherwise bet on the bigger one.  The bigger one was drawn with a newer version of FreeCAD too which might help if you plan on modifying it.
+

@@ -94,7 +94,7 @@ TAPE_FileSizeHi			= TAPE_FileSizeLo + 1		; High byte of the file size
 TAPE_LoadAddrLo			= TAPE_FileSizeHi + 1		; Low byte of the file load address
 TAPE_LoadAddrHi			= TAPE_LoadAddrLo + 1		; High byte of the file load address
 TAPE_FileName			= TAPE_LoadAddrHi + 1		; Null terminated filename field 17 bytes long.
-TAPE_ChecksumLo			= TAPE_FileName + 17		; Checksum Low byte
+TAPE_ChecksumLo			= TAPE_FileName + C_TAPE_Fname_BufferSize	; Checksum Low byte
 TAPE_ChecksumHi			= TAPE_ChecksumLo + 1		; Checksum High byte
 TAPE_Header_End			= TAPE_ChecksumHi		; End of header space
 
@@ -135,7 +135,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System",$0D,$0A
-  .BYTE "V2.31",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.36",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
@@ -146,17 +146,16 @@ TMSG_Ready
 TMSG_Saving
 
   .BYTE $D,$A
-  .BYTE "Saving ",$D,$A,0
+  .BYTE "Saving ",0
   
   
 TMSG_Searching
 
   .BYTE $D,$A
-  .BYTE "Searching...",$D,$A,0
+  .BYTE "Searching...",$D,$A,$A,0
 
 
 TMSG_Found
-  .BYTE $D,$A
   .BYTE "Found ",0 
 
 TMSG_Loading
@@ -417,7 +416,7 @@ TAPE_Fill_Null_L					; At this point, we're putting the null characters in
   STA V_TAPE_Fname_Buffer,Y
   TYA
   INY
-  CMP #16
+  CMP #C_TAPE_Fname_BufferSize-1
   BNE TAPE_Fill_Null_L
   
   RTS							; End of F_TAPE_Fill_Fname routine.
@@ -441,7 +440,7 @@ TAPE_Fname_BlankRest_B					; Fill out rest of header with zero's for checksum pu
   LDA #0
   STA TAPE_FileName,Y
   TYA
-  CMP #17
+  CMP #C_TAPE_Fname_BufferSize
   BEQ TAPE_Done_BlankRest_B
   INY
   BRA TAPE_Fname_BlankRest_B
@@ -453,8 +452,8 @@ TAPE_Done_BlankRest_B
 ; Get filename from command line into buffer.  Also handle errors.  This may not be the final thing.
 
 F_TAPE_GetName
-  JSR   LAB_EVEX					; evaluate string
-  JSR   LAB_EVST					; test it is a string
+  JSR LAB_EVEX						; evaluate string
+  JSR LAB_EVST						; test it is a string
   STA TAPE_temp2					; Store our string length for later
   
   LDA Dtypef						; Find out if it is a string and error if it isn't.  $FF=Str, $0=Numeric
@@ -535,20 +534,20 @@ F_TAPE_SAVE_BASIC
 
 ; BINARY case.
   
-  JSR   LAB_EVNM					; evaluate expression and check is numeric,
+  JSR LAB_EVNM						; evaluate expression and check is numeric,
 							; else do type mismatch
-  JSR   LAB_F2FX					; save integer part of FAC1 in temporary integer
+  JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
 
-  JSR   LAB_1C01					; scan for "," , else do syntax error then warm start
+  JSR LAB_1C01						; scan for "," , else do syntax error then warm start
       							
-  LDA   Itempl						; save our specified base address
+  LDA Itempl						; save our specified base address
   STA V_TAPE_Address_Buff
   LDA   Itemph
   STA V_TAPE_Address_Buff + 1
   
-  JSR   LAB_EVNM					; Get and store our binary file size
+  JSR LAB_EVNM						; Get and store our binary file size
   							; If this parameter is missing you will get a Syntax Error.
-  JSR   LAB_F2FX					; save integer part of FAC1 in temporary integer
+  JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
   
   JSR LAB_GBYT						; FINDME:- Loose the comma ready for the next paramter.
   							; This may not be necessary or right.
@@ -680,13 +679,13 @@ F_TAPE_VERIFY_BASIC
   
   ; BINARY case.
   
-  JSR   LAB_EVNM					; evaluate expression and check is numeric,
+  JSR LAB_EVNM						; evaluate expression and check is numeric,
 							; else do type mismatch
-  JSR   LAB_F2FX					; save integer part of FAC1 in temporary integer
+  JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
     							
-  LDA   Itempl						; save our specified base address
+  LDA Itempl						; save our specified base address
   STA V_TAPE_Address_Buff
-  LDA   Itemph
+  LDA Itemph
   STA V_TAPE_Address_Buff + 1
   
   LDA #C_TAPE_FType_BINARY				; Set the type to BINARY
@@ -817,7 +816,53 @@ TAPE_Verify_OK
 TAPE_Verify_Done  
   RTS
   
+F_TAPE_CAT
 
+  LDA #<TMSG_Searching					; Tell the user that we are searching.
+  STA TOE_MemptrLo
+  LDA #>TMSG_Searching
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+
+TAPE_CAT_Header_B
+
+  LDA #<TAPE_Header_Buffer				; Point to start of header buffer
+  STA TAPE_BlockLo
+  LDA #>TAPE_Header_Buffer
+  STA TAPE_BlockHi
+  
+  LDA #<C_TAPE_HeaderSize				; Specify how big our header is.
+  STA V_TAPE_BlockSize
+  LDA #>C_TAPE_HeaderSize
+  STA V_TAPE_BlockSize + 1
+  
+  JSR F_TAPE_BlockIn
+  CMP #TAPE_BlockIn_Escape
+  BEQ TAPE_CAT_Exit_B
+  
+  JSR F_TAPE_CheckHeaderID				; try again if not a valid header
+  BCC TAPE_CAT_Header_B
+
+  CMP #TAPE_BlockIn_Error
+  BNE TAPE_CAT_Fname_Report
+  
+  LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
+  STA TOE_MemptrLo
+  LDA #>TMSG_HeaderError
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+  
+  BRA TAPE_CAT_Header_B
+  
+
+TAPE_CAT_Fname_Report
+  JSR F_TAPE_PrintFound					; Tell the user what we found.
+  ;FINDMEFINDME
+  RTS
+  BRA TAPE_CAT_Header_B
+  
+TAPE_CAT_Exit_B
+  RTS
 
 
 
@@ -864,9 +909,9 @@ F_TAPE_LOAD_BASIC
 
 ; Handle BINARY case.
   
-  JSR   LAB_EVNM					; evaluate expression and check is numeric,
+  JSR LAB_EVNM						; evaluate expression and check is numeric,
 							; else do type mismatch
-  JSR   LAB_F2FX					; save integer part of FAC1 in temporary integer
+  JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
 
 ; These next two lines are not needed for LOADs to memory, only SAVEs from memory.
 
@@ -877,9 +922,9 @@ F_TAPE_LOAD_BASIC
 
 ; Setup for a binary LOAD
       							
-  LDA   Itempl						; save our specified base address
+  LDA Itempl						; save our specified base address
   STA V_TAPE_Address_Buff
-  LDA   Itemph
+  LDA Itemph
   STA V_TAPE_Address_Buff + 1
   
   LDA #C_TAPE_FType_BINARY				; Set the type to BINARY
@@ -1228,14 +1273,7 @@ TAPE_Nextbit
   JSR F_TAPE_BitGen
   LDA #0							; Generate fourth guard bit!
   JSR F_TAPE_BitGen
-;  LDA #0							; Generate fifth guard bit!
-;  JSR F_TAPE_BitGen
-;  LDA #0							; Generate sixth guard bit!
-;  JSR F_TAPE_BitGen
-;  LDA #0							; Generate seventh guard bit!
-;  JSR F_TAPE_BitGen
-;  LDA #0							; Generate EIGHTH guard bit!
-;  JSR F_TAPE_BitGen
+
   PLA
   
   PLP								; Restore IRQ status
@@ -1640,7 +1678,6 @@ TAPE_ByteCaptured
 ; Services that use the pulse decoded go here.
 
 TAPE_ContLoop
-  ; JSR TAPE_TestOutput					; Set our status
   JSR TAPE_PulseDecoder					; We gotta do something with these pulses right...?
 
   LDA TAPE_Demod_Status					; Update some variables

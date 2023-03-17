@@ -9,7 +9,7 @@ Location ;
 Device   g22v10 ;
 
 /* *************** INPUT PINS *********************/
-PIN   1 = PHI2                    ; /* Represents valid data on the bus  */ 
+PIN   1 = PHI2                   ; /* Represents valid data on the bus  */ 
 PIN   2 = A0                      ; /* Used to select between registers  */ 
 PIN   3 = RWB                     ; /* Read/!Write                       */ 
 PIN   4 = !SEL                    ; /* Don't do anything unless selected */ 

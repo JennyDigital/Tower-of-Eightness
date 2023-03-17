@@ -1,5 +1,5 @@
 
-; Enhanced BASIC to assemble under 6502 simulator, $ver 2.22p5
+; Enhanced BASIC to assemble under 6502 simulator, $ver 2.22p5 EL1
 
 ; $E7E1 $E7CF $E7C6 $E7D3 $E7D1 $E7D5 $E7CF $E81E $E825
 
@@ -40,6 +40,18 @@
 ;      5.5     garbage collection may cause an overlap with temporary strings
 ;      5.6     floating point multiply rounding bug
 ;      5.7     VAL() may cause string variables to be trashed
+
+; Tower of Eightness additions:-
+;
+;      LOCATE command. Moves the text cursor on the ANSI display to x,y coordinate.
+;      CLS command. Clears the ANSI display.
+;      PLOT command. Sets/clears a pixel on the ANSI display.
+;      CAT command. Displays the contents of (at present TowerTAPE only) currently selected file system.
+;      LOAD and SAVE have real functionality.
+;      VERIFY command.  Have you ever lost data?  HAVE YOU!!?  Let's be sure things are right before moving on.
+;      SOUND command. Plays a sound on the AY until stopped.
+;      ENVELOPE command. Defines period and mode of AY volume modulation.
+
 
 ; zero page use ..
 
@@ -362,11 +374,17 @@ TK_BITCLR         = TK_BITSET+1     ; BITCLR token
 TK_IRQ            = TK_BITCLR+1     ; IRQ token
 TK_NMI            = TK_IRQ+1        ; NMI token
 TK_VERIFY         = TK_NMI+1        ; VERIFY token
+TK_CAT            = TK_VERIFY+1     ; CAT token
+TK_CLS            = TK_CAT+1        ; CLS token
+TK_LOCATE         = TK_CLS+1        ; LOCATE token
+TK_PLOT           = TK_LOCATE+1     ; PLOT token
+TK_SOUND          = TK_PLOT+1       ; SOUND token
+TK_ENVELOPE       = TK_SOUND+1      ; ENVELOPE token
 
 
 ; secondary command tokens, can't start a statement
 
-TK_TAB            = TK_VERIFY+1     ; TAB token
+TK_TAB            = TK_ENVELOPE+1   ; TAB token
 TK_ELSE           = TK_TAB+1        ; ELSE token
 TK_TO             = TK_ELSE+1       ; TO token
 TK_FN             = TK_TO+1         ; FN token
@@ -455,19 +473,28 @@ VEC_CC            = ccnull+1  ; ctrl c check vector
 ; end bulk initialize from PG2_TABS at LAB_COLD
 
 ; the following locations are bulk initialized by min_mon.asm from LAB_vec at LAB_stlp
-VEC_IN            = VEC_CC+2  ; input vector
-VEC_OUT           = VEC_IN+2  ; output vector
-VEC_LD            = VEC_OUT+2 ; load vector
-VEC_SV            = VEC_LD+2  ; save vector
-VEC_VERIFY        = VEC_SV+2  ; verify vector
+VEC_IN            = VEC_CC+2		; input vector
+VEC_OUT           = VEC_IN+2		; output vector
+VEC_LD            = VEC_OUT+2		; load vector
+VEC_SV            = VEC_LD+2		; save vector
+VEC_VERIFY        = VEC_SV+2		; verify vector
+VEC_CAT           = VEC_VERIFY+2	; cat vector
 ; end bulk initialize by min_mon.asm from LAB_vec at LAB_stlp
 
 ; Ibuffs can now be anywhere in RAM, ensure that the max length is < $80,
 ; the input buffer must not cross a page boundary and must not overlap with
 ; program RAM pages!
 
-; FINDME
+; FINDME_LOWRAM
+
+; $5D0-$5DF for I2C
+; $5E0-$5EF for ToE_Mon
+; $5F2-$7FF for TPB bus card
+; $800-$8FF unallocated
 ; $900-$AFF Allocated to the cassette file system.  This is probably generous.
+; $A00-$A1F reserved for the AY card
+; $A20-$A49 Countdown timer IRQ memory
+; $A4A-$AFF unallocated
 
 ;Ibuffs            = IRQ_vec+$14
 Ibuffs            = $B00       ; TODO: Create a method of allocation controlled from an
@@ -1032,6 +1059,7 @@ LAB_1359
       BNE   LAB_1374          ; branch if not empty
 
 ; next two lines ignore any non print character and [SPACE] if input buffer empty
+; FINDME_INPUTMOD
 
       CMP   #$21              ; compare with [SP]+1
       BCC   LAB_1359          ; if < ignore character
@@ -7917,11 +7945,13 @@ V_INPT
 V_OUTP
       JMP   (VEC_OUT)         ; send byte to output device
 V_LOAD
-      JMP   (VEC_LD)          ; load BASIC program
+      JMP   (VEC_LD)          ; load tape file
 V_SAVE
-      JMP   (VEC_SV)          ; save BASIC program
+      JMP   (VEC_SV)          ; save tape file
 V_VERIFY
-      JMP   (VEC_VERIFY)
+      JMP   (VEC_VERIFY)      ; verify tape file
+V_CAT 
+      JMP   (VEC_CAT)         ; catalogue tape files
 
 ; The rest are tables messages and code for RAM
 
@@ -8006,7 +8036,7 @@ LAB_MSZM
 
 LAB_SMSG
       .byte " Bytes free",$0D,$0A,$0A
-      .byte "Enhanced BASIC 2.22p5",$0A,$00
+      .byte "Enhanced BASIC 2.22p5 EL2",$0A,$00
 
 ; numeric constants and series
 
@@ -8168,7 +8198,14 @@ LAB_CTBL
       .word LAB_BITCLR-1      ; BITCLR          new command
       .word LAB_IRQ-1         ; IRQ             new command
       .word LAB_NMI-1         ; NMI             new command
-      .word TAPE_VERIFY_BASIC_vec-1      ; VERIFY          new command
+      .word V_VERIFY-1        ; VERIFY          new command
+      .word V_CAT-1           ; CAT             new command
+      .word MON_CLS-1         ; CLS             new command
+      .word XTRA_LOCATE_F-1   ; LOCATE          new command
+      .word XTRA_PLOT_F-1     ; PLOT            new command
+      .word AY_SOUND-1        ; SOUND           new command
+      .word AY_ENVELOPE-1     ; ENVELOPE        new command
+      
 
 ; function pre process routine table
 
@@ -8400,10 +8437,14 @@ LBB_BITTST
                               ; BITTST(
       .byte $00
 TAB_ASCC
+LBB_CAT
+      .byte "AT",TK_CAT       ; CAT
 LBB_CALL
       .byte "ALL",TK_CALL     ; CALL
 LBB_CHRS
       .byte "HR$(",TK_CHRS    ; CHR$(
+LBB_CLS
+      .byte "LS",TK_CLS       ; CLS
 LBB_CLEAR
       .byte "LEAR",TK_CLEAR   ; CLEAR
 LBB_CONT
@@ -8432,6 +8473,8 @@ LBB_ELSE
       .byte "LSE",TK_ELSE     ; ELSE
 LBB_END
       .byte "ND",TK_END       ; END
+LBB_ENVELOPE
+      .byte "NVELOPE", TK_ENVELOPE ; ENVELOPE
 LBB_EOR
       .byte "OR",TK_EOR       ; EOR
 LBB_EXP
@@ -8483,6 +8526,10 @@ LBB_LIST
       .byte "IST",TK_LIST     ; LIST
 LBB_LOAD
       .byte "OAD",TK_LOAD     ; LOAD
+; FINDME:-      
+LBB_LOCATE
+      .byte "OCATE",TK_LOCATE ; LOCATE
+      
 LBB_LOG
       .byte "OG(",TK_LOG      ; LOG(
 LBB_LOOP
@@ -8521,6 +8568,10 @@ LBB_PEEK
       .byte "EEK(",TK_PEEK    ; PEEK(
 LBB_PI
       .byte "I",TK_PI         ; PI
+
+LBB_PLOT
+      .byte "LOT",TK_PLOT     ; PLOT      
+      
 LBB_POKE
       .byte "OKE",TK_POKE     ; POKE
 LBB_POS
@@ -8559,6 +8610,8 @@ LBB_SGN
       .byte "GN(",TK_SGN      ; SGN(
 LBB_SIN
       .byte "IN(",TK_SIN      ; SIN(
+LBB_SOUND
+      .byte "OUND",TK_SOUND   ; SOUND
 LBB_SPC
       .byte "PC(",TK_SPC      ; SPC(
 LBB_SQR
@@ -8706,8 +8759,20 @@ LAB_KEYT
       .word LBB_IRQ           ; IRQ
       .byte 3,'N'
       .word LBB_NMI           ; NMI
-      .byte 7,'V'
+      .byte 6,'V'
       .word LBB_VERIFY        ; VERIFY
+      .byte 3,'C'
+      .word LBB_CAT           ; CAT
+      .byte 3,'C'
+      .word LBB_CLS           ; CLS
+      .byte 6,'L'
+      .word LBB_LOCATE        ; LOCATE
+      .byte 4,'P'
+      .word LBB_PLOT          ; PLOT
+      .byte 5,'S'
+      .word LBB_SOUND         ; SOUND
+      .byte 8,'E'
+      .word LBB_ENVELOPE      ; ENVELOPE
 
 
 ; secondary commands (can't start a statement)
@@ -8735,7 +8800,7 @@ LAB_KEYT
       .byte 3,'O'
       .word LBB_OFF           ; OFF
 
-; opperators
+; operators
 
       .byte 1,'+'
       .word $0000             ; +

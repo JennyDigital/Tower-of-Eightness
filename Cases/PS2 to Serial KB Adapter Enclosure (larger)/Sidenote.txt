@@ -1,0 +1,1 @@
+This is the bigger version.  Done this way to facilitate a larger heatsink for if your keyboard is somehow a power hog and you plump for the traditional linear regulator.  This one is also drawn with FreeCAD 20.2 which at the time of writing is quite new.

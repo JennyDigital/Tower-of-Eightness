@@ -1,0 +1,1 @@
+For many people, this board will be essential.  If you go for the Motherboard V3.1 with it's integral CPU, you won't also want this card.  It makes no sense to have two processors fighting for the same bus.  There is no bus arbitration.

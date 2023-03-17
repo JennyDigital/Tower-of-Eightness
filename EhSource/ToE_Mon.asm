@@ -12,9 +12,10 @@ NMI_vec		= IRQ_vec+$0A           ; NMI code vector
 
 ; OS System variables live here
 
-MON_sysvars   = $5E0			; base address of the 16 bytes of memory reserved
-os_outsel     = MON_sysvars		; output selection variable
-os_infilt     = os_outsel+1		; Filter switches for character input filtering.
+MON_sysvars	= $5E0			; base address of the 16 bytes of memory reserved
+os_outsel	= MON_sysvars		; output selection variable
+os_infilt	= os_outsel+1		; Filter switches for character input filtering.
+os_insel	= os_infilt+1		; Input source for BASIC inputs.
 
 TOE_MemptrLo  = $E7			; General purpose memory pointer low byte
 TOE_MemptrHi  = $E8			; General purpose memory pointer high byte
@@ -27,6 +28,14 @@ ANSI_out_sw	= @00000010
 TPB_out_sw	= @00000100
 ACIA2_out_sw	= @00001000
 TAPE_out_sw	= @00010000
+OS_input_ACIA1  = @00000001
+OS_input_ACIA2  = @00001000
+OS_input_TAPE   = @00010000
+
+
+; OS Constants
+
+MON_CR_Delay_C  = $1000
 
 
 ; now the code. This sets up the vectors, interrupt code,
@@ -36,7 +45,7 @@ TAPE_out_sw	= @00010000
 
   .ROM_AREA $C100,$FFFF
   
-  *= $F000                            ; Give ourselves room for the OS.
+  *= $EC00                              ; Give ourselves room for the OS. Formerly F000
   .INCLUDE "ACIA.asm"
   .INCLUDE "ANSICARD.asm"
   .INCLUDE "TPBCARD.asm"
@@ -44,6 +53,8 @@ TAPE_out_sw	= @00010000
   .INCLUDE "AY_DRIVER.asm"
   .INCLUDE "IRQ_Handler.asm"
   .INCLUDE "COUNTDOWN_IRQ.asm"
+  .INCLUDE "XTRA_BASIC.asm"             ; Extra's for EhBASIC.
+  .INCLUDE "I2C_Lib.asm"		; I2C Support
 
 
 ; reset vector points here
@@ -53,7 +64,6 @@ RES_vec
   CLD					; clear decimal mode
   LDX #$FF				; empty stack
   TXS					; set the stack
-
 
 ; Set up system timing function
 
@@ -71,10 +81,13 @@ RES_vec
   JSR TPB_delay
   
   LDA #ANSI_out_sw                    ; Set our default output options for ANSI output mode.
-;  LDA #ACIA_out_sw                   ; Set our default output options for ACIA output mode.
+;  LDA #ACIA1_out_sw                   ; Set our default output options for ACIA output mode.
   STA os_outsel                       ; to the ANSI card only.
   LDA #LF_filt_sw1
   STA os_infilt                       ; Switch on $A filtering on the ACIA.
+  
+  LDA #OS_input_ACIA1                 ; Specify input source as ACIA1
+  STA os_insel
   
   JSR INI_ACIA1                       ; Init ACIA1. We currently need this for the keyboard.
   JSR INI_ACIA2                       ; Init ACIA2. Just in case.
@@ -128,11 +141,12 @@ LAB_dowarm
 ; EhBASIC vector tables
 
 LAB_vec
-  .word ACIA1in                       ; byte in from ACIA1
+  .word RD_char                       ; byte in from Selected source
   .word WR_char                       ; byte out to ACIA1
   .word TAPE_LOAD_BASIC_vec           ; null load vector for EhBASIC
   .word TAPE_SAVE_BASIC_vec           ; save vector for EhBASIC
   .word TAPE_VERIFY_BASIC_vec         ; verify vector for EhBASIC
+  .word TAPE_CAT_vec                  ; cat vector for EhBASIC
   
 
 ; EhBASIC IRQ support
@@ -159,6 +173,48 @@ NMI_CODE
   RTI
 
 
+; ToE input BASIC stream support.
+
+RD_char
+
+  LDA os_insel                        ; Handle TAPE selected
+  BIT #OS_input_TAPE
+  BEQ INSEL_Check_ACIA1
+
+  JSR TAPE_ByteIn_vec                 ; Get a byte
+  
+  LDA TAPE_RX_Status                  ; Check if escape was pressed
+  BIT #TAPE_Stat_Escape
+  BNE INSEL_ResetSource
+  
+  LDA TAPE_ByteReceived
+  SEC
+  RTS
+  
+
+INSEL_Check_ACIA1
+  LDA os_insel                        ; Handle ACIA1 selected
+  BIT #OS_input_ACIA1
+  BEQ INSEL_Check_ACIA2
+  JSR ACIA1in
+  RTS
+
+INSEL_Check_ACIA2
+  LDA os_insel  
+  BIT #OS_input_ACIA2                 ; Handle ACIA2 selected
+  BEQ INSEL_ResetSource
+  JSR ACIA2in
+  RTS
+
+INSEL_ResetSource
+  LDA #OS_input_ACIA1                 ; Reset source
+  STA os_insel
+  
+  LDA #$C                             ; and send a ^C to interrupt program flow.
+  SEC
+  RTS
+  
+
 ; OS output stream management support.
 
 WR_char
@@ -180,7 +236,7 @@ no_ACIA1
   BIT os_outsel
   BEQ no_ACIA2
   PLA
-  JSR ACIA2out                         ; Print to ACIA1
+  JSR ACIA2out                         ; Print to ACIA2
   
   PHA
 no_ACIA2
@@ -204,7 +260,17 @@ no_TPB_LPT                            ; "Print" to the TAPE interface
   BIT os_outsel
   BEQ MON_EndWRITE_B                  ; Dont write to tape unless selected.
   PLA
+  PHA
   JSR TAPE_ByteOut_vec
+  PLA
+  CMP #13                             ; Do a little delay if CR is detected to allow the system to catch up on read.
+  BNE MON_SkipTapeDelay
+  
+  JSR MON_Do_CR_Delay
+  
+  
+  
+MON_SkipTapeDelay
   
   BRA MON_EndWRITE_B2
 
@@ -216,7 +282,7 @@ MON_EndWRITE_B2
   PLX
   PLP
   RTS
-  
+
   
 ; Tower string printing routine.
 TOE_PrintStr
@@ -230,13 +296,40 @@ TOE_PrintStr_L
 
 TOE_DonePrinting
   RTS
+
+; Tower CR delay for spooling routine.  
+MON_Do_CR_Delay
+  LDY #>MON_CR_Delay_C                          ; Get our delay value
+  LDX #<MON_CR_Delay_C
+  
+MON_CR_Delay_L                                  ; Iterate our delay on the counter.
+  NOP
+  NOP
+  NOP
+  NOP
+  DEX
+  BNE MON_CR_Delay_L                            ; Keep counting X down until 0
+  DEY
+  BNE MON_CR_Delay_L
+  
+  RTS
+  
+  
+MON_CLS
+  LDA #24					; Clear the screen to bold, 80 columns and text
+  JSR V_OUTP
+  LDA #3
+  JSR V_OUTP
+  LDA #12
+  JSR V_OUTP
+  RTS 
   
 END_CODE
 
 LAB_mess
                                       ; sign on string
 
-  .byte "Tower of Eightness OS 31.10.2021.3",$0D,$0A,$0D,$0A
+  .byte "Tower of Eightness OS 3.15.2023.1",$0D,$0A,$0D,$0A
   .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
 
 
@@ -247,13 +340,49 @@ LAB_mess
 
 TOE_PrintStr_vec
   JMP TOE_PrintStr         ; FF60
-
   
-; ... existing vectors continue from here.
+  
+; TAPE subsystem vectors
 
-  *= $FF90
+TAPE_Leader_vec
+  JMP F_TAPE_Leader        ; FF63
+TAPE_BlockOut_vec
+  JMP F_TAPE_BlockOut      ; FF66
+TAPE_ByteOut_vec
+  JMP F_TAPE_ByteOut       ; FF69
+TAPE_BlockIn_vec
+  JMP F_TAPE_BlockIn       ; FF6C
+TAPE_ByteIn_vec
+  JMP F_TAPE_GetByte       ; FF6F
+TAPE_init_vec
+  JMP F_TAPE_Init          ; FF72
+TAPE_CAT_vec  
+  JMP F_TAPE_CAT           ; FF75
+TAPE_SAVE_BASIC_vec
+  JMP F_TAPE_SAVE_BASIC    ; FF78
+TAPE_LOAD_BASIC_vec  
+  JMP F_TAPE_LOAD_BASIC    ; FF7B
+TAPE_VERIFY_BASIC_vec
+  JMP F_TAPE_VERIFY_BASIC  ; FF7E
+
+
+; I2C subsystem vectors
+
+I2C_Init_vec               ; FF81
+  JMP I2C_Init
+I2C_Start_vec              ; FF84
+  JMP I2C_Start
+I2C_Stop_vec               ; FF87
+  JMP I2C_Stop
+I2C_Out_vec                ; FF8A
+  JMP I2C_Out
+I2C_In_vec                 ; FF8D
+  JMP I2C_In
+; No gap between this and the next lot.
 
 ; ANSI Card vectors
+
+  *= $FF90
 
 ANSI_init_vec
   JMP ANSI_INIT            ; FF90
@@ -287,32 +416,15 @@ TPB_Ctrl_Blk_Wr_vec
   JMP TPB_Ctrl_Blk_Wr      ; FFB4
 TPB_Ctrl_Blk_Rd_vec
   JMP TPB_Ctrl_Blk_Rd      ; FFB7
-
-
-; TAPE subsystem vectors
-
-TAPE_Leader_vec
-  JMP F_TAPE_Leader        ; FFBA
-TAPE_BlockOut_vec
-  JMP F_TAPE_BlockOut      ; FFBD
-TAPE_ByteOut_vec
-  JMP F_TAPE_ByteOut       ; FFC0
-TAPE_BlockIn_vec
-  JMP F_TAPE_BlockIn       ; FFC3
-TAPE_ByteIn_vec
-  JMP F_TAPE_GetByte       ; FFC6
-TAPE_init_vec
-  JMP F_TAPE_Init          ; FFC9
-TAPE_SAVE_BASIC_vec  
-  JMP F_TAPE_SAVE_BASIC    ; FFCC
-TAPE_LOAD_BASIC_vec  
-  JMP F_TAPE_LOAD_BASIC    ; FFCF
-TAPE_VERIFY_BASIC_vec
-  JMP F_TAPE_VERIFY_BASIC  ; FFD2
-
-
-; AY Soundcard vectors.
   
+
+  *= $FFCF
+; AY Soundcard vectors.
+
+AY_Userwrite_16_vec        ; FFCF
+  JMP AY_Userwrite_16
+AY_Userread_16_vec         ; FFD2
+  JMP AY_Userread_16
 AY_Userwrite_vec           ; FFD5
   JMP AY_Userwrite
 AY_Userread_vec            ; FFD8

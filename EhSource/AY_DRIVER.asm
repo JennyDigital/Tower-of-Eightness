@@ -69,12 +69,15 @@ AY_PORTB_REG		= $F	; Not implemented for the AY-3-8912
 ; |IOB |IOA | C | B | A | C | B | A |
 ; +----+----+---+---+---+---+---+---+
 
+AY_bit_nIOB		= @10000000
+AY_bit_nIOA		= @01000000
 AY_bit_nNOISE_C		= @00100000
 AY_bit_nNOISE_B		= @00010000
 AY_bit_nNOISE_A		= @00001000
 AY_bit_nTONE_C		= @00000100
 AY_bit_nTONE_B		= @00000010
 AY_bit_nTONE_A		= @00000001
+AY_AllOff		= @11111111
 
 
 ; Table 2.  Envelope shape/cycle bitfield.
@@ -108,7 +111,14 @@ AY_LAT_ADDR		= AY_CTRL_bit_BC1 | AY_CTRL_bit_BDIR
 
 AY_Memstart		= $A00
 AY_Reg			= AY_Memstart
-AY_Data			= AY_Reg + 1
+AY_Data			= AY_Reg             + 1		; 16-bit reg for purposes of including double register accesses.
+AY_Mask			= AY_Data            + 2
+AY_Channel		= AY_Mask            + 1
+AY_Period		= AY_Channel         + 1
+AY_Volume		= AY_Period          + 2
+AY_Envelope_Period	= AY_Volume          + 1
+AY_Envelope_Mode 	= AY_Envelope_Period + 2
+
 
 
 ; AY_Initialisation routine.
@@ -117,8 +127,7 @@ AY_Init
   LDA #0
   STA AY_CTRLPORT	; Let's make our control port inactive first.
   LDA #AY_CTRL_dir
-  STA AY_DDR_CTRL
-  
+  STA AY_DDR_CTRL  
 
   LDX #$F		; Clear all the registers
 AY_Init_Loop
@@ -127,8 +136,71 @@ AY_Init_Loop
   JSR AY_wr_to_reg
   DEX
   BNE AY_Init_Loop
+
+  LDA #AY_NOT_ENABLE
+  JSR AY_wr_to_reg
+
+  LDA #AY_AllOff	; Set all our enable bits to disabled. Blissful quiet!
+  STA AY_Mask
+  LDX #AY_NOT_ENABLE
+  JSR AY_wr_to_reg
+    
+  RTS
+
+
+; Channel enable function (VERIFIED)
+
+AY_EnableCh
+  AND #7		; Get our channel selection, this includes noise.
+  
+  TAX			; Put our shift counter in X
+  LDA #1		; and set our enable bit to 1
+  
+  CLC
+AY_Enable_L		; Loop while X > 0
+  CPX #0
+  BEQ AY_Enable_B	; including 0 times for channel A (0)
+  
+  DEX			; Moving the 0
+  ASL
+  BRA AY_Enable_L
+
+AY_Enable_B
+  EOR #$FF		; Make sure our enable bit is 0
+  AND AY_Mask
+  STA AY_Mask
+  
+  LDX #AY_NOT_ENABLE
+  JSR AY_wr_to_reg
   RTS
   
+  
+; Channel disable function (VERIFIED)
+
+AY_DisableCh
+  AND #7		; Get our channel selection, this includes noise.
+  
+  TAX			; Put our shift counter in X
+  LDA #1		; and set our enable bit to 1
+  
+  CLC
+AY_Disable_L		; Loop while X > 0
+  CPX #0
+  BEQ AY_Disable_B	; including 0 times for channel A (0)
+  
+  DEX			; Moving the 0
+  ASL
+  BRA AY_Disable_L
+
+AY_Disable_B
+  ORA AY_Mask
+  STA AY_Mask
+  
+  LDX #AY_NOT_ENABLE
+  JSR AY_wr_to_reg
+  RTS
+
+
 
 ; AY register read-write primitives
 ;
@@ -161,8 +233,7 @@ AY_wr_data
     
   LDA #AY_WRITE
   STA AY_CTRLPORT
-  ;NOP
-  ;NOP
+
   LDA #AY_INACK		; And ensure the bus is an output.
   STA AY_CTRLPORT
   RTS
@@ -212,4 +283,165 @@ AY_Userread
   
   JSR AY_rd_data	; Get the contents of the register of interest.
   STA AY_Data
+  RTS
+  
+AY_Userwrite_16
+  LDA AY_Data
+  LDX AY_Reg
+  JSR AY_wr_to_reg
+  INX
+  LDA AY_Data + 1
+  JSR AY_wr_to_reg
+  RTS
+  
+AY_Userread_16
+  LDA AY_Reg		; Select our register of interest.
+  JSR AY_wr_reg
+  
+  JSR AY_rd_data	; Get the contents of the register of interest.
+  STA AY_Data
+  LDA AY_Reg		; Select our register of interest.
+
+  SEC
+  ADC #0
+  
+  JSR AY_wr_reg
+  
+  JSR AY_rd_data	; Get the contents of the register of interest.
+  STA AY_Data + 1
+  RTS
+  
+
+; *********************************************************************
+;
+;                       BASIC Extension commands
+;
+; *********************************************************************
+
+; Sound command for BASIC
+;
+; Format: SOUND channel,period,vol
+
+AY_SOUND
+
+; Get channel.
+
+  JSR LAB_EVNM					; evaluate expression and check is numeric,
+						; else do type mismatch
+  JSR LAB_F2FX					; save integer part of FAC1 in temporary integer
+  
+  LDA Itempl					; Get our channel parameter.
+  STA AY_Channel				; And save them for the future.
+
+  JSR LAB_1C01					; scan for "," , else do syntax error then warm start
+  
+  LDA AY_Channel				; Mug trap channel for over range values.
+  BIT #@11111000
+  BNE AY_Parameter_FCER_B
+  SEC
+  SBC #6
+  BPL AY_Parameter_FCER_B
+    
+
+; Get period.
+
+  JSR LAB_EVNM					; evaluate expression and check is numeric,
+						; else do type mismatch
+  JSR LAB_F2FX					; save integer part of FAC1 in temporary integer
+  
+  LDA Itempl
+  STA AY_Period
+  LDA Itemph
+  STA AY_Period + 1
+  
+  JSR LAB_1C01					; scan for "," , else do syntax error then warm start  
+  
+  
+; Get volume
+  
+  JSR LAB_EVNM					; evaluate expression and check is numeric,
+						; else do type mismatch
+  JSR LAB_F2FX					; save integer part of FAC1 in temporary integer
+  
+  LDA Itempl
+  STA AY_Volume
+  
+  
+; Enact upon sound parameters
+  
+  LDA AY_Channel				; Set our period
+  AND #7
+  CLC
+  ASL
+  TAX
+  
+  LDA AY_Period
+  JSR AY_wr_to_reg
+  INX
+  LDA AY_Period + 1
+  JSR AY_wr_to_reg
+  
+  LDA AY_Channel				; Set our volume
+  AND #7
+  CLC
+  ADC #8
+  TAX
+  LDA AY_Volume
+  JSR AY_wr_to_reg
+  
+  LDA AY_Channel
+  LDX AY_Volume
+  CPX #0
+  BNE AY_EnableCh_B
+  JSR AY_DisableCh
+  
+  RTS
+  
+AY_EnableCh_B
+  JSR AY_EnableCh
+  RTS
+ 
+AY_Parameter_FCER_B
+  JMP LAB_FCER  
+    
+
+; ENVELOPE command.
+;
+; Format ENVELOPE period, mode  
+
+
+AY_ENVELOPE
+
+; Get period.
+
+  JSR LAB_EVNM					; evaluate expression and check is numeric,
+						; else do type mismatch
+  JSR LAB_F2FX					; save integer part of FAC1 in temporary integer
+  
+  LDA Itempl
+  STA AY_Envelope_Period
+  LDA Itemph
+  STA AY_Envelope_Period + 1
+  
+  JSR LAB_1C01					; scan for "," , else do syntax error then warm start
+
+; Get mode
+  
+  JSR LAB_EVNM					; evaluate expression and check is numeric,
+						; else do type mismatch
+  JSR LAB_F2FX					; save integer part of FAC1 in temporary integer
+  
+  LDA Itempl
+  STA AY_Envelope_Mode
+  
+  LDX #AY_ENV_P_FINE
+  LDA AY_Envelope_Period
+  JSR AY_wr_to_reg
+  INX
+  LDA AY_Envelope_Period + 1
+  JSR AY_wr_to_reg
+  
+  LDA AY_Envelope_Mode
+  LDX #AY_ENV_SH_CYC
+  JSR AY_wr_to_reg
   RTS

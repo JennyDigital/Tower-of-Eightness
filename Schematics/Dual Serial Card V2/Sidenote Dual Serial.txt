@@ -1,0 +1,1 @@
+This is now the standard serial card as Tower OS has some builtin features for it and slots are at a premium.  TowerOS will still operate with a single ACIA and so will this card if you so desire, but two is definitely better than one in this case.

@@ -1,0 +1,1 @@
+Don't use this card any more.  It's been depreciated as the system clock has now been standardized at 4MHz and this won't work with more than 2MHz.  Also, the builtin commands to drive the AY are for the AY Soundcard V2 which has a different architecture.

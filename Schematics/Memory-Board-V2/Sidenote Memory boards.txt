@@ -1,0 +1,1 @@
+At the time of writing, eBay is awash with 62256 SRAMs that are 70ns and faster.  For reasons I haven't yet been able to fathom, the Tower of Eightness hates these faster SRAMs.  Fit the 100nS Hitachi ones and you'll be fine until a fix can be found.

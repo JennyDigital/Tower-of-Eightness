@@ -1,6 +1,6 @@
 These two ROM images are 16K in size and should be placed into either the upper half of a 32K (E)EPROM for the older non banked memory board, or the lower half for the banked board.
 
-If your tool does not allow for 16K into 32K devices, then just concatenate two copies into one 32K file and fill the whole chip.
+If your tool does not allow for 16K into 32K devices, or you just feel lazy, the full chip versions have been built to make life easier.
 
 
 To help you in building a ToE computer of your own, It may be easier to start off with just a serial terminal and so the ToE_ACIA.bin is built to default to the serial port.  Likewise the ToEVID.bin defaults to the ANSI Video card but doesn't output to the serial port until told to do so by setting bit 0 of $5E0 to 1.

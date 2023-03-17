@@ -9,7 +9,7 @@ Location  ;
 Device   g22v10 ;
 
 /* *************** INPUT PINS *********************/
-/* PIN   1 = !OSC                    can't remember why I needed this   */ 
+/* PIN   1 = !OSC                      can't remember why I needed this */ 
 PIN   2 = A8                      ; /*                                  */ 
 PIN   3 = A9                      ; /*                                  */ 
 PIN   4 = A10                     ; /*                                  */ 
