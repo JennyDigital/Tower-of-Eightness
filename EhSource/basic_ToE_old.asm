@@ -1,5 +1,5 @@
 
-; Enhanced BASIC to assemble under 6502 simulator, $ver 2.22p5 EL1
+; Enhanced BASIC to assemble under 6502 simulator, $ver 2.22p5
 
 ; $E7E1 $E7CF $E7C6 $E7D3 $E7D1 $E7D5 $E7CF $E81E $E825
 
@@ -40,23 +40,6 @@
 ;      5.5     garbage collection may cause an overlap with temporary strings
 ;      5.6     floating point multiply rounding bug
 ;      5.7     VAL() may cause string variables to be trashed
-
-; Tower of Eightness additions:-
-;
-;      LOCATE command. Moves the text cursor on the ANSI display to x,y coordinate.
-;      CLS command. Clears the ANSI display.
-;      PLOT command. Sets/clears a pixel on the ANSI display.
-;      CAT command. Displays the contents of (at present TowerTAPE only) currently selected file system.
-;      LOAD and SAVE have real functionality.
-;      VERIFY command.  Have you ever lost data?  HAVE YOU!!?  Let's be sure things are right before moving on.
-;      SOUND command. Plays a sound on the AY until stopped.
-;      ENVELOPE command. Defines period and mode of AY volume modulation.
-;      I2C_START command.  Sends a start (S) on the SPI engine.
-;      I2C_STOP command.  Sends a stop (P) on the SPI engine.
-;      I2C_OUT() function.  Sends out a value and returns the status.
-;      I2C_IN() functon.  Returns a value from the I2C engine taking either 0 (ACK) or 1 (NAK) as it's parameter.
-;      I2C_INIT command.  Initialises the I2C engine.  This is necessary because not everyone wants to use the pins for I2C.
-
 
 ; zero page use ..
 
@@ -378,21 +361,10 @@ TK_BITSET         = TK_SWAP+1       ; BITSET token
 TK_BITCLR         = TK_BITSET+1     ; BITCLR token
 TK_IRQ            = TK_BITCLR+1     ; IRQ token
 TK_NMI            = TK_IRQ+1        ; NMI token
-TK_VERIFY         = TK_NMI+1        ; VERIFY token
-TK_CAT            = TK_VERIFY+1     ; CAT token
-TK_CLS            = TK_CAT+1        ; CLS token
-TK_LOCATE         = TK_CLS+1        ; LOCATE token
-TK_PLOT           = TK_LOCATE+1     ; PLOT token
-TK_SOUND          = TK_PLOT+1       ; SOUND token
-TK_ENVELOPE       = TK_SOUND+1      ; ENVELOPE token
-TK_I2C_START      = TK_ENVELOPE+1   ; I2C_START token
-TK_I2C_STOP       = TK_I2C_START+1  ; I2C_STOP token
-TK_I2C_INIT       = TK_I2C_STOP+1   ; I2C_INIT token
-
 
 ; secondary command tokens, can't start a statement
 
-TK_TAB            = TK_I2C_INIT+1   ; TAB token
+TK_TAB            = TK_NMI+1        ; TAB token
 TK_ELSE           = TK_TAB+1        ; ELSE token
 TK_TO             = TK_ELSE+1       ; TO token
 TK_FN             = TK_TO+1         ; FN token
@@ -457,8 +429,6 @@ TK_VPTR           = TK_TWOPI+1      ; VARPTR token
 TK_LEFTS          = TK_VPTR+1       ; LEFT$ token
 TK_RIGHTS         = TK_LEFTS+1      ; RIGHT$ token
 TK_MIDS           = TK_RIGHTS+1     ; MID$ token
-TK_I2C_OUT        = TK_MIDS+1       ; I2C_OUT token
-TK_I2C_IN         = TK_I2C_OUT+1    ; I2C_IN token
 
 ; offsets from a base of X or Y
 
@@ -483,28 +453,18 @@ VEC_CC            = ccnull+1  ; ctrl c check vector
 ; end bulk initialize from PG2_TABS at LAB_COLD
 
 ; the following locations are bulk initialized by min_mon.asm from LAB_vec at LAB_stlp
-VEC_IN            = VEC_CC+2		; input vector
-VEC_OUT           = VEC_IN+2		; output vector
-VEC_LD            = VEC_OUT+2		; load vector
-VEC_SV            = VEC_LD+2		; save vector
-VEC_VERIFY        = VEC_SV+2		; verify vector
-VEC_CAT           = VEC_VERIFY+2	; cat vector
+VEC_IN            = VEC_CC+2  ; input vector
+VEC_OUT           = VEC_IN+2  ; output vector
+VEC_LD            = VEC_OUT+2 ; load vector
+VEC_SV            = VEC_LD+2  ; save vector
 ; end bulk initialize by min_mon.asm from LAB_vec at LAB_stlp
 
 ; Ibuffs can now be anywhere in RAM, ensure that the max length is < $80,
 ; the input buffer must not cross a page boundary and must not overlap with
 ; program RAM pages!
 
-; FINDME_LOWRAM
-
-; $5D0-$5DF for I2C
-; $5E0-$5EF for ToE_Mon
-; $5F2-$7FF for TPB bus card
-; $800-$8FF unallocated
+; FINDME
 ; $900-$AFF Allocated to the cassette file system.  This is probably generous.
-; $A00-$A1F reserved for the AY card
-; $A20-$A49 Countdown timer IRQ memory
-; $A4A-$AFF unallocated
 
 ;Ibuffs            = IRQ_vec+$14
 Ibuffs            = $B00       ; TODO: Create a method of allocation controlled from an
@@ -1069,7 +1029,6 @@ LAB_1359
       BNE   LAB_1374          ; branch if not empty
 
 ; next two lines ignore any non print character and [SPACE] if input buffer empty
-; FINDME_INPUTMOD
 
       CMP   #$21              ; compare with [SP]+1
       BCC   LAB_1359          ; if < ignore character
@@ -7955,13 +7914,9 @@ V_INPT
 V_OUTP
       JMP   (VEC_OUT)         ; send byte to output device
 V_LOAD
-      JMP   (VEC_LD)          ; load tape file
+      JMP   (VEC_LD)          ; load BASIC program
 V_SAVE
-      JMP   (VEC_SV)          ; save tape file
-V_VERIFY
-      JMP   (VEC_VERIFY)      ; verify tape file
-V_CAT 
-      JMP   (VEC_CAT)         ; catalogue tape files
+      JMP   (VEC_SV)          ; save BASIC program
 
 ; The rest are tables messages and code for RAM
 
@@ -8046,7 +8001,7 @@ LAB_MSZM
 
 LAB_SMSG
       .byte " Bytes free",$0D,$0A,$0A
-      .byte "Enhanced BASIC 2.22p5 EL3",$0A,$00
+      .byte "Enhanced BASIC 2.22p5",$0A,$00
 
 ; numeric constants and series
 
@@ -8208,17 +8163,6 @@ LAB_CTBL
       .word LAB_BITCLR-1      ; BITCLR          new command
       .word LAB_IRQ-1         ; IRQ             new command
       .word LAB_NMI-1         ; NMI             new command
-      .word V_VERIFY-1        ; VERIFY          new command
-      .word V_CAT-1           ; CAT             new command
-      .word MON_CLS-1         ; CLS             new command
-      .word XTRA_LOCATE_F-1   ; LOCATE          new command
-      .word XTRA_PLOT_F-1     ; PLOT            new command
-      .word AY_SOUND-1        ; SOUND           new command
-      .word AY_ENVELOPE-1     ; ENVELOPE        new command
-      .word I2C_Start_BAS-1   ; I2C_START       new command
-      .word I2C_Stop_BAS-1    ; I2C_STOP        new command
-      .word I2C_Init-1        ; I2C_INIT        new command
-      
 
 ; function pre process routine table
 
@@ -8259,8 +8203,6 @@ LAB_FTPM    = LAB_FTPL+$01
       .word LAB_LRMS-1        ; LEFT$()   process string expression
       .word LAB_LRMS-1        ; RIGHT$()        "
       .word LAB_LRMS-1        ; MID$()          "
-      .word LAB_PPFN-1        ; I2C_OUT() process numeric expression in ()
-      .word LAB_PPFN-1        ; I2C_IN()        "
 
 ; action addresses for functions
 
@@ -8301,9 +8243,6 @@ LAB_FTBM    = LAB_FTBL+$01
       .word LAB_LEFT-1        ; LEFT$()
       .word LAB_RIGHT-1       ; RIGHT$()
       .word LAB_MIDS-1        ; MID$()
-      .word I2C_Out_BAS-1     ; I2C_OUT()       new function
-      .word I2C_In_BAS-1      ; I2C_IN()        new function
-      
 
 ; hierarchy and action addresses for operator
 
@@ -8403,8 +8342,6 @@ TAB_CHRT
       .word TAB_ASCW          ; table for "W"
       .word TAB_POWR          ; table for "^"
 
-
-; FINDME LBB
 ; tables for each start character, note if a longer keyword with the same start
 ; letters as a shorter one exists then it must come first, else the list is in
 ; alphabetical order as follows ..
@@ -8414,286 +8351,258 @@ TAB_CHRT
 ; end marker (#$00)
 
 TAB_STAR
-      .byte TK_MUL,$00              ; *
+      .byte TK_MUL,$00        ; *
 TAB_PLUS
-      .byte TK_PLUS,$00             ; +
+      .byte TK_PLUS,$00       ; +
 TAB_MNUS
-      .byte TK_MINUS,$00            ; -
+      .byte TK_MINUS,$00      ; -
 TAB_SLAS
-      .byte TK_DIV,$00              ; /
+      .byte TK_DIV,$00        ; /
 TAB_LESS
 LBB_LSHIFT
-      .byte "<",TK_LSHIFT           ; <<  note - "<<" must come before "<"
-      .byte TK_LT                   ; <
+      .byte "<",TK_LSHIFT     ; <<  note - "<<" must come before "<"
+      .byte TK_LT             ; <
       .byte $00
 TAB_EQUL
-      .byte TK_EQUAL,$00            ; =
+      .byte TK_EQUAL,$00      ; =
 TAB_MORE
 LBB_RSHIFT
-      .byte ">",TK_RSHIFT           ; >>  note - ">>" must come before ">"
-      .byte TK_GT                   ; >
+      .byte ">",TK_RSHIFT     ; >>  note - ">>" must come before ">"
+      .byte TK_GT             ; >
       .byte $00
 TAB_QEST
-      .byte TK_PRINT,$00            ; ?
+      .byte TK_PRINT,$00      ; ?
 TAB_ASCA
 LBB_ABS
-      .byte "BS(",TK_ABS            ; ABS(
+      .byte "BS(",TK_ABS      ; ABS(
 LBB_AND
-      .byte "ND",TK_AND             ; AND
+      .byte "ND",TK_AND       ; AND
 LBB_ASC
-      .byte "SC(",TK_ASC            ; ASC(
+      .byte "SC(",TK_ASC      ; ASC(
 LBB_ATN
-      .byte "TN(",TK_ATN            ; ATN(
+      .byte "TN(",TK_ATN      ; ATN(
       .byte $00
 TAB_ASCB
 LBB_BINS
-      .byte "IN$(",TK_BINS          ; BIN$(
+      .byte "IN$(",TK_BINS    ; BIN$(
 LBB_BITCLR
-      .byte "ITCLR",TK_BITCLR       ; BITCLR
+      .byte "ITCLR",TK_BITCLR ; BITCLR
 LBB_BITSET
-      .byte "ITSET",TK_BITSET       ; BITSET
+      .byte "ITSET",TK_BITSET ; BITSET
 LBB_BITTST
       .byte "ITTST(",TK_BITTST
-                                    ; BITTST(
+                              ; BITTST(
       .byte $00
 TAB_ASCC
-LBB_CAT
-      .byte "AT",TK_CAT             ; CAT
 LBB_CALL
-      .byte "ALL",TK_CALL           ; CALL
+      .byte "ALL",TK_CALL     ; CALL
 LBB_CHRS
-      .byte "HR$(",TK_CHRS          ; CHR$(
-LBB_CLS
-      .byte "LS",TK_CLS             ; CLS
+      .byte "HR$(",TK_CHRS    ; CHR$(
 LBB_CLEAR
-      .byte "LEAR",TK_CLEAR         ; CLEAR
+      .byte "LEAR",TK_CLEAR   ; CLEAR
 LBB_CONT
-      .byte "ONT",TK_CONT           ; CONT
+      .byte "ONT",TK_CONT     ; CONT
 LBB_COS
-      .byte "OS(",TK_COS            ; COS(
+      .byte "OS(",TK_COS      ; COS(
       .byte $00
 TAB_ASCD
 LBB_DATA
-      .byte "ATA",TK_DATA           ; DATA
+      .byte "ATA",TK_DATA     ; DATA
 LBB_DEC
-      .byte "EC",TK_DEC             ; DEC
+      .byte "EC",TK_DEC       ; DEC
 LBB_DEEK
-      .byte "EEK(",TK_DEEK          ; DEEK(
+      .byte "EEK(",TK_DEEK    ; DEEK(
 LBB_DEF
-      .byte "EF",TK_DEF             ; DEF
+      .byte "EF",TK_DEF       ; DEF
 LBB_DIM
-      .byte "IM",TK_DIM             ; DIM
+      .byte "IM",TK_DIM       ; DIM
 LBB_DOKE
-      .byte "OKE",TK_DOKE           ; DOKE note - "DOKE" must come before "DO"
+      .byte "OKE",TK_DOKE     ; DOKE note - "DOKE" must come before "DO"
 LBB_DO
-      .byte "O",TK_DO               ; DO
+      .byte "O",TK_DO         ; DO
       .byte $00
 TAB_ASCE
 LBB_ELSE
-      .byte "LSE",TK_ELSE           ; ELSE
+      .byte "LSE",TK_ELSE     ; ELSE
 LBB_END
-      .byte "ND",TK_END             ; END
-LBB_ENVELOPE
-      .byte "NVELOPE", TK_ENVELOPE  ; ENVELOPE
+      .byte "ND",TK_END       ; END
 LBB_EOR
-      .byte "OR",TK_EOR             ; EOR
+      .byte "OR",TK_EOR       ; EOR
 LBB_EXP
-      .byte "XP(",TK_EXP            ; EXP(
+      .byte "XP(",TK_EXP      ; EXP(
       .byte $00
 TAB_ASCF
 LBB_FN
-      .byte "N",TK_FN               ; FN
+      .byte "N",TK_FN         ; FN
 LBB_FOR
-      .byte "OR",TK_FOR             ; FOR
+      .byte "OR",TK_FOR       ; FOR
 LBB_FRE
-      .byte "RE(",TK_FRE            ; FRE(
+      .byte "RE(",TK_FRE      ; FRE(
       .byte $00
 TAB_ASCG
 LBB_GET
-      .byte "ET",TK_GET             ; GET
+      .byte "ET",TK_GET       ; GET
 LBB_GOSUB
-      .byte "OSUB",TK_GOSUB         ; GOSUB
+      .byte "OSUB",TK_GOSUB   ; GOSUB
 LBB_GOTO
-      .byte "OTO",TK_GOTO           ; GOTO
+      .byte "OTO",TK_GOTO     ; GOTO
       .byte $00
 TAB_ASCH
 LBB_HEXS
-      .byte "EX$(",TK_HEXS          ; HEX$(
+      .byte "EX$(",TK_HEXS    ; HEX$(
       .byte $00
 TAB_ASCI
 LBB_IF
-      .byte "F",TK_IF               ; IF
+      .byte "F",TK_IF         ; IF
 LBB_INC
-      .byte "NC",TK_INC             ; INC
+      .byte "NC",TK_INC       ; INC
 LBB_INPUT
-      .byte "NPUT",TK_INPUT         ; INPUT
+      .byte "NPUT",TK_INPUT   ; INPUT
 LBB_INT
-      .byte "NT(",TK_INT            ; INT(
+      .byte "NT(",TK_INT      ; INT(
 LBB_IRQ
-      .byte "RQ",TK_IRQ             ; IRQ
-LBB_I2C_INIT
-      .byte "2C_INIT",TK_I2C_INIT   ; I2C_INIT
-LBB_I2C_IN
-      .byte "2C_IN(",TK_I2C_IN      ; I2C_IN(
-LBB_I2C_OUT
-      .byte "2C_OUT(",TK_I2C_OUT    ; I2C_OUT(
-LBB_I2C_START
-      .byte "2C_START",TK_I2C_START ; I2C_START
-LBB_I2C_STOP
-      .byte "2C_STOP",TK_I2C_STOP   ; I2C STOP
-
+      .byte "RQ",TK_IRQ       ; IRQ
       .byte $00
 TAB_ASCL
 LBB_LCASES
       .byte "CASE$(",TK_LCASES
-                                    ; LCASE$(
+                              ; LCASE$(
 LBB_LEFTS
-      .byte "EFT$(",TK_LEFTS        ; LEFT$(
+      .byte "EFT$(",TK_LEFTS  ; LEFT$(
 LBB_LEN
-      .byte "EN(",TK_LEN            ; LEN(
+      .byte "EN(",TK_LEN      ; LEN(
 LBB_LET
-      .byte "ET",TK_LET             ; LET
+      .byte "ET",TK_LET       ; LET
 LBB_LIST
-      .byte "IST",TK_LIST           ; LIST
+      .byte "IST",TK_LIST     ; LIST
 LBB_LOAD
-      .byte "OAD",TK_LOAD           ; LOAD      
-LBB_LOCATE
-      .byte "OCATE",TK_LOCATE       ; LOCATE
-      
+      .byte "OAD",TK_LOAD     ; LOAD
 LBB_LOG
-      .byte "OG(",TK_LOG            ; LOG(
+      .byte "OG(",TK_LOG      ; LOG(
 LBB_LOOP
-      .byte "OOP",TK_LOOP           ; LOOP
+      .byte "OOP",TK_LOOP     ; LOOP
       .byte $00
 TAB_ASCM
 LBB_MAX
-      .byte "AX(",TK_MAX            ; MAX(
+      .byte "AX(",TK_MAX      ; MAX(
 LBB_MIDS
-      .byte "ID$(",TK_MIDS          ; MID$(
+      .byte "ID$(",TK_MIDS    ; MID$(
 LBB_MIN
-      .byte "IN(",TK_MIN            ; MIN(
+      .byte "IN(",TK_MIN      ; MIN(
       .byte $00
 TAB_ASCN
 LBB_NEW
-      .byte "EW",TK_NEW             ; NEW
+      .byte "EW",TK_NEW       ; NEW
 LBB_NEXT
-      .byte "EXT",TK_NEXT           ; NEXT
+      .byte "EXT",TK_NEXT     ; NEXT
 LBB_NMI
-      .byte "MI",TK_NMI             ; NMI
+      .byte "MI",TK_NMI       ; NMI
 LBB_NOT
-      .byte "OT",TK_NOT             ; NOT
+      .byte "OT",TK_NOT       ; NOT
 LBB_NULL
-      .byte "ULL",TK_NULL           ; NULL
+      .byte "ULL",TK_NULL     ; NULL
       .byte $00
 TAB_ASCO
 LBB_OFF
-      .byte "FF",TK_OFF             ; OFF
+      .byte "FF",TK_OFF       ; OFF
 LBB_ON
-      .byte "N",TK_ON               ; ON
+      .byte "N",TK_ON         ; ON
 LBB_OR
-      .byte "R",TK_OR               ; OR
+      .byte "R",TK_OR         ; OR
       .byte $00
 TAB_ASCP
 LBB_PEEK
-      .byte "EEK(",TK_PEEK          ; PEEK(
+      .byte "EEK(",TK_PEEK    ; PEEK(
 LBB_PI
-      .byte "I",TK_PI               ; PI
-
-LBB_PLOT
-      .byte "LOT",TK_PLOT           ; PLOT      
-      
+      .byte "I",TK_PI         ; PI
 LBB_POKE
-      .byte "OKE",TK_POKE           ; POKE
+      .byte "OKE",TK_POKE     ; POKE
 LBB_POS
-      .byte "OS(",TK_POS            ; POS(
+      .byte "OS(",TK_POS      ; POS(
 LBB_PRINT
-      .byte "RINT",TK_PRINT         ; PRINT
+      .byte "RINT",TK_PRINT   ; PRINT
       .byte $00
 TAB_ASCR
 LBB_READ
-      .byte "EAD",TK_READ           ; READ
+      .byte "EAD",TK_READ     ; READ
 LBB_REM
-      .byte "EM",TK_REM             ; REM
+      .byte "EM",TK_REM       ; REM
 LBB_RESTORE
       .byte "ESTORE",TK_RESTORE
-                                    ; RESTORE
+                              ; RESTORE
 LBB_RETIRQ
-      .byte "ETIRQ",TK_RETIRQ       ; RETIRQ
+      .byte "ETIRQ",TK_RETIRQ ; RETIRQ
 LBB_RETNMI
-      .byte "ETNMI",TK_RETNMI       ; RETNMI
+      .byte "ETNMI",TK_RETNMI ; RETNMI
 LBB_RETURN
-      .byte "ETURN",TK_RETURN       ; RETURN
+      .byte "ETURN",TK_RETURN ; RETURN
 LBB_RIGHTS
       .byte "IGHT$(",TK_RIGHTS
-                                    ; RIGHT$(
+                              ; RIGHT$(
 LBB_RND
-      .byte "ND(",TK_RND            ; RND(
+      .byte "ND(",TK_RND      ; RND(
 LBB_RUN
-      .byte "UN",TK_RUN             ; RUN
+      .byte "UN",TK_RUN       ; RUN
       .byte $00
 TAB_ASCS
 LBB_SADD
-      .byte "ADD(",TK_SADD          ; SADD(
+      .byte "ADD(",TK_SADD    ; SADD(
 LBB_SAVE
-      .byte "AVE",TK_SAVE           ; SAVE
+      .byte "AVE",TK_SAVE     ; SAVE
 LBB_SGN
-      .byte "GN(",TK_SGN            ; SGN(
+      .byte "GN(",TK_SGN      ; SGN(
 LBB_SIN
-      .byte "IN(",TK_SIN            ; SIN(
-LBB_SOUND
-      .byte "OUND",TK_SOUND         ; SOUND
+      .byte "IN(",TK_SIN      ; SIN(
 LBB_SPC
-      .byte "PC(",TK_SPC            ; SPC(
+      .byte "PC(",TK_SPC      ; SPC(
 LBB_SQR
-      .byte "QR(",TK_SQR            ; SQR(
+      .byte "QR(",TK_SQR      ; SQR(
 LBB_STEP
-      .byte "TEP",TK_STEP           ; STEP
+      .byte "TEP",TK_STEP     ; STEP
 LBB_STOP
-      .byte "TOP",TK_STOP           ; STOP
+      .byte "TOP",TK_STOP     ; STOP
 LBB_STRS
-      .byte "TR$(",TK_STRS          ; STR$(
+      .byte "TR$(",TK_STRS    ; STR$(
 LBB_SWAP
-      .byte "WAP",TK_SWAP           ; SWAP
+      .byte "WAP",TK_SWAP     ; SWAP
       .byte $00
 TAB_ASCT
 LBB_TAB
-      .byte "AB(",TK_TAB            ; TAB(
+      .byte "AB(",TK_TAB      ; TAB(
 LBB_TAN
-      .byte "AN(",TK_TAN            ; TAN(
+      .byte "AN(",TK_TAN      ; TAN(
 LBB_THEN
-      .byte "HEN",TK_THEN           ; THEN
+      .byte "HEN",TK_THEN     ; THEN
 LBB_TO
-      .byte "O",TK_TO               ; TO
+      .byte "O",TK_TO         ; TO
 LBB_TWOPI
-      .byte "WOPI",TK_TWOPI         ; TWOPI
+      .byte "WOPI",TK_TWOPI   ; TWOPI
       .byte $00
 TAB_ASCU
 LBB_UCASES
       .byte "CASE$(",TK_UCASES
-                                    ; UCASE$(
+                              ; UCASE$(
 LBB_UNTIL
-      .byte "NTIL",TK_UNTIL         ; UNTIL
+      .byte "NTIL",TK_UNTIL   ; UNTIL
 LBB_USR
-      .byte "SR(",TK_USR            ; USR(
+      .byte "SR(",TK_USR      ; USR(
       .byte $00
 TAB_ASCV
 LBB_VAL
-      .BYTE "AL(",TK_VAL            ; VAL(
+      .byte "AL(",TK_VAL      ; VAL(
 LBB_VPTR
-      .byte "ARPTR(",TK_VPTR        ; VARPTR(
-LBB_VERIFY
-      .BYTE "ERIFY",TK_VERIFY       ; VERIFY
+      .byte "ARPTR(",TK_VPTR  ; VARPTR(
       .byte $00
 TAB_ASCW
 LBB_WAIT
-      .byte "AIT",TK_WAIT           ; WAIT
+      .byte "AIT",TK_WAIT     ; WAIT
 LBB_WHILE
-      .byte "HILE",TK_WHILE         ; WHILE
+      .byte "HILE",TK_WHILE   ; WHILE
 LBB_WIDTH
-      .byte "IDTH",TK_WIDTH        ; WIDTH
+      .byte "IDTH",TK_WIDTH   ; WIDTH
       .byte $00
 TAB_POWR
-      .byte TK_POWER,$00           ; ^
+      .byte TK_POWER,$00      ; ^
 
 ; new decode table for LIST
 ; Table is ..
@@ -8789,27 +8698,6 @@ LAB_KEYT
       .word LBB_IRQ           ; IRQ
       .byte 3,'N'
       .word LBB_NMI           ; NMI
-      .byte 6,'V'
-      .word LBB_VERIFY        ; VERIFY
-      .byte 3,'C'
-      .word LBB_CAT           ; CAT
-      .byte 3,'C'
-      .word LBB_CLS           ; CLS
-      .byte 6,'L'
-      .word LBB_LOCATE        ; LOCATE
-      .byte 4,'P'
-      .word LBB_PLOT          ; PLOT
-      .byte 5,'S'
-      .word LBB_SOUND         ; SOUND
-      .byte 8,'E'
-      .word LBB_ENVELOPE      ; ENVELOPE
-      .byte 9,'I'
-      .word LBB_I2C_START     ; I2C_START
-      .byte 8,'I'
-      .word LBB_I2C_STOP      ; I2C_STOP
-      .byte 8,'I'
-      .word LBB_I2C_INIT      ; I2C_INIT
-
 
 ; secondary commands (can't start a statement)
 
@@ -8836,7 +8724,7 @@ LAB_KEYT
       .byte 3,'O'
       .word LBB_OFF           ; OFF
 
-; operators
+; opperators
 
       .byte 1,'+'
       .word $0000             ; +
@@ -8937,11 +8825,6 @@ LAB_KEYT
       .word LBB_RIGHTS        ; RIGHT$
       .byte 5,'M'             ;
       .word LBB_MIDS          ; MID$
-      .byte 8,'I'
-      .word LBB_I2C_OUT       ; I2C_OUT
-      .byte 7,'I'
-      .word LBB_I2C_IN        ; I2C_IN
-      
 
 ; BASIC messages, mostly error messages
 
@@ -8964,16 +8847,15 @@ LAB_BAER
       .word ERR_CN            ;$1E continue error
       .word ERR_UF            ;$20 undefined function
       .word ERR_LD            ;$22 LOOP without DO
-      .word ERR_BF            ;$24 Filename too long
 
 ; I may implement these two errors to force definition of variables and
 ; dimensioning of arrays before use.
 
-;     .word ERR_UV            ;$26 undefined variable
+;     .word ERR_UV            ;$24 undefined variable
 
 ; the above error has been tested and works (see code and comments below LAB_1D8B)
 
-;     .word ERR_UA            ;$28 undimensioned array
+;     .word ERR_UA            ;$26 undimensioned array
 
 ERR_NF      .byte "NEXT without FOR",$00
 ERR_SN      .byte "Syntax",$00
@@ -8993,7 +8875,6 @@ ERR_ST      .byte "String too complex",$00
 ERR_CN      .byte "Can't continue",$00
 ERR_UF      .byte "Undefined function",$00
 ERR_LD      .byte "LOOP without DO",$00
-ERR_BF      .byte "Filename too long",$00
 
 ;ERR_UV     .byte "Undefined variable",$00
 

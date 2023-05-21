@@ -135,7 +135,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System",$0D,$0A
-  .BYTE "V2.36",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.37",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
@@ -166,7 +166,7 @@ TMSG_Loading
 TMSG_Verifying
 
   .BYTE $D,$A
-  .BYTE "Verifying.",$D,$A,0
+  .BYTE "Verifying...",$D,$A,0
   
 TMSG_Verified
 
@@ -191,18 +191,18 @@ TMSG_HeaderError
   
 TMSG_TypeBASIC
 
-  .BYTE "BASIC: ",0
+  .BYTE "BASIC:  ",0
   
 TMSG_TypeBINARY
 
-  .BYTE "binary: ",0
+  .BYTE "Binary: ",0
   
 TMSG_TypeTEXT
 
-  .BYTE "text: ",0
+  .BYTE "Text:   ",0
   
 TMSG_TypeOTHER
-  .BYTE "other: ",0
+  .BYTE "Other:  ",0
   
 
 
@@ -308,7 +308,7 @@ F_TAPE_PrintFound
    
 TAPE_Skip_RepBASIC_B
 
-  LDA TAPE_FileType					; Check and print BASIC if necessary.
+  LDA TAPE_FileType					; Check and print BINARY if necessary.
   CMP #C_TAPE_FType_BINARY
   BNE TAPE_Skip_RepBinary_B
   
@@ -322,7 +322,7 @@ TAPE_Skip_RepBASIC_B
   
 TAPE_Skip_RepBinary_B
 
-  LDA TAPE_FileType					; Check and print BASIC if necessary.
+  LDA TAPE_FileType					; Check and print TEXT if necessary.
   CMP #C_TAPE_FType_TEXT
   BNE TAPE_Skip_RepText_B
   
@@ -346,6 +346,24 @@ TAPE_DoPrintFname_B
   JSR F_TAPE_PrintFname_in_Header			; Print our filename.
   JSR   LAB_CRLF					; print CR/LF. 
   RTS
+
+
+F_TAPE_PrintStart
+  LDA TAPE_LoadAddrHi
+  JSR MON_PrintHexByte
+  LDA TAPE_LoadAddrLo
+  JSR MON_PrintHexByte
+  RTS
+
+F_TAPE_PrintSize
+  LDA TAPE_FileSizeHi
+  JSR MON_PrintHexByte
+  LDA TAPE_FileSizeLo
+  JSR MON_PrintHexByte
+  RTS
+  
+
+  
   
 
 ; Write HEAD to the header ID field.  Yes, it's primitive but it really is the easiest way.
@@ -488,6 +506,14 @@ TAPE_NameToBuffer_B
 ; Print Filename in header
 
 F_TAPE_PrintFname_in_Header
+
+  JSR F_TAPE_PrintStart
+  LDA #' '
+  JSR V_OUTP
+  JSR F_TAPE_PrintSize
+  LDA #' '
+  JSR V_OUTP
+  
   LDA #34
   JSR V_OUTP
   LDA #<TAPE_FileName				; Print our Filename in the header space
@@ -497,6 +523,8 @@ F_TAPE_PrintFname_in_Header
   JSR TOE_PrintStr_vec
   LDA #34
   JSR V_OUTP
+
+  
   RTS
   
 
@@ -529,11 +557,17 @@ F_TAPE_SAVE_BASIC
   
   JSR LAB_GBYT						; Find out if we have extra parameters or not,
   							; firstly checking if we have a null.
-  BEQ B_TAPE_SAVE					; If we have null, we can continue as SAVEing BASIC otherwise it's binary.
+  BEQ B_TAPE_SAVE_BASIC					; If we have null, we can continue as SAVEing BASIC otherwise it's binary.
+  
+; Experimental code goes here.
+
+
+; End experimental code.  
   
 
 ; BINARY case.
-  
+
+B_TAPE_SAVE_BINARY
   JSR LAB_EVNM						; evaluate expression and check is numeric,
 							; else do type mismatch
   JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
@@ -567,16 +601,13 @@ F_TAPE_SAVE_BASIC
 
 ; By this point the Address and size are stored in their relevant buffers.
 
-B_TAPE_SAVE
+B_TAPE_SAVE_BASIC
 
   LDA #<TMSG_Saving					; Tell the user that we are saving.
   STA TOE_MemptrLo
   LDA #>TMSG_Saving
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
-  
-  JSR F_TAPE_PrintFname_in_Header			; Print our "Filename".
-
 
 ; Provide the necessary parameters for the F_TAPE_CalcChecksum to work
   
@@ -606,7 +637,8 @@ B_TAPE_SAVE
   
   LDA V_TAPE_LOADSAVE_Type				; Setup the file type in the header too.
   STA TAPE_FileType
-  
+
+  JSR F_TAPE_PrintFname_in_Header			; Print our "Filename".  
   
   ; Setup for F_TAPE_BlockOut to write the header to tape and then write it out.
   
@@ -857,8 +889,6 @@ TAPE_CAT_Header_B
 
 TAPE_CAT_Fname_Report
   JSR F_TAPE_PrintFound					; Tell the user what we found.
-  ;FINDMEFINDME
-  RTS
   BRA TAPE_CAT_Header_B
   
 TAPE_CAT_Exit_B
@@ -1269,11 +1299,12 @@ TAPE_Nextbit
   JSR F_TAPE_BitGen
   LDA #0							; Generate second guard bit
   JSR F_TAPE_BitGen
-  LDA #0							; Generate third guard bit!
-  JSR F_TAPE_BitGen
-  LDA #0							; Generate fourth guard bit!
-  JSR F_TAPE_BitGen
+;  LDA #0							; Generate third guard bit!
+;  JSR F_TAPE_BitGen
+;  LDA #0							; Generate fourth guard bit!
+;  JSR F_TAPE_BitGen
 
+; FINDME GUARDBITS
   PLA
   
   PLP								; Restore IRQ status
@@ -1304,6 +1335,8 @@ L_TAPE_BlockOut
   JSR F_TAPE_ByteOut						; Transmit the byte.
   PLY
   PLX
+
+
   
   LDA TAPE_BlockLo						; Increment our byte pointer
   CLC
@@ -1328,6 +1361,7 @@ B_TAPE_BlockOut_Decrement
   BNE L_TAPE_BlockOut
   DEY
   BRA L_TAPE_BlockOut
+
   
 
 ;===============================================================================================  

@@ -5,20 +5,22 @@
   .include "basic_ToE.asm"
 ; put the IRQ and MNI code in RAM so that it can be changed
 
-; IRQ_vec	= VEC_SV+2              ; Previous IRQ code vector
-IRQ_vec		= IRQH_ProcessIRQs	; IRQ code vector
-NMI_vec		= IRQ_vec+$0A           ; NMI code vector
+; IRQ_vec	= VEC_SV+2              	; Previous IRQ code vector
+IRQ_vec		= IRQH_ProcessIRQs		; IRQ code vector
+NMI_vec		= IRQ_vec+$0A           	; NMI code vector
 
 
 ; OS System variables live here
 
-MON_sysvars	= $5E0			; base address of the 16 bytes of memory reserved
-os_outsel	= MON_sysvars		; output selection variable
-os_infilt	= os_outsel+1		; Filter switches for character input filtering.
-os_insel	= os_infilt+1		; Input source for BASIC inputs.
+MON_sysvars_base  	= $5E0			; base address of the reserved base memory
+os_outsel		= MON_sysvars_base	; output selection variable
+os_infilt		= os_outsel+1		; Filter switches for character input filtering.
+os_insel		= os_infilt+1		; Input source for BASIC inputs.
+ToE_mon_vars_end	= os_insel
 
-TOE_MemptrLo  = $E7			; General purpose memory pointer low byte
-TOE_MemptrHi  = $E8			; General purpose memory pointer high byte
+
+TOE_MemptrLo  = $E7				; General purpose memory pointer low byte
+TOE_MemptrHi  = $E8				; General purpose memory pointer high byte
 
 
 ; OS Bit Definitions
@@ -35,7 +37,7 @@ OS_input_TAPE   = @00010000
 
 ; OS Constants
 
-MON_CR_Delay_C  = $1000
+MON_CR_Delay_C  = $3000
 
 
 ; now the code. This sets up the vectors, interrupt code,
@@ -55,6 +57,7 @@ MON_CR_Delay_C  = $1000
   .INCLUDE "COUNTDOWN_IRQ.asm"
   .INCLUDE "XTRA_BASIC.asm"             ; Extra's for EhBASIC.
   .INCLUDE "I2C_Lib.asm"		; I2C Support
+  .INCLUDE "SPI_Lib.asm"
 
 
 ; reset vector points here
@@ -89,8 +92,7 @@ RES_vec
   LDA #OS_input_ACIA1                 ; Specify input source as ACIA1
   STA os_insel
   
-  JSR INI_ACIA1                       ; Init ACIA1. We currently need this for the keyboard.
-  JSR INI_ACIA2                       ; Init ACIA2. Just in case.
+  JSR INI_ACIA_SYS                    ; Init ACIAs. We currently need ACIA1 for the keyboard at startup.
   JSR ANSI_init_vec                   ; Initialise the ANSI text video card.
   JSR TPB_init_vec                    ; Init Tower Peripheral Bus
   JSR AY_Init                         ; Initialise the AY sound system.
@@ -261,14 +263,15 @@ no_TPB_LPT                            ; "Print" to the TAPE interface
   BEQ MON_EndWRITE_B                  ; Dont write to tape unless selected.
   PLA
   PHA
+  CMP #10
+  BEQ MON_SkipLFtoTAPE
   JSR TAPE_ByteOut_vec
+MON_SkipLFtoTAPE  
   PLA
   CMP #13                             ; Do a little delay if CR is detected to allow the system to catch up on read.
   BNE MON_SkipTapeDelay
   
   JSR MON_Do_CR_Delay
-  
-  
   
 MON_SkipTapeDelay
   
@@ -322,18 +325,70 @@ MON_CLS
   JSR V_OUTP
   LDA #12
   JSR V_OUTP
-  RTS 
+  RTS
+  
+MON_PrintHexByte
+  TAX						; Save the source for later
+  
+  ROR						; Get only the top nybble.
+  ROR
+  ROR
+  ROR
+  AND #$F
+  
+  JSR B_PrintHexDig				; Print high digit
+  TXA
+  
+  AND #$F					; Now print low digit
+  JSR B_PrintHexDig
+  RTS
+  
+B_PrintHexDig
+  TAY
+  LDA MON_HexDigits_T,Y
+  JSR V_OUTP
+  RTS
+  
   
 END_CODE
+
+MON_HexDigits_T  
+  .byte "0123456789ABCDEF"
+
 
 LAB_mess
                                       ; sign on string
 
-  .byte "Tower of Eightness OS 3.15.2023.1",$0D,$0A,$0D,$0A
-  .byte $0D,$0A,"6502 EhBASIC [C]old/[W]arm ?",$00
+  .byte "Tower of Eightness OS 5.1.2023.5T",$0D,$0A,$0D,$0A
+  .byte $0D,$0A,"65C02 TowerBASIC [C]old/[W]arm ?",$00
 
+
+; ACIA Vectors
+  *= $FF42
+ACIA_INI_SYS_vec
+  JMP INI_ACIA_SYS         ; FF42
+ACIA1_init_vec
+  JMP INI_ACIA1            ; FF45
+ACIA2_init_vec
+  JMP INI_ACIA1            ; FF48
+ACIA1out_vec
+  JMP ACIA1out             ; FF4B
+ACIA2out_vec
+  JMP ACIA2out             ; FF4E
+ACIA1in_vec
+  JMP ACIA1in              ; FF51
+ACIA2in_vec
+  JMP ACIA2in              ; FF54
 
 ; ToE OS Vectors
+  *= $FF57
+SPI_Struct_Init_vec
+  JMP SPI_Struct_Init_F    ; FF57
+SPI_Init_vec
+  JMP SPI_Init_F           ; FF5A
+SPI_Xfer_vec
+  JMP SPI_Xfer_F           ; FF5D
+
 
   *= $FF60
 ; Stream output vector.  

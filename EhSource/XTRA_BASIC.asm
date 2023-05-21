@@ -89,3 +89,48 @@ XTRA_SystemPlot_F
   JSR V_OUTP
   
   RTS
+
+
+; BASIC CommandS for SPI.
+
+I2C_Start_BAS
+  JMP I2C_Start
+
+I2C_Stop_BAS
+  JMP I2C_Stop
+  
+I2C_Out_BAS					; This is a *function* as it returns ACK/NAK
+
+  JSR   LAB_F2FX                                ; save integer part of FAC1 in temporary integer
+  LDX Itempl
+  
+  STX I2C_Byte					; Place it in the I2C Engine for transmission
+  JSR I2C_Out					; Send it
+  
+  LDA I2C_Status				; Get our relevant status bits
+  AND #I2C_STA_NAK | I2C_STA_Timeout
+  
+
+  TAY						; Copy status byte to Y
+  JMP   LAB_1FD0                                ; convert Y to byte in FAC1 and return
+
+
+I2C_In_BAS					; This is a *function* as it returns ACK/NAK
+
+  JSR   LAB_F2FX                                ; save integer part of FAC1 in temporary integer
+  
+  LDA I2C_Status				; Transfer our ACK/NAK to the status register.
+  AND #~I2C_STA_NAK
+  STA I2C_Status
+  LDA Itempl
+  AND #I2C_STA_NAK
+  ORA I2C_Status
+  STA I2C_Status
+  
+  JSR I2C_In					; Get our byte
+  
+  LDA I2C_Byte
+  
+
+  TAY						; Copy status byte to Y
+  JMP   LAB_1FD0                                ; convert Y to byte in FAC1 and return
