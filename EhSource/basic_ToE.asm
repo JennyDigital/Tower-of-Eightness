@@ -1,5 +1,6 @@
 
-; Enhanced BASIC to assemble under 6502 simulator, $ver 2.22p5 EL1
+; TowerBASIC to assemble under 6502 simulator, $ver 2.22p5 EL1
+; This is a derivative work of EhBASIC
 
 ; $E7E1 $E7CF $E7C6 $E7D3 $E7D1 $E7D5 $E7CF $E81E $E825
 
@@ -1380,7 +1381,7 @@ LAB_14A6
 ; perform CLEAR
 
 LAB_CLEAR
-      BEQ   LAB_147A          ; if no following token go do "CLEAR"
+      BEQ LAB_147A            ; If no following token do clear.
 
                               ; else there was a following token (go do syntax error)
       RTS
@@ -8020,6 +8021,7 @@ LAB_2CF4
                               ; clear carry if byte = "0"-"9"
 LAB_2D05
       RTS
+      
 
 ; page zero initialisation table $00-$12 inclusive
 
@@ -8042,7 +8044,7 @@ StrTab
 EndTab
 
 LAB_MSZM
-      .byte $0D,$0A,"Memory size ",$00
+      .byte $0D,$0A,"Memory size",$00
 
 LAB_SMSG
       .byte " Bytes free",$0D,$0A,$0A

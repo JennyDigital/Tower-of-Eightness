@@ -274,7 +274,6 @@ MON_SkipLFtoTAPE
   JSR MON_Do_CR_Delay
   
 MON_SkipTapeDelay
-  
   BRA MON_EndWRITE_B2
 
 MON_EndWRITE_B
@@ -359,8 +358,8 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte "Tower of Eightness OS 5.1.2023.5T",$0D,$0A,$0D,$0A
-  .byte $0D,$0A,"65C02 TowerBASIC [C]old/[W]arm ?",$00
+  .byte "Tower of Eightness OS 5.27.2023.5",$0D,$0A,$0D,$0A
+  .byte $0D,$0A,"65C02 TowerBASIC [C]old/[W]arm?",$00
 
 
 ; ACIA Vectors

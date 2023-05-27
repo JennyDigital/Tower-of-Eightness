@@ -3,25 +3,36 @@
 ; Compatible with versions 1 and 1.1 of the interface as of 30/12/2020
 
 
-; Tape interface bitfield definitions
+; Tape interface hardware bitfield definitions
 
 TAPE_out		= @10000000			; This is the bit to toggle for tape writing.
 TAPE_in			= @01000000			; This is the bit to sample for tape reading.
 JOYSTICK_bits		= @00111111			; These bits are used by the joystick interface.
 JOYSTICK_sel		= @00000001			; 0 selects Joystick 0, 1 selects joystick 2. Easy.
 
+
+; Tape engine status bitfield definitions
+
 TAPE_Stat_overrun	= @00000001			; Stop bit was a one!
 TAPE_Stat_par_err	= @00000010			; Parity error.  It remains to be seen if this gets implemented.
 TAPE_Stat_RXFull	= @00000100			; Byte received
 TAPE_Stat_Escape	= @00001000			; Indication that the escape key has been pressed
 
-TAPE_BlockIn_Complete	= @00000001
-TAPE_BlockIn_Escape	= @00000010
-TAPE_BlockIn_Error	= @00000100
+TAPE_BlockIn_Complete	= @00000001			; Indication bit of BlockIn transfer finishing successfully.
+TAPE_BlockIn_Escape	= @00000010			; Indication bit of a break in loading of a block
+TAPE_BlockIn_Error	= @00000100			; Indication bit of an error occuring whilst BlockIn operated.
 
-TAPE_Verify_Good	= @00000001
-TAPE_Verify_Escape	= @00000010
-TAPE_Verify_Error	= @00000100
+TAPE_Verify_Good	= @00000001			; Signals successful verification
+TAPE_Verify_Escape	= @00000010			; Signals escape from verification
+TAPE_Verify_Error	= @00000100			; Signals an error was detected.
+
+
+; TowerTAPE filing system configuration bitfield definitions.
+; These are bits within the V_TAPE_Config variable.
+
+TAPE_ParityMode		= @00000001
+TAPE_AutoRUN_En		= @00000010
+
 
 ; Tape interface port addresses
 
@@ -110,7 +121,8 @@ V_TAPE_Verify_Status		= V_TAPE_bitcycles + 1		; Status register for the F_TAPE_V
 V_TAPE_Fname_Buffer		= V_TAPE_Verify_Status + 1	; Filename Buffer for null terminated filename.
 V_TAPE_LOADSAVE_Type		= V_TAPE_Fname_Buffer + 18	; LOAD or SAVE type being currently handled.
 V_TAPE_Address_Buff		= V_TAPE_LOADSAVE_Type + 1	; Address for LOAD and SAVE operations.
-V_TAPE_Size_Buff		= V_TAPE_Address_Buff + 2
+V_TAPE_Size_Buff		= V_TAPE_Address_Buff + 2	; Temporary store of how big the file is.
+V_TAPE_Config			= V_TAPE_Size_Buff + 2		; TowerTAPE file system configuratuon bits.
 
 ; Some more handy constants
 
@@ -134,8 +146,8 @@ C_TAPE_HeaderSize		= TAPE_Header_End - TAPE_Header_Buffer + 1
 TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
-  .BYTE "TowerTAPE Filing System",$0D,$0A
-  .BYTE "V2.37",$0D,$0A,$0D,$0A,$00
+  .BYTE "TowerTAPE Filing System "
+  .BYTE "V2.46",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
@@ -226,9 +238,11 @@ TMSG_TypeOTHER
 F_TAPE_Init
   LDA #TAPE_out | JOYSTICK_sel				; Setup tape and joystick 6522 DDR Bits.
   STA TAPE_DDRB
-
-  LDY #0						; Setup our index to the start of the string
   
+  LDA #TAPE_AutoRUN_En					; Set our default to allow autorun upon load.
+  STA V_TAPE_Config
+
+  LDY #0						; Print our init message using Y as our character pointer.
 L_TAPE_init_msg  
   LDA TMSG_init_msg,Y					; Get the character
   BEQ TAPE_msg_done					; Break out of the loop when we're done.
@@ -559,12 +573,6 @@ F_TAPE_SAVE_BASIC
   							; firstly checking if we have a null.
   BEQ B_TAPE_SAVE_BASIC					; If we have null, we can continue as SAVEing BASIC otherwise it's binary.
   
-; Experimental code goes here.
-
-
-; End experimental code.  
-  
-
 ; BINARY case.
 
 B_TAPE_SAVE_BINARY
@@ -583,7 +591,7 @@ B_TAPE_SAVE_BINARY
   							; If this parameter is missing you will get a Syntax Error.
   JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
   
-  JSR LAB_GBYT						; FINDME:- Loose the comma ready for the next paramter.
+  JSR LAB_GBYT						; Loose the comma ready for the next paramter.
   							; This may not be necessary or right.
   
   LDA Itempl						; Replace the size in the buffer with the one from BASIC
@@ -895,9 +903,6 @@ TAPE_CAT_Exit_B
   RTS
 
 
-
-
-
 ; Tape Reporting routines.
 ; ------------------------
 
@@ -907,7 +912,15 @@ TAPE_BlockIn_LoadErr
   LDA #>TMSG_TapeError
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
+  
+  LDA TAPE_FileType
+  CMP #C_TAPE_FType_BASIC
+  BNE B_TAPE_NoNew
+  JMP LAB_1463 
+B_TAPE_NoNew
+  JMP LAB_WARM
   RTS
+  
   
 TAPE_BlockIn_EscHandler
   LDA #<LAB_BMSG					; Tell the user that we are have pressed Escape.
@@ -915,7 +928,11 @@ TAPE_BlockIn_EscHandler
   LDA #>LAB_BMSG
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
-  RTS
+  
+  ; FINDME_LAB_WARM
+  JMP LAB_WARM
+  
+  ; RTS
   
   
 ;To BASIC 'LOAD' entry point.
@@ -1068,12 +1085,6 @@ TAPE_BASICload_exit
   RTS
   
 B_Setup_NEWBASIC_Prog
-
-  LDA #<TMSG_Ready					; Tell the user that we are saving.
-  STA TOE_MemptrLo
-  LDA #>TMSG_Ready
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
     
   LDA TAPE_BlockLo					; Return the system to a useable state
   STA Svarl
@@ -1083,6 +1094,24 @@ B_Setup_NEWBASIC_Prog
   STA Svarh
   STA Sarryh
   STA Earryh
+
+  LDA V_TAPE_Config					; Autorun only if set in V_TAPE_Config
+  BIT #TAPE_AutoRUN_En
+  BEQ B_TAPE_NoRun
+  
+  LDA TAPE_FileName					; Check to see if the RUN option is in the filename.
+  CMP #'!'
+  BNE B_TAPE_NoRun
+  
+  JMP LAB_1477						; Execute loaded code.
+B_TAPE_NoRun
+
+  LDA #<TMSG_Ready					; Tell the user that we are Ready.
+  STA TOE_MemptrLo
+  LDA #>TMSG_Ready
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+
   JMP LAB_1319						; Tidy up system.
   
 TAPE_CS_Fail
@@ -1091,6 +1120,7 @@ TAPE_CS_Fail
   LDA #>TMSG_TapeError
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
+  
   BRA TAPE_BASICload_exit
   
   
@@ -1674,7 +1704,6 @@ TAPE_Verify_Finish
   LDA #TAPE_Verify_Good						; Indicate test completion
   STA V_TAPE_Verify_Status
   RTS
-
 
 ;===============================================================================================
 ; Byte Reader.
