@@ -8048,7 +8048,7 @@ LAB_MSZM
 
 LAB_SMSG
       .byte " Bytes free",$0D,$0A,$0A
-      .byte "Enhanced BASIC 2.22p5 EL3",$0A,$00
+      .byte "TowerBASIC 2.22p5 EL3",$0A,$00
 
 ; numeric constants and series
 
