@@ -57,6 +57,8 @@
 ;      I2C_OUT() function.  Sends out a value and returns the status.
 ;      I2C_IN() functon.  Returns a value from the I2C engine taking either 0 (ACK) or 1 (NAK) as it's parameter.
 ;      I2C_INIT command.  Initialises the I2C engine.  This is necessary because not everyone wants to use the pins for I2C.
+;      SPI_INIT command.  Initialises the SPI engine.  This is necessary because not everyone wants to use the pins for SPI.
+;      SPI_XFER() function. Transmits the argument over the SPI interface, returning the receieved byte.
 ;
 ; Other Tower of Eightness amendments:-
 ;
@@ -383,11 +385,12 @@ TK_ENVELOPE       = TK_SOUND+1      ; ENVELOPE token
 TK_I2C_START      = TK_ENVELOPE+1   ; I2C_START token
 TK_I2C_STOP       = TK_I2C_START+1  ; I2C_STOP token
 TK_I2C_INIT       = TK_I2C_STOP+1   ; I2C_INIT token
+TK_SPI_INIT       = TK_I2C_INIT+1   ; SPI_INIT token
 
 
 ; secondary command tokens, can't start a statement
 
-TK_TAB            = TK_I2C_INIT+1   ; TAB token
+TK_TAB            = TK_SPI_INIT+1   ; TAB token
 TK_ELSE           = TK_TAB+1        ; ELSE token
 TK_TO             = TK_ELSE+1       ; TO token
 TK_FN             = TK_TO+1         ; FN token
@@ -454,6 +457,7 @@ TK_RIGHTS         = TK_LEFTS+1      ; RIGHT$ token
 TK_MIDS           = TK_RIGHTS+1     ; MID$ token
 TK_I2C_OUT        = TK_MIDS+1       ; I2C_OUT token
 TK_I2C_IN         = TK_I2C_OUT+1    ; I2C_IN token
+TK_SPI_XFER       = TK_I2C_IN+1     ; SPI_XFER token
 
 ; offsets from a base of X or Y
 
@@ -7890,7 +7894,7 @@ LAB_MSZM
 
 LAB_SMSG
       .byte " Bytes free",$0D,$0A,$0A
-      .byte "TowerBASIC 2.22p5 EL3t",$0A,$00
+      .byte "TowerBASIC 2.22p5 EL4",$0A,$00
 
 ; numeric constants and series
 
@@ -8058,6 +8062,7 @@ LAB_CTBL
       .word I2C_Start_BAS-1   ; I2C_START       new command
       .word I2C_Stop_BAS-1    ; I2C_STOP        new command
       .word I2C_Init-1        ; I2C_INIT        new command
+      .word SPI_Init_BASIC-1  ; SPI_INIT        new command
       
 
 ; function pre process routine table
@@ -8101,6 +8106,7 @@ LAB_FTPM    = LAB_FTPL+$01
       .word LAB_LRMS-1        ; MID$()          "
       .word LAB_PPFN-1        ; I2C_OUT() process numeric expression in ()
       .word LAB_PPFN-1        ; I2C_IN()        "
+      .word LAB_PPFN-1        ; SPI_XFER()      "
 
 
 ; action addresses for functions
@@ -8144,6 +8150,8 @@ LAB_FTBM    = LAB_FTBL+$01
       .word LAB_MIDS-1        ; MID$()
       .word I2C_Out_BAS-1     ; I2C_OUT()       new function
       .word I2C_In_BAS-1      ; I2C_IN()        new function
+      .word SPI_Xfer_BASIC-1  ; SPI_XFER()      new function
+      
       
 
 ; hierarchy and action addresses for operator
@@ -8477,6 +8485,10 @@ LBB_SOUND
       .byte "OUND",TK_SOUND         ; SOUND
 LBB_SPC
       .byte "PC(",TK_SPC            ; SPC(
+LBB_SPI_INIT
+      .byte "PI_INIT",TK_SPI_INIT   ; SPI_INIT
+LBB_SPI_XFER
+      .byte "PI_XFER(",TK_SPI_XFER   ; SPI_XFER(
 LBB_SQR
       .byte "QR(",TK_SQR            ; SQR(
 LBB_STEP
@@ -8634,6 +8646,8 @@ LAB_KEYT
       .word LBB_I2C_STOP      ; I2C_STOP
       .byte 8,'I'
       .word LBB_I2C_INIT      ; I2C_INIT
+      .byte 8,'S'
+      .word LBB_SPI_INIT      ; SPI_INIT
 
 
 ; secondary commands (can't start a statement)
@@ -8764,6 +8778,8 @@ LAB_KEYT
       .word LBB_I2C_OUT       ; I2C_OUT
       .byte 7,'I'
       .word LBB_I2C_IN        ; I2C_IN
+      .byte 9,'S'
+      .word LBB_SPI_XFER      ; SPI_XFER
       
 
 ; BASIC messages, mostly error messages

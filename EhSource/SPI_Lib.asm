@@ -191,7 +191,8 @@ SPI_SCK_Pos_B
 ;
 SPI_ShiftIn_MISO_F
   SEC
-  LDA SPI_MISO_Pin
+  LDA SPI_IOP_C
+  BIT SPI_MISO_Pin
   BNE SPI_ShiftIn_B
   
   CLC
@@ -250,3 +251,175 @@ SPI_xfer_CPHA1							; This path puts the data out just before the leading edge,
   JSR SPI_BusIdle_F
     
   RTS
+
+
+
+  
+
+; Takes mode, mosi, miso, ss, and ss_act parameters and initialises the SPI subsystem.
+; Out of range parameters will generate Function call errors.
+  
+SPI_Init_BASIC
+
+  JSR LAB_EVNM							; Get the SPI Mode
+  JSR LAB_F2FX
+
+  LDA #0							; Check if we are in range 0..3 or not.
+  CMP Itemph
+  BNE InitFCER  
+  LDA Itempl
+  AND #3
+  CMP Itempl
+  BNE InitFCER
+  STA SPI_Mode
+
+  JSR   LAB_1C01						; scan for "," , else do syntax error then warm start
+  
+  JSR LAB_EVNM							; Get the MOSI Pin
+  JSR LAB_F2FX
+  
+  LDA #0							; Check if we are in range 0..7 or not.
+  CMP Itemph
+  BNE InitFCER  
+  LDA Itempl
+  AND #7
+  CMP Itempl
+  BNE InitFCER
+
+  JSR SPI_PinNoToBit_F
+  
+  STA SPI_MOSI_Pin
+  
+  JSR   LAB_1C01						; scan for "," , else do syntax error then warm start
+
+  JSR LAB_EVNM							; Get the MISO Pin
+  JSR LAB_F2FX
+  
+  LDA #0							; Check if we are in range 0..7 or not.
+  CMP Itemph
+  BNE InitFCER  
+  LDA Itempl
+  AND #7
+  CMP Itempl
+  BNE InitFCER
+
+  JSR SPI_PinNoToBit_F
+  
+  CMP SPI_MOSI_Pin						; Check for pin collisions.
+  BEQ InitFCER
+  
+  STA SPI_MISO_Pin
+
+  JSR   LAB_1C01						; scan for "," , else do syntax error then warm start
+
+  BRA SPI_GetSCKPin_B
+
+
+; This sits here to keep it in range.
+InitFCER  
+  JMP LAB_FCER
+
+
+SPI_GetSCKPin_B    
+  JSR LAB_EVNM							; Get the SCK Pin
+  JSR LAB_F2FX
+  
+  LDA #0							; Check if we are in range 0..7 or not.
+  CMP Itemph
+  BNE InitFCER  
+  LDA Itempl
+  AND #7
+  CMP Itempl
+  BNE InitFCER
+
+  JSR SPI_PinNoToBit_F
+  
+  CMP SPI_MOSI_Pin						; Check for pin collisions.
+  BEQ InitFCER
+  CMP SPI_MISO_Pin
+  BEQ InitFCER
+  
+  STA SPI_SCK_Pin
+
+  JSR   LAB_1C01						; scan for "," , else do syntax error then warm start
+    
+  JSR LAB_EVNM							; Get the SS Pin
+  JSR LAB_F2FX
+  
+  LDA #0							; Check if we are in range 0..7 or not.
+  CMP Itemph
+  BNE InitFCER  
+  LDA Itempl
+  AND #7
+  CMP Itempl
+  BNE InitFCER
+
+  JSR SPI_PinNoToBit_F
+  
+  CMP SPI_MOSI_Pin						; Check for pin collisions.
+  BEQ InitFCER
+  CMP SPI_MISO_Pin
+  BEQ InitFCER
+  CMP SPI_SCK_Pin
+  BEQ InitFCER
+  
+  STA SPI_SS_Pin
+
+  JSR   LAB_1C01						; scan for "," , else do syntax error then warm start
+  
+  JSR LAB_EVNM							; Get the SS Pin Active State
+  JSR LAB_F2FX
+  
+  LDA #0							; Check if we are in range 0..1 or not.
+  CMP Itemph
+  BNE InitFCER  
+  LDA Itempl
+  AND #1
+  CMP Itempl
+  BNE InitFCER
+  
+  LDA #0
+  STA SPI_In
+  STA SPI_Out
+  
+  JSR SPI_Init_F
+  RTS
+
+
+; Sets a one in the specified bit position.
+; Takes A 0..7 and moves a 1 up A to the specified position.
+;
+; Registers afffected: A, X, P
+
+SPI_PinNoToBit_F
+  TAX
+  LDA #1
+
+SPI_PinToBit_L
+  CPX #0							; Loop while X!=0
+  BEQ SPI_PinToBitDone_B
+  ASL
+  DEX
+  BRA SPI_PinToBit_L
+  
+SPI_PinToBitDone_B
+  RTS
+  
+  
+  
+SPI_Xfer_BASIC
+
+  JSR LAB_F2FX							; Get our output value and put it in SPI_Out
+  LDA Itemph
+  BEQ SPI_XferSafe_B
+  
+  JMP LAB_FCER
+  
+SPI_XferSafe_B  
+  LDA Itempl
+  STA SPI_Out
+
+  JSR SPI_Xfer_F						; Transmit out
+  
+  LDY SPI_In							; Copy recieved byte to Y
+  JMP   LAB_1FD0                                		; convert Y to byte in FAC1 and return
