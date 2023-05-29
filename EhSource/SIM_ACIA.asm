@@ -1,4 +1,4 @@
-; Duncan's 6551 ACIA Library
+; Jenny's 6551 ACIA Library
 ;
 
 ; ACIA Registers

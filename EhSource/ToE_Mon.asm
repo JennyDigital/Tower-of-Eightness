@@ -2,7 +2,7 @@
 ; Tower of Eightness OS
 
 
-  .include "basic_ToE.asm"
+  .include "basic_ToE no ints.asm"
 ; put the IRQ and MNI code in RAM so that it can be changed
 
 ; IRQ_vec	= VEC_SV+2              	; Previous IRQ code vector
@@ -47,7 +47,7 @@ MON_CR_Delay_C  = $3000
 
   .ROM_AREA $C100,$FFFF
   
-  *= $EC00                              ; Give ourselves room for the OS. Formerly F000
+  *= $EB00                              ; Give ourselves room for the OS. Formerly F000
   .INCLUDE "ACIA.asm"
   .INCLUDE "ANSICARD.asm"
   .INCLUDE "TPBCARD.asm"
@@ -358,8 +358,8 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte "Tower of Eightness OS 5.27.2023.5",$0D,$0A,$0D,$0A
-  .byte $0D,$0A,"65C02 TowerBASIC [C]old/[W]arm?",$00
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 5.29.2023.4T ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte "[C]old/[W]arm?",$00
 
 
 ; ACIA Vectors

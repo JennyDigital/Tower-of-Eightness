@@ -530,7 +530,7 @@ F_TAPE_PrintFname_in_Header
   
   LDA #34
   JSR V_OUTP
-  LDA #<TAPE_FileName				; Print our Filename in the header space
+  LDA #<TAPE_FileName					; Print our Filename in the header space
   STA TOE_MemptrLo
   LDA #>TAPE_FileName 
   STA TOE_MemptrHi

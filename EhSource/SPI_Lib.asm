@@ -233,12 +233,12 @@ SPI_xfer_CPHA0							; This path puts data on the trailing edge of the previous 
   BNE SPI_xfer_CPHA0
   
   JSR SPI_BusIdle_F
+
   RTS
 
   
 SPI_xfer_CPHA1							; This path puts the data out just before the leading edge,
 								; and reads it just after the trailing edge.
- 
   JSR SPI_Assert_SCK_F
   JSR SPI_ShiftOut_MOSI_F
   JSR SPI_Deassert_SCK_F

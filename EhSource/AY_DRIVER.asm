@@ -1,6 +1,6 @@
 ; AY-3-891x Register Driver
 ;
-; By Duncan Gunn.
+; By Jennifer Gunn.
 
 
 ; AY_6522 Registers

@@ -5,3 +5,9 @@ Welcome to my play project of a homebrew computer based on the 6502 CPU used in 
 P.S.  I am planning to bring BBC BASIC to this system as it's sooooo good.
 
 P.P.S.  I will be continuing to develop this machine for some time especially over weekends.
+
+Have Fun!
+
+
+
+*JenniferDigital.*

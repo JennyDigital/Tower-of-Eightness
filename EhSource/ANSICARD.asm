@@ -1,4 +1,4 @@
-; Duncan's ANSI Video card library
+; Jennifers ANSI Video card library
 ;
 ; This card is based on a 6522 VIA chip.
 

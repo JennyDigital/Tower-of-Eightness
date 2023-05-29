@@ -1,4 +1,4 @@
-; Duncan's TPB Card driver
+; Jennifer's TPB Card driver
 ;
 ; This card is based on a 6522 VIA chip.
 
