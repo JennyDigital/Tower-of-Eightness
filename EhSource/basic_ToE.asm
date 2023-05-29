@@ -57,6 +57,12 @@
 ;      I2C_OUT() function.  Sends out a value and returns the status.
 ;      I2C_IN() functon.  Returns a value from the I2C engine taking either 0 (ACK) or 1 (NAK) as it's parameter.
 ;      I2C_INIT command.  Initialises the I2C engine.  This is necessary because not everyone wants to use the pins for I2C.
+;
+; Other Tower of Eightness amendments:-
+;
+;      Removed IRQ, NMI, RETIRQ, and RETNMI commands.
+;      INPUT now doesn't print the ? when it also prints the input string.
+
 
 
 ; zero page use ..
@@ -299,20 +305,12 @@ Rbyte1            = Rbyte4+1  ; most significant PRNG byte
 Rbyte2            = Rbyte4+2  ; middle PRNG byte
 Rbyte3            = Rbyte4+3  ; least significant PRNG byte
 
-NmiBase           = $DC       ; NMI handler enabled/setup/triggered flags
-                              ; bit function
-                              ; === ========
-                              ; 7   interrupt enabled
-                              ; 6   interrupt setup
-                              ; 5   interrupt happened
-;                 = $DD       ; NMI handler addr low byte
-;                 = $DE       ; NMI handler addr high byte
-IrqBase           = $DF       ; IRQ handler enabled/setup/triggered flags
-;                 = $E0       ; IRQ handler addr low byte
-;                 = $E1       ; IRQ handler addr high byte
-
-; *** removed unused comments for $DE-$E1
-
+;                 = $DC       ; Unused
+;                 = $DD       ; Unused
+;                 = $DE       ; Unused
+;                 = $DF       ; Unused
+;                 = $E0       ; Unused
+;                 = $E1       ; Unused
 ;                 = $E2       ; TPB card temporary location
 ;                 = $E3       ; TPB card temporary location
 ;                 = $E4       ; TAPE tempoaray location.
@@ -350,9 +348,7 @@ TK_RUN            = TK_GOTO+1       ; RUN token
 TK_IF             = TK_RUN+1        ; IF token
 TK_RESTORE        = TK_IF+1         ; RESTORE token
 TK_GOSUB          = TK_RESTORE+1    ; GOSUB token
-TK_RETIRQ         = TK_GOSUB+1      ; RETIRQ token
-TK_RETNMI         = TK_RETIRQ+1     ; RETNMI token
-TK_RETURN         = TK_RETNMI+1     ; RETURN token
+TK_RETURN         = TK_GOSUB+1      ; RETURN token
 TK_REM            = TK_RETURN+1     ; REM token
 TK_STOP           = TK_REM+1        ; STOP token
 TK_ON             = TK_STOP+1       ; ON token
@@ -377,9 +373,7 @@ TK_GET            = TK_WIDTH+1      ; GET token
 TK_SWAP           = TK_GET+1        ; SWAP token
 TK_BITSET         = TK_SWAP+1       ; BITSET token
 TK_BITCLR         = TK_BITSET+1     ; BITCLR token
-TK_IRQ            = TK_BITCLR+1     ; IRQ token
-TK_NMI            = TK_IRQ+1        ; NMI token
-TK_VERIFY         = TK_NMI+1        ; VERIFY token
+TK_VERIFY         = TK_BITCLR+1     ; VERIFY token
 TK_CAT            = TK_VERIFY+1     ; CAT token
 TK_CLS            = TK_CAT+1        ; CLS token
 TK_LOCATE         = TK_CLS+1        ; LOCATE token
@@ -403,11 +397,11 @@ TK_NOT            = TK_THEN+1       ; NOT token
 TK_STEP           = TK_NOT+1        ; STEP token
 TK_UNTIL          = TK_STEP+1       ; UNTIL token
 TK_WHILE          = TK_UNTIL+1      ; WHILE token
-TK_OFF            = TK_WHILE+1      ; OFF token
 
-; opperator tokens
 
-TK_PLUS           = TK_OFF+1        ; + token
+; operator tokens
+
+TK_PLUS           = TK_WHILE+1      ; + token
 TK_MINUS          = TK_PLUS+1       ; - token
 TK_MUL            = TK_MINUS+1      ; * token
 TK_DIV            = TK_MUL+1        ; / token
@@ -500,6 +494,8 @@ VEC_CAT           = VEC_VERIFY+2	; cat vector
 
 ; $5D0-$5DF for I2C
 ; $5E0-$5EF for ToE_Mon
+; $5D0-$5D1 for I2C Engine
+
 ; $5F2-$7FF for TPB bus card
 ; $800-$8FF unallocated
 ; $900-$AFF Allocated to the cassette file system.  This is probably generous.
@@ -507,10 +503,7 @@ VEC_CAT           = VEC_VERIFY+2	; cat vector
 ; $A20-$A49 Countdown timer IRQ memory
 ; $A4A-$AFF unallocated
 
-;Ibuffs            = IRQ_vec+$14
-Ibuffs            = $B00       ; TODO: Create a method of allocation controlled from an
-                               ; external file
-                               ; start of input buffer after IRQ/NMI code
+Ibuffs            = $B00       ; Start of input buffer
 Ibuffe            = Ibuffs+$7F ; end of input buffer
 
 Ram_base          = $0C00      ; start of user RAM (set as needed, should be page aligned)
@@ -520,7 +513,7 @@ Stack_floor       = 16         ; bytes left free on stack for background interru
 
 ; This start can be changed to suit your system
 
-      *=    $C100
+      *=    ROMSTART
 
 ; BASIC cold start entry point
 
@@ -564,8 +557,6 @@ TabLoop
 ; set-up start values
 
       LDA   #$00              ; clear A
-      STA   NmiBase           ; clear NMI handler enabled flag
-      STA   IrqBase           ; clear IRQ handler enabled flag
       STA   FAC1_o            ; clear FAC1 overflow byte
       STA   last_sh           ; clear descriptor stack top item pointer high byte
 
@@ -866,10 +857,7 @@ LAB_1269
 ; wait for Basic command
 
 LAB_1274
-                              ; clear ON IRQ/NMI bytes
-      LDA   #$00              ; clear A
-      STA   IrqBase           ; clear enabled byte
-      STA   NmiBase           ; clear enabled byte
+;      LDA   #$00              ; clear A
       LDA   #<LAB_RMSG        ; point to "Ready" message low byte
       LDY   #>LAB_RMSG        ; point to "Ready" message high byte
 
@@ -1010,7 +998,7 @@ LAB_1325
       LDA   (ut1_pl),Y        ; get it
       BEQ   LAB_133E          ; exit if end of program
 
-; rebuild chaining of Basic lines
+; rebuild chaining of BASIC lines
 
       LDY   #$04              ; point to first code byte of line
                               ; there is always 1 byte + [EOL] as null entries are deleted
@@ -1040,6 +1028,7 @@ LAB_133E
 LAB_INLN
       JSR   LAB_18E3          ; print "?" character
       JSR   LAB_18E0          ; print " "
+LAB_INLN_NO_Q
       BNE   LAB_1357          ; call for BASIC input and return
 
 ; receive line from keyboard
@@ -1820,11 +1809,6 @@ LAB_CONT
 
                               ; we can continue so ..
 LAB_166C
-      LDA   #TK_ON            ; set token for ON
-      JSR   LAB_IRQ           ; set IRQ flags
-      LDA   #TK_ON            ; set token for ON
-      JSR   LAB_NMI           ; set NMI flags
-
       STY   Bpntrh            ; save BASIC execute pointer high byte
       LDA   Cpntrl            ; get continue pointer low byte
       STA   Bpntrl            ; save BASIC execute pointer low byte
@@ -2218,18 +2202,6 @@ LAB_16FD
 ; perform ON
 
 LAB_ON
-      CMP   #TK_IRQ           ; was it IRQ token ?
-      BNE   LAB_NOIN          ; if not go check NMI
-
-      JMP   LAB_SIRQ          ; else go set-up IRQ
-
-LAB_NOIN
-      CMP   #TK_NMI           ; was it NMI token ?
-      BNE   LAB_NONM          ; if not go do normal ON command
-
-      JMP   LAB_SNMI          ; else go set-up NMI
-
-LAB_NONM
       JSR   LAB_GTBY          ; get byte parameter
       PHA                     ; push GOTO/GOSUB token
       CMP   #TK_GOSUB         ; compare with GOSUB token
@@ -2713,12 +2685,18 @@ LAB_INPUT
       LDA   #$3B              ; load A with ";"
       JSR   LAB_SCCA          ; scan for CHR$(A), else do syntax error then warm start
       JSR   LAB_18C6          ; print string from Sutill/Sutilh
+; Patch to remove Qmark when input string is present
+      JSR   LAB_CKRN
+      JSR   LAB_INLN_NO_Q
+      BRA   LAB_IN_NoQmark
 
                               ; done with prompt, now get data
 LAB_1934
       JSR   LAB_CKRN          ; check not Direct, back here if ok
       JSR   LAB_INLN          ; print "? " and get BASIC input
+LAB_IN_NoQmark
       LDA   #$00              ; set mode = INPUT
+
       CMP   Ibuffs            ; test first byte in buffer
       BNE   LAB_1953          ; branch if not null input
 
@@ -6866,6 +6844,7 @@ LAB_2A91
       LDY   #>Decssp1         ; set result string high pointer
       RTS
 
+
 ; perform power function
 
 LAB_POWER
@@ -6922,6 +6901,7 @@ LAB_GTHAN
 LAB_2AF9
       RTS
 
+
 ; perform EXP()   (x^e)
 
 LAB_EXP
@@ -6975,6 +6955,7 @@ LAB_2B49
       PLA                     ;.get saved FAC2 exponent
       JMP   LAB_2675          ; test and adjust accumulators and return
 
+
 ; ^2 then series evaluation
 
 LAB_2B6E
@@ -6987,6 +6968,7 @@ LAB_2B6E
       LDA   #<Adatal          ; pointer to original # low byte
       LDY   #>Adatal          ; pointer to original # high byte
       JMP   LAB_25FB          ; do convert AY, FCA1*(AY) and return
+
 
 ; series evaluation
 
@@ -7026,6 +7008,7 @@ LAB_2BA8
       BNE   LAB_2B9B          ; loop until all done
 
       RTS
+
 
 ; RND(n), 32 bit Galoise version. make n=0 for 19th next number in sequence or n<>0
 ; to get 19th next number in sequence after seed n. This version of the PRNG uses
@@ -7081,12 +7064,14 @@ CopyPRNG
 
       JMP   LAB_24D5          ; normalise FAC1 and return
 
+
 ; perform COS()
 
 LAB_COS
       LDA   #<LAB_2C78        ; set (pi/2) pointer low byte
       LDY   #>LAB_2C78        ; set (pi/2) pointer high byte
       JSR   LAB_246C          ; add (AY) to FAC1
+
 
 ; perform SIN()
 
@@ -7132,6 +7117,7 @@ LAB_2C45
       LDY   #>LAB_2C84        ; set pointer high byte to counter
       JMP   LAB_2B6E          ; ^2 then series evaluation and return
 
+
 ; perform TAN()
 
 LAB_TAN
@@ -7158,11 +7144,13 @@ LAB_2C74
       PHA                     ; save comparison evaluation flag
       JMP   LAB_2C35          ; go do series evaluation
 
+
 ; perform USR()
 
 LAB_USR
       JSR   Usrjmp            ; call user code
       JMP   LAB_1BFB          ; scan for ")", else do syntax error then warm start
+
 
 ; perform ATN()
 
@@ -7198,6 +7186,7 @@ LAB_2CC2
 
       JMP   LAB_GTHAN         ; else do - FAC1 and return
 
+
 ; perform BITSET
 
 LAB_BITSET
@@ -7217,6 +7206,7 @@ S_Bits
       STA   (Itempl,X)        ; save byte via temporary integer (addr)
 LAB_2D04
       RTS
+
 
 ; perform BITCLR
 
@@ -7238,6 +7228,7 @@ S_Bitc
 
 FCError
       JMP   LAB_FCER          ; do function call error then warm start
+
 
 ; perform BITTST()
 
@@ -7478,61 +7469,13 @@ LAB_FBA0
       BEQ   LAB_FBA2          ; exit if finished
 
       DEC   ccnull            ; else decrement countdown
+
 LAB_FBA2
-      LDX   #NmiBase          ; set pointer to NMI values
-      JSR   LAB_CKIN          ; go check interrupt
-      LDX   #IrqBase          ; set pointer to IRQ values
-      JSR   LAB_CKIN          ; go check interrupt
-LAB_CRTS
       RTS
-
-; check whichever interrupt is indexed by X
-
-LAB_CKIN
-      LDA   PLUS_0,X          ; get interrupt flag byte
-      BPL   LAB_CRTS          ; branch if interrupt not enabled
-
-; we disable the interrupt here and make two new commands RETIRQ and RETNMI to
-; automatically enable the interrupt when we exit
-
-      ASL                     ; move happened bit to setup bit
-      AND   #$40              ; mask happened bits
-      BEQ   LAB_CRTS          ; if no interrupt then exit
-
-      STA   PLUS_0,X          ; save interrupt flag byte
-
-      TXA                     ; copy index ..
-      TAY                     ; .. to Y
-
-      PLA                     ; dump return address low byte, call from CTRL-C
-      PLA                     ; dump return address high byte
-
-      LDA   #$05              ; need 5 bytes for GOSUB
-      JSR   LAB_1212          ; check room on stack for A bytes
-      LDA   Bpntrh            ; get BASIC execute pointer high byte
-      PHA                     ; push on stack
-      LDA   Bpntrl            ; get BASIC execute pointer low byte
-      PHA                     ; push on stack
-      LDA   Clineh            ; get current line high byte
-      PHA                     ; push on stack
-      LDA   Clinel            ; get current line low byte
-      PHA                     ; push on stack
-      LDA   #TK_GOSUB         ; token for GOSUB
-      PHA                     ; push on stack
-
-      LDA   PLUS_1,Y          ; get interrupt code pointer low byte
-      STA   Bpntrl            ; save as BASIC execute pointer low byte
-      LDA   PLUS_2,Y          ; get interrupt code pointer high byte
-      STA   Bpntrh            ; save as BASIC execute pointer high byte
-
-      JMP   LAB_15C2          ; go do interpreter inner loop
-                              ; can't RTS, we used the stack! the RTS from the ctrl-c
-                              ; check will be taken when the RETIRQ/RETNMI/RETURN is
-                              ; executed at the end of the subroutine
 
 ; get byte from input device, no waiting
 ; returns with carry set if byte in A
-
+;
 INGET
       JSR   V_INPT            ; call scan input device
       BCS   LAB_FB95          ; if byte go reset timer
@@ -7542,113 +7485,12 @@ INGET
 
       LDA   ccbyte            ; get last received byte
       SEC                     ; flag we got a byte
+
 LAB_FB95
       LDX   #$00              ; clear X
       STX   ccnull            ; clear timer because we got a byte
 LAB_FB96
       RTS
-
-; these routines only enable the interrupts if the set-up flag is set
-; if not they have no effect
-
-; perform IRQ {ON|OFF|CLEAR}
-
-LAB_IRQ
-      LDX   #IrqBase          ; set pointer to IRQ values
-      .byte $2C               ; make next line BIT abs.
-
-; perform NMI {ON|OFF|CLEAR}
-
-LAB_NMI
-      LDX   #NmiBase          ; set pointer to NMI values
-      CMP   #TK_ON            ; compare with token for ON
-      BEQ   LAB_INON          ; go turn on interrupt
-
-      CMP   #TK_OFF           ; compare with token for OFF
-      BEQ   LAB_IOFF          ; go turn off interrupt
-
-      EOR   #TK_CLEAR         ; compare with token for CLEAR, A = $00 if = TK_CLEAR
-      BEQ   LAB_INEX          ; go clear interrupt flags and return
-
-      JMP   LAB_SNER          ; do syntax error then warm start
-
-LAB_IOFF
-      LDA   #$7F              ; clear A
-      AND   PLUS_0,X          ; AND with interrupt setup flag
-      BPL   LAB_INEX          ; go clear interrupt enabled flag and return
-
-LAB_INON
-      LDA   PLUS_0,X          ; get interrupt setup flag
-      ASL                     ; Shift bit to enabled flag
-      ORA   PLUS_0,X          ; OR with flag byte
-LAB_INEX
-      STA   PLUS_0,X          ; save interrupt flag byte
-      JMP   LAB_IGBY          ; update BASIC execute pointer and return
-
-; these routines set up the pointers and flags for the interrupt routines
-; note that the interrupts are also enabled by these commands
-
-; perform ON IRQ
-
-LAB_SIRQ
-      CLI                     ; enable interrupts
-      LDX   #IrqBase          ; set pointer to IRQ values
-      .byte $2C               ; make next line BIT abs.
-
-; perform ON NMI
-
-LAB_SNMI
-      LDX   #NmiBase          ; set pointer to NMI values
-
-      STX   TempB             ; save interrupt pointer
-      JSR   LAB_IGBY          ; increment and scan memory (past token)
-      JSR   LAB_GFPN          ; get fixed-point number into temp integer
-      LDA   Smeml             ; get start of mem low byte
-      LDX   Smemh             ; get start of mem high byte
-      JSR   LAB_SHLN          ; search Basic for temp integer line number from AX
-      BCS   LAB_LFND          ; if carry set go set-up interrupt
-
-      JMP   LAB_16F7          ; else go do "Undefined statement" error and warm start
-
-LAB_LFND
-      LDX   TempB             ; get interrupt pointer
-      LDA   Baslnl            ; get pointer low byte
-      SBC   #$01              ; -1 (carry already set for subtract)
-      STA   PLUS_1,X          ; save as interrupt pointer low byte
-      LDA   Baslnh            ; get pointer high byte
-      SBC   #$00              ; subtract carry
-      STA   PLUS_2,X          ; save as interrupt pointer high byte
-
-      LDA   #$C0              ; set interrupt enabled/setup bits
-      STA   PLUS_0,X          ; set interrupt flags
-LAB_IRTS
-      RTS
-
-; return from IRQ service, restores the enabled flag.
-
-; perform RETIRQ
-
-LAB_RETIRQ
-      BNE   LAB_IRTS          ; exit if following token (to allow syntax error)
-
-      LDA   IrqBase           ; get interrupt flags
-      ASL                     ; copy setup to enabled (b7)
-      ORA   IrqBase           ; OR in setup flag
-      STA   IrqBase           ; save enabled flag
-      JMP   LAB_16E8          ; go do rest of RETURN
-
-; return from NMI service, restores the enabled flag.
-
-; perform RETNMI
-
-LAB_RETNMI
-      BNE   LAB_IRTS          ; exit if following token (to allow syntax error)
-
-      LDA   NmiBase           ; get set-up flag
-      ASL                     ; copy setup to enabled (b7)
-      ORA   NmiBase           ; OR in setup flag
-      STA   NmiBase           ; save enabled flag
-      JMP   LAB_16E8          ; go do rest of RETURN
 
 ; MAX() MIN() pre process
 
@@ -8048,7 +7890,7 @@ LAB_MSZM
 
 LAB_SMSG
       .byte " Bytes free",$0D,$0A,$0A
-      .byte "TowerBASIC 2.22p5 EL3",$0A,$00
+      .byte "TowerBASIC 2.22p5 EL3t",$0A,$00
 
 ; numeric constants and series
 
@@ -8181,12 +8023,10 @@ LAB_CTBL
       .word LAB_IF-1          ; IF
       .word LAB_RESTORE-1     ; RESTORE         modified command
       .word LAB_GOSUB-1       ; GOSUB
-      .word LAB_RETIRQ-1      ; RETIRQ          new command
-      .word LAB_RETNMI-1      ; RETNMI          new command
       .word LAB_RETURN-1      ; RETURN
       .word LAB_REM-1         ; REM
       .word LAB_STOP-1        ; STOP
-      .word LAB_ON-1          ; ON              modified command
+      .word LAB_ON-1          ; ON
       .word LAB_NULL-1        ; NULL            modified command
       .word LAB_INC-1         ; INC             new command
       .word LAB_WAIT-1        ; WAIT
@@ -8208,8 +8048,6 @@ LAB_CTBL
       .word LAB_SWAP-1        ; SWAP            new command
       .word LAB_BITSET-1      ; BITSET          new command
       .word LAB_BITCLR-1      ; BITCLR          new command
-      .word LAB_IRQ-1         ; IRQ             new command
-      .word LAB_NMI-1         ; NMI             new command
       .word V_VERIFY-1        ; VERIFY          new command
       .word V_CAT-1           ; CAT             new command
       .word MON_CLS-1         ; CLS             new command
@@ -8263,6 +8101,7 @@ LAB_FTPM    = LAB_FTPL+$01
       .word LAB_LRMS-1        ; MID$()          "
       .word LAB_PPFN-1        ; I2C_OUT() process numeric expression in ()
       .word LAB_PPFN-1        ; I2C_IN()        "
+
 
 ; action addresses for functions
 
@@ -8337,6 +8176,7 @@ LAB_OPPT
       .byte $64               ; <
       .word LAB_LTHAN-1
 
+
 ; keywords start with ..
 ; this is the first character table and must be in alphabetic order
 
@@ -8371,6 +8211,7 @@ TAB_1STC
       .byte "W"
       .byte "^"
       .byte $00               ; table terminator
+
 
 ; pointers to keyword tables
 
@@ -8407,6 +8248,7 @@ TAB_CHRT
 
 
 ; FINDME LBB
+
 ; tables for each start character, note if a longer keyword with the same start
 ; letters as a shorter one exists then it must come first, else the list is in
 ; alphabetical order as follows ..
@@ -8531,8 +8373,6 @@ LBB_INPUT
       .byte "NPUT",TK_INPUT         ; INPUT
 LBB_INT
       .byte "NT(",TK_INT            ; INT(
-LBB_IRQ
-      .byte "RQ",TK_IRQ             ; IRQ
 LBB_I2C_INIT
       .byte "2C_INIT",TK_I2C_INIT   ; I2C_INIT
 LBB_I2C_IN
@@ -8580,16 +8420,12 @@ LBB_NEW
       .byte "EW",TK_NEW             ; NEW
 LBB_NEXT
       .byte "EXT",TK_NEXT           ; NEXT
-LBB_NMI
-      .byte "MI",TK_NMI             ; NMI
 LBB_NOT
       .byte "OT",TK_NOT             ; NOT
 LBB_NULL
       .byte "ULL",TK_NULL           ; NULL
       .byte $00
 TAB_ASCO
-LBB_OFF
-      .byte "FF",TK_OFF             ; OFF
 LBB_ON
       .byte "N",TK_ON               ; ON
 LBB_OR
@@ -8617,12 +8453,7 @@ LBB_READ
 LBB_REM
       .byte "EM",TK_REM             ; REM
 LBB_RESTORE
-      .byte "ESTORE",TK_RESTORE
-                                    ; RESTORE
-LBB_RETIRQ
-      .byte "ETIRQ",TK_RETIRQ       ; RETIRQ
-LBB_RETNMI
-      .byte "ETNMI",TK_RETNMI       ; RETNMI
+      .byte "ESTORE",TK_RESTORE     ; RESTORE
 LBB_RETURN
       .byte "ETURN",TK_RETURN       ; RETURN
 LBB_RIGHTS
@@ -8734,10 +8565,6 @@ LAB_KEYT
       .byte 5,'G'
       .word LBB_GOSUB         ; GOSUB
       .byte 6,'R'
-      .word LBB_RETIRQ        ; RETIRQ
-      .byte 6,'R'
-      .word LBB_RETNMI        ; RETNMI
-      .byte 6,'R'
       .word LBB_RETURN        ; RETURN
       .byte 3,'R'
       .word LBB_REM           ; REM
@@ -8787,10 +8614,6 @@ LAB_KEYT
       .word LBB_BITSET        ; BITSET
       .byte 6,'B'
       .word LBB_BITCLR        ; BITCLR
-      .byte 3,'I'
-      .word LBB_IRQ           ; IRQ
-      .byte 3,'N'
-      .word LBB_NMI           ; NMI
       .byte 6,'V'
       .word LBB_VERIFY        ; VERIFY
       .byte 3,'C'
@@ -8835,8 +8658,6 @@ LAB_KEYT
       .word LBB_UNTIL         ; UNTIL
       .byte 5,'W'
       .word LBB_WHILE         ; WHILE
-      .byte 3,'O'
-      .word LBB_OFF           ; OFF
 
 ; operators
 

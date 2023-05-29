@@ -1,16 +1,16 @@
 
 ; Tower of Eightness OS
 
+ROMSTART = $C100
 
-  .include "basic_ToE no ints.asm"
+  .include "basic_ToE.asm"
 ; put the IRQ and MNI code in RAM so that it can be changed
 
-; IRQ_vec	= VEC_SV+2              	; Previous IRQ code vector
 IRQ_vec		= IRQH_ProcessIRQs		; IRQ code vector
 NMI_vec		= IRQ_vec+$0A           	; NMI code vector
 
 
-; OS System variables live here
+; TowerOS System variables
 
 MON_sysvars_base  	= $5E0			; base address of the reserved base memory
 os_outsel		= MON_sysvars_base	; output selection variable
@@ -46,8 +46,9 @@ MON_CR_Delay_C  = $3000
 ; Also, during the running phase, the extra OS features are hosted here.
 
   .ROM_AREA $C100,$FFFF
-  
-  *= $EB00                              ; Give ourselves room for the OS. Formerly F000
+
+ 
+  *= $EA00                              ; Give ourselves room for the OS. Formerly F000
   .INCLUDE "ACIA.asm"
   .INCLUDE "ANSICARD.asm"
   .INCLUDE "TPBCARD.asm"
@@ -149,30 +150,6 @@ LAB_vec
   .word TAPE_SAVE_BASIC_vec           ; save vector for EhBASIC
   .word TAPE_VERIFY_BASIC_vec         ; verify vector for EhBASIC
   .word TAPE_CAT_vec                  ; cat vector for EhBASIC
-  
-
-; EhBASIC IRQ support
-
-IRQ_CODE
-  PHA                                 ; save A
-  LDA IrqBase                         ; get the IRQ flag byte
-  LSR                                 ; shift the set b7 to b6, and on down ...
-  ORA IrqBase                         ; OR the original back in
-  STA IrqBase                         ; save the new IRQ flag byte
-  PLA                                 ; restore A
-  RTI
-
-
-; EhBASIC NMI support
-
-NMI_CODE
-  PHA                                 ; save A
-  LDA NmiBase                         ; get the NMI flag byte
-  LSR                                 ; shift the set b7 to b6, and on down ...
-  ORA NmiBase                         ; OR the original back in
-  STA NmiBase                         ; save the new NMI flag byte
-  PLA                                 ; restore A
-  RTI
 
 
 ; ToE input BASIC stream support.
@@ -287,6 +264,7 @@ MON_EndWRITE_B2
 
   
 ; Tower string printing routine.
+
 TOE_PrintStr
   LDY #0					; Initialise loop index.
 TOE_PrintStr_L
@@ -299,7 +277,8 @@ TOE_PrintStr_L
 TOE_DonePrinting
   RTS
 
-; Tower CR delay for spooling routine.  
+; Tower CR delay for spooling routine.
+  
 MON_Do_CR_Delay
   LDY #>MON_CR_Delay_C                          ; Get our delay value
   LDX #<MON_CR_Delay_C
@@ -358,7 +337,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 5.29.2023.4T ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 5.29.2023.6T ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 
