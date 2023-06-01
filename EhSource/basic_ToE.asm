@@ -5449,7 +5449,13 @@ LAB_SWAP
       JSR   LAB_GVAR          ; get var2 address (pointer in Cvaral/h)
       PLA                     ; pull var1 data type flag
       EOR   Dtypef            ; compare with var2 data type
-      BPL   SwapErr           ; exit if not both the same type
+      
+; BUGFIX:  SWAP would only swap a string with a number otherwise it would generate an error!
+;
+      ; BPL   SwapErr           ; exit if not both the same type
+      BNE   SwapErr           ; exit if not both the same type
+;
+; End of bugfix.
 
       LDY   #$03              ; four bytes to swap (either value or descriptor+1)
 SwapLp

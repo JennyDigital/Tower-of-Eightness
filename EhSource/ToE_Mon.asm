@@ -84,8 +84,8 @@ RES_vec
 
   JSR TPB_delay
   
-  LDA #ANSI_out_sw                    ; Set our default output options for ANSI output mode.
-;  LDA #ACIA1_out_sw                   ; Set our default output options for ACIA output mode.
+;  LDA #ANSI_out_sw                    ; Set our default output options for ANSI output mode.
+  LDA #ACIA1_out_sw                   ; Set our default output options for ACIA output mode.
   STA os_outsel                       ; to the ANSI card only.
   LDA #LF_filt_sw1
   STA os_infilt                       ; Switch on $A filtering on the ACIA.
