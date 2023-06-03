@@ -1,0 +1,74 @@
+LISTING FOR LOGIC DESCRIPTION FILE: ADDR_DEC.pld                     Page 1
+
+CUPL(WM): Universal Compiler for Programmable Logic
+Version 5.0a Serial# 60008009
+Copyright (c) 1983, 1998 Logical Devices, Inc.
+Created Sat Jun 03 15:59:37 2023
+
+  1:Name     addr_dec ;
+  2:Partno   01 ;
+  3:Date     26/02/2016 ;
+  4:Revision 01 ;
+  5:Designer Jennifer ;
+  6:Company  Home ;
+  7:Assembly None ;
+  8:Location  ;
+  9:Device   g22v10 ;
+ 10:
+ 11:/* *************** INPUT PINS *********************/
+ 12:PIN   1 = PHI2                    ; /* can't remember why I needed this */ 
+ 13:PIN   2 = A8                      ; /*                                  */ 
+ 14:PIN   3 = A9                      ; /*                                  */ 
+ 15:PIN   4 = A10                     ; /*                                  */ 
+ 16:PIN   5 = A11                     ; /*                                  */ 
+ 17:PIN   6 = A12                     ; /*                                  */ 
+ 18:PIN   7 = A13                     ; /*                                  */ 
+ 19:PIN   8 = A14                     ; /*                                  */ 
+ 20:PIN   9 = A15                     ; /*                                  */
+ 21: 
+ 22:
+ 23:/* *************** OUTPUT PINS *********************/
+ 24:PIN  14 = !BANK0                  ; /* Low bank for stack etc           */ 
+ 25:PIN  15 = !BANK1                  ; /* a handy bank for general purpose */ 
+ 26:PIN  16 = !BANK2                  ; /* video ram bank. Otherwise as B2  */ 
+ 27:PIN  17 = !BANK3                  ; /* ROM bank where the firmware is.  */ 
+ 28:PIN  18 = !IOSEL                  ; /* Memory mapped IO address page.   */ 
+ 29:
+ 30:
+ 31:/* ************* ADDRESS BUS **********************                    */
+ 32:
+ 33:FIELD address = [A15..8];
+ 34:
+ 35:/* **************** EQUATIONS *********************                    */
+ 36:
+ 37:BANK0   = address:[0..3FFF];
+ 38:BANK1   = address:[4000..7FFF];
+ 39:BANK2   = address:[8000..BFFF];
+ 40:BANK3   = address:[C100..FFFF];
+ 41:IOSEL   = address:[C000..C0FF];
+ 42:
+ 43:
+ 44:/* ********** code to generate outputs *********** */
+ 45:
+ 46:/* IOSEL = !A8 & !A9 & !A10 & !A11 & !A12 & !A13 & A14 & A15; */
+ 47:/* BANK0 = !A14 & !A15; */
+ 48:/* BANK1 = A14 & !A15; */
+ 49:/* BANK2 = !A14 & A15; */
+ 50:/* BANK3 = A14 & A15 & ( A8 # A9 # A10 # A11 # A12 # A13 ); */
+ 51:
+ 52:
+ 53:
+
+LISTING FOR LOGIC DESCRIPTION FILE: ADDR_DEC.pld                     Page 2
+
+CUPL(WM): Universal Compiler for Programmable Logic
+Version 5.0a Serial# 60008009
+Copyright (c) 1983, 1998 Logical Devices, Inc.
+Created Sat Jun 03 15:59:37 2023
+
+ 54:
+
+
+
+Jedec Fuse Checksum       (76b1)
+Jedec Transmit Checksum   (77b6)

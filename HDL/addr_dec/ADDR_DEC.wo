@@ -1,0 +1,23 @@
+#WAVEFORM
+#H Name     addr_dec;
+#H PartNo   ;
+#E 0025 
+
+#H Date     26/02/2016;
+#H Revision 01;
+#H Designer Jennifer;
+#E 0025 
+
+#H Company  Home;
+#H Assembly None;
+#H Location ;
+#H Device   g22v10;
+#H 
+#H 
+#F address = [A15,A14,A13,A12,A11,A10,A9,A8];
+
+#H ORDER: A8, A9, A10, A11, A12, A13, A14, A15, !BANK0, !BANK1, !BANK2, !BANK3, !IOSEL; 
+#H 
+#H 
+#V 0001 11111111HHHLH
+#V 0002 00000011HHHHL

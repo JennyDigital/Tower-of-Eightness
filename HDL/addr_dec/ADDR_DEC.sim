@@ -12,9 +12,11 @@ PIN  15 = !BANK1
 PIN  16 = !BANK2 
 PIN  17 = !BANK3 
 PIN  18 = !IOSEL 
+PIN   1 =  PHI2 
 %END
 
 %FIELD
+FIELD address = A15,A14,A13,A12,A11,A10,A9,A8
 %END
 
 %EQUATION
@@ -28,12 +30,19 @@ BANK2 =>
     !A14 & A15
 
 BANK3 =>
-    A8 & A14 & A15
-  # A9 & A14 & A15
-  # A10 & A14 & A15
-  # A11 & A14 & A15
-  # A13 & A14 & A15
-  # A12 & A14 & A15
+    A8 & !A10 & !A11 & !A12 & !A13 & A14 & A15
+  # !A8 & A9 & !A11 & !A12 & !A13 & A14 & A15
+  # !A8 & A9 & A10 & A11 & A12 & A13 & A14 & A15
+  # A8 & A9 & A10 & !A12 & !A13 & A14 & A15
+  # A9 & !A12 & A13 & A14 & A15
+  # !A10 & A11 & !A12 & !A13 & A14 & A15
+  # !A9 & A10 & !A12 & A14 & A15
+  # !A8 & A9 & A10 & A11 & !A13 & A14 & A15
+  # !A9 & !A10 & !A12 & A13 & A14 & A15
+  # !A11 & A12 & A14 & A15
+  # A8 & A9 & A10 & A11 & A12 & A14 & A15
+  # A9 & !A10 & A11 & A12 & A14 & A15
+  # !A9 & A11 & A12 & A14 & A15
 
 IOSEL =>
     !A8 & !A9 & !A10 & !A11 & !A12 & !A13 & A14 & A15

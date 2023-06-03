@@ -1,0 +1,17 @@
+Name     addr_dec;
+PartNo   ;
+Date     26/02/2016;
+Revision 01;
+Designer Jennifer;
+Company  Home;
+Assembly None;
+Location ;
+Device   g22v10;
+
+
+ORDER: A8, A9, A10, A11, A12, A13, A14, A15, !BANK0, !BANK1, !BANK2, !BANK3, !IOSEL; 
+
+
+VECTORS:
+11111111*****
+00000011*****
