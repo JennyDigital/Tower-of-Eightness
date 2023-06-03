@@ -1,5 +1,5 @@
 
-; TowerBASIC to assemble under 6502 simulator, $ver 2.22p5 EL1
+; TowerBASIC to assemble under 6502 simulator, $ver 2.22p5 EL4
 ; This is a derivative work of EhBASIC
 
 ; $E7E1 $E7CF $E7C6 $E7D3 $E7D1 $E7D5 $E7CF $E81E $E825
@@ -64,6 +64,9 @@
 ;
 ;      Removed IRQ, NMI, RETIRQ, and RETNMI commands.
 ;      INPUT now doesn't print the ? when it also prints the input string.
+;      SWAP now works correctly, swapping only arguments of the same type as opposed to mismatched types.
+;      FRE(O), DEEK, SADD and VARPTR now all return 16-bit unsigned integers.
+
 
 
 
@@ -2441,12 +2444,17 @@ LAB_NoSt
 
       JMP   LAB_17D5          ; do string LET and return
 
+
+
+
+
 ; perform PRINT
 
 LAB_1829
       JSR   LAB_18C6          ; print string from Sutill/Sutilh
 LAB_182C
       JSR   LAB_GBYT          ; scan memory
+
 
 ; PRINT
 
@@ -4317,6 +4325,8 @@ LAB_1FB4
       TAY                     ; copy result to Y
       LDA   Sstorh            ; get bottom of string space high byte
       SBC   Earryh            ; subtract array mem end high byte
+; Mod for unsigned FRE(0)      
+      BRA LAB_UAYFC
 
 ; save and convert integer AY to FAC1
 
@@ -4326,6 +4336,16 @@ LAB_AYFC
       STY   FAC1_2            ; save FAC1 mantissa2
       LDX   #$90              ; set exponent=2^16 (integer)
       JMP   LAB_27E3          ; set exp=X, clear FAC1_3, normalise and return
+      
+; save and convert unsigned integer AY to FAC1
+
+LAB_UAYFC
+      LSR   Dtypef            ; clear data type flag, $FF=string, $00=numeric
+      STA   FAC1_1            ; save FAC1 mantissa1
+      STY   FAC1_2            ; save FAC1 mantissa2
+      LDX   #$90              ; set exponent=2^16 (integer)
+      SEC                     ; always positive
+      JMP   LAB_STFA          ; set exp=X, clear FAC1_3, normalise and return
 
 ; perform POS()
 
@@ -5217,7 +5237,10 @@ LAB_SADD
       LDA   (Cvaral),Y        ; get string pointer low byte
       TAY                     ; copy string pointer low byte to Y
       TXA                     ; copy string pointer high byte to A
-      JMP   LAB_AYFC          ; save and convert integer AY to FAC1 and return
+; Patched to return an unsigned value
+;      JMP   LAB_AYFC          ; save and convert integer AY to FAC1 and return
+      JMP   LAB_UAYFC          ; save and convert unsigned integer AY to FAC1 and return
+; End patch
 
 ; perform LEN()
 
@@ -5407,7 +5430,10 @@ LAB_DEEK
       INC   Itemph            ; increment pointer high byte
 Deekh
       LDA   (Itempl,X)        ; PEEK high byte
-      JMP   LAB_AYFC          ; save and convert integer AY to FAC1 and return
+; Patched to return an unsigned result
+      ; JMP   LAB_AYFC          ; save and convert integer AY to FAC1 and return
+      JMP   LAB_UAYFC          ; save and convert unsigned integer AY to FAC1 and return
+; End patch
 
 ; perform DOKE
 
@@ -7782,7 +7808,11 @@ LAB_VARPTR
       JSR   LAB_1BFB          ; scan for ")" , else do syntax error then warm start
       LDY   Cvaral            ; get var address low byte
       LDA   Cvarah            ; get var address high byte
-      JMP   LAB_AYFC          ; save and convert integer AY to FAC1 and return
+; Patched to return unsigned value
+;      JMP   LAB_AYFC          ; save and convert integer AY to FAC1 and return
+      JMP   LAB_UAYFC          ; save and convert unsigned integer AY to FAC1 and return
+; End patch
+
 
 ; perform PI
 

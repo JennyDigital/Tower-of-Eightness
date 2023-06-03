@@ -45,10 +45,10 @@ MON_CR_Delay_C  = $3000
 ;
 ; Also, during the running phase, the extra OS features are hosted here.
 
-  .ROM_AREA $C100,$FFFF
+  .ROM_AREA ROMSTART,$FFFF
 
  
-  *= $EA00                              ; Give ourselves room for the OS. Formerly F000
+  *= $EB00                              ; Give ourselves room for the OS. Formerly F000
   .INCLUDE "ACIA.asm"
   .INCLUDE "ANSICARD.asm"
   .INCLUDE "TPBCARD.asm"
@@ -84,19 +84,14 @@ RES_vec
 
   JSR TPB_delay
   
-;  LDA #ANSI_out_sw                    ; Set our default output options for ANSI output mode.
-  LDA #ACIA1_out_sw                   ; Set our default output options for ACIA output mode.
+  LDA #ANSI_out_sw                    ; Set our default output options for ANSI output mode.
+;  LDA #ACIA1_out_sw                   ; Set our default output options for ACIA output mode.
   STA os_outsel                       ; to the ANSI card only.
   LDA #LF_filt_sw1
   STA os_infilt                       ; Switch on $A filtering on the ACIA.
   
   LDA #OS_input_ACIA1                 ; Specify input source as ACIA1
   STA os_insel
-  
-  JSR INI_ACIA_SYS                    ; Init ACIAs. We currently need ACIA1 for the keyboard at startup.
-  JSR ANSI_init_vec                   ; Initialise the ANSI text video card.
-  JSR TPB_init_vec                    ; Init Tower Peripheral Bus
-  JSR AY_Init                         ; Initialise the AY sound system.
   
 ; set up vectors and interrupt code, copy them to page 2
 
@@ -108,9 +103,14 @@ LAB_stlp
   BNE LAB_stlp                        ; loop if more to do
 
   
-; Initialise filing system
+; Initialise system components
 
+  JSR INI_ACIA_SYS                    ; Init ACIAs. We currently need ACIA1 for the keyboard at startup.
+  JSR ANSI_init_vec                   ; Initialise the ANSI text video card.
+  JSR TPB_init_vec                    ; Init Tower Peripheral Bus
+  JSR AY_Init                         ; Initialise the AY sound system.
   JSR TAPE_init_vec                   ; Initialise TowerTAPE filing system.
+  
     
 ; now do the signon message
 
@@ -337,7 +337,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 5.29.2023.1 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 6.3.2023.1 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 

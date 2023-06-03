@@ -2,6 +2,18 @@
 
 ; Compatible with versions 1 and 1.1 of the interface as of 30/12/2020
 
+; Amendments and additions since 3/6/2023
+;
+; Firstly, I must apologise.  I have not been logging all my changes well and therefore breakage could take
+; longer to identify.  It is with this in mind that this in-code log has been created.
+;
+; 3/6/2023:	Added the ability to execute a binary upon LOADing.  It is the users responsibility to ensure
+;		it will operate correctly at the loaded address, either through making it relocatable or by
+;		loading it at an appropriate address.  Execution starts at the load address and there is now a
+;		new configuration bit associated for preventing execution of !binary files upon LOADing.
+;		
+;		This new configuration bit is called TAPE_AutoEXEC_En and is on by default.
+
 
 ; Tape interface hardware bitfield definitions
 
@@ -32,6 +44,7 @@ TAPE_Verify_Error	= @00000100			; Signals an error was detected.
 
 TAPE_ParityMode		= @00000001
 TAPE_AutoRUN_En		= @00000010
+TAPE_AutoEXEC_En	= @00000100
 
 
 ; Tape interface port addresses
@@ -147,7 +160,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
-  .BYTE "V2.46",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.51",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
@@ -239,20 +252,16 @@ F_TAPE_Init
   LDA #TAPE_out | JOYSTICK_sel				; Setup tape and joystick 6522 DDR Bits.
   STA TAPE_DDRB
   
-  LDA #TAPE_AutoRUN_En					; Set our default to allow autorun upon load.
+  LDA #TAPE_AutoRUN_En | TAPE_AutoEXEC_En		; Set our default to allow autorun BASIC & execute binaries upon load.
   STA V_TAPE_Config
 
-  LDY #0						; Print our init message using Y as our character pointer.
-L_TAPE_init_msg  
-  LDA TMSG_init_msg,Y					; Get the character
-  BEQ TAPE_msg_done					; Break out of the loop when we're done.
+  LDA #<TMSG_init_msg
+  STA TOE_MemptrLo
+  LDA #>TMSG_init_msg
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
   
-  JSR V_OUTP						; output character
-  
-  INY							; Do the next character
-  JMP L_TAPE_init_msg
-
-TAPE_msg_done  
+TAPE_msg_done
   RTS
     
 
@@ -959,12 +968,6 @@ F_TAPE_LOAD_BASIC
   JSR LAB_EVNM						; evaluate expression and check is numeric,
 							; else do type mismatch
   JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
-
-; These next two lines are not needed for LOADs to memory, only SAVEs from memory.
-
-							; scan for "," and get byte, else do Syntax error then warm start
-
-      							; JSR   LAB_1C01          ; scan for "," , else do syntax error then warm start
       							
 
 ; Setup for a binary LOAD
@@ -1082,6 +1085,8 @@ TAPE_BASICload_exit
   LDA V_TAPE_LOADSAVE_Type
   CMP #C_TAPE_FType_BASIC
   BEQ B_Setup_NEWBASIC_Prog
+  CMP #C_TAPE_FType_BINARY
+  BEQ B_CheckBinary_Run
   RTS
   
 B_Setup_NEWBASIC_Prog
@@ -1123,6 +1128,19 @@ TAPE_CS_Fail
   
   BRA TAPE_BASICload_exit
   
+B_CheckBinary_Run
+  LDA V_TAPE_Config					; Autorun only if set in V_TAPE_Config
+  BIT #TAPE_AutoEXEC_En  
+  BEQ B_TAPE_NoBinExec
+  
+  LDA TAPE_FileName					; Check to see if the RUN option is in the filename.
+  CMP #'!'
+  BNE B_TAPE_NoBinExec
+  
+  JMP (V_TAPE_Address_Buff)				; Execute from start address.
+  
+B_TAPE_NoBinExec
+  RTS
   
 F_TAPE_Pause
 
