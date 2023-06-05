@@ -47,7 +47,7 @@ OS_input_ACIA2  = @00001000
   .ROM_AREA ROMSTART,$FFFF
 
  
-  *= $EB00                              ; Give ourselves room for the OS. Formerly F000
+  *= $EA00                              ; Give ourselves room for the OS. Formerly F000
   .INCLUDE "ACIA.asm"
   .INCLUDE "ANSICARD.asm"
   .INCLUDE "TPBCARD.asm"
@@ -82,7 +82,9 @@ RES_vec
   CLI					; Enable IRQs globally.
 
   JSR TPB_delay
-  
+
+; Uncomment whichever output source you wish to make your default.
+;  
   LDA #ANSI_out_sw                    ; Set our default output options for ANSI output mode.
 ;  LDA #ACIA1_out_sw                   ; Set our default output options for ACIA output mode.
   STA os_outsel                       ; to the ANSI card only.

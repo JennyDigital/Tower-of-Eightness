@@ -187,18 +187,21 @@ ACIA2_wr_wait
 
 ACIA1in
   LDA #ACIA_RBF
-  BIT ACIA1_sts				; do we have a byte?
-  BEQ LAB_nobyw				; branch if no byte waiting
+  BIT ACIA1_sts				; do we have a byte?		2
+  BEQ LAB_nobyw				; branch if no byte waiting	4
 
-  LDA ACIA1_rx				; Get byte sent.
-  SEC					; flag byte received
+  LDA ACIA1_rx				; Get byte sent.		4
+  SEC					; flag byte received		2
   
-  PHA
-  LDA #LF_filt_sw1
-  BIT os_infilt
-  BEQ filter_inp
-  PLA
-  RTS
+  PHA					;				3
+  LDA #LF_filt_sw1			;				2
+  BIT os_infilt				;				4
+  BEQ filter_inp			;				4
+  PLA					;				4
+  RTS					;				6 +
+  					;			      -----
+					;			       35 cycles
+					;			      -----	
 
 
 ; byte in from 6551 ACIA 2

@@ -20,6 +20,9 @@
 ;		need to be handled by a hardware timer/counter for better and more reliable operation.
 ;
 ;		THIS IS BECOMING AN URGENT CHANGE.
+;
+; 5/6/2023:	Added initial support for ccflag to prevent unwanted Breaks
+;		Break from a BASIC LOAD now also performs a NEW.
 
 
 ; Tape interface hardware bitfield definitions
@@ -52,6 +55,11 @@ TAPE_Verify_Error	= @00000100			; Signals an error was detected.
 TAPE_ParityMode		= @00000001
 TAPE_AutoRUN_En		= @00000010
 TAPE_AutoEXEC_En	= @00000100
+
+
+; CCflag bit constant
+;
+C_CCflag_bit		= @00000001
 
 
 ; Tape interface port addresses
@@ -168,7 +176,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
-  .BYTE "V2.54",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.56",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
@@ -947,6 +955,16 @@ TAPE_BlockIn_EscHandler
   
   JMP LAB_WARM
   
+TAPE_BASICLOAD_EscHandler
+  LDA #<LAB_BMSG					; Tell the user that we are have pressed Escape.
+  STA TOE_MemptrLo
+  LDA #>LAB_BMSG
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+  
+  JMP LAB_1463						; Perform a NEW and WARM start.
+  JMP LAB_WARM
+  
 
   
 ;To BASIC 'LOAD' entry point.
@@ -1060,6 +1078,13 @@ TAPE_BASIC_Load_Stage
   LDA TAPE_BlockIn_Status				; Branch on non load conditions
   CMP #TAPE_BlockIn_Escape
   BNE TAPE_Skip_EscHandler_B
+  LDA V_TAPE_LOADSAVE_Type
+  CMP #C_TAPE_FType_BASIC
+  BNE B_TAPE_NotBASIC_Brk
+; FINDME_NEWNEW
+  JMP TAPE_BASICLOAD_EscHandler
+
+B_TAPE_NotBASIC_Brk  
   JMP TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
   
 TAPE_Skip_EscHandler_B  
@@ -1815,6 +1840,17 @@ TAPE_AtMinimum
   JMP TAPE_pulselatch
   
 TAPE_SetKbd
+  LDA ccflag						; Get the current ccflag value and decide if we need to check
+  BIT #C_CCflag_bit
+  BEQ TAPE_SetKbd_B
+  
+  LDA #<F_TAPE_NoCC					; Set our vector to null check
+  STA TAPE_KBD_vec+1
+  LDA #>F_TAPE_NoCC
+  STA TAPE_KBD_vec+2
+  RTS
+
+TAPE_SetKbd_B
   LDA #$4C						; Store JMP a in RAM
   STA TAPE_KBD_vec
   
@@ -1839,4 +1875,17 @@ TAPE_CheckACIA2						; Check if we have chosen ACIA2 and default to ACIA1 if not
   LDA #>ACIA2in
   STA TAPE_KBD_vec+2
   RTS
+  
+F_TAPE_NoCC
+;  PHX							; 			3
+  LDX #3						;			2  = 5
+TAPE_NoCC_L
+  DEX							;			2
+  CPX #0						;			2
+  BNE TAPE_NoCC_L					;			3 then 2 7*2 + 8 = 23
+  CLC							;			2 now at 30
+  RTS							;			6 now at 33
+  
+  
+  RTS							;			6
 
