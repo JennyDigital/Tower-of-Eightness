@@ -1,5 +1,11 @@
 
 ; Tower of Eightness OS
+;
+; 4/6/2023	Remove badly considered tape streaming feature from stream IO support.
+;		Added a vector AY_Init_vec ($FFCC) for initialising the AY-3-8912 for the user.
+;		Added a vector F_TAPE_SetKbd_vec ($FFBA) so that routines that directly call F_TAPE_GetByte can
+;			break out from the correct input stream.  This wouldn't be needed had the tape routines
+;			not been extremely timing critical.
 
 ROMSTART = $C100
 
@@ -29,15 +35,8 @@ ACIA1_out_sw	= @00000001
 ANSI_out_sw	= @00000010
 TPB_out_sw	= @00000100
 ACIA2_out_sw	= @00001000
-TAPE_out_sw	= @00010000
 OS_input_ACIA1  = @00000001
 OS_input_ACIA2  = @00001000
-OS_input_TAPE   = @00010000
-
-
-; OS Constants
-
-MON_CR_Delay_C  = $3000
 
 
 ; now the code. This sets up the vectors, interrupt code,
@@ -108,7 +107,7 @@ LAB_stlp
   JSR INI_ACIA_SYS                    ; Init ACIAs. We currently need ACIA1 for the keyboard at startup.
   JSR ANSI_init_vec                   ; Initialise the ANSI text video card.
   JSR TPB_init_vec                    ; Init Tower Peripheral Bus
-  JSR AY_Init                         ; Initialise the AY sound system.
+  JSR AY_Init_vec                     ; Initialise the AY sound system.
   JSR TAPE_init_vec                   ; Initialise TowerTAPE filing system.
   
     
@@ -154,36 +153,19 @@ LAB_vec
 
 ; ToE input BASIC stream support.
 
-RD_char
-
-  LDA os_insel                        ; Handle TAPE selected
-  BIT #OS_input_TAPE
-  BEQ INSEL_Check_ACIA1
-
-  JSR TAPE_ByteIn_vec                 ; Get a byte
-  
-  LDA TAPE_RX_Status                  ; Check if escape was pressed
-  BIT #TAPE_Stat_Escape
-  BNE INSEL_ResetSource
-  
-  LDA TAPE_ByteReceived
-  SEC
-  RTS
-  
+RD_char  
 
 INSEL_Check_ACIA1
   LDA os_insel                        ; Handle ACIA1 selected
   BIT #OS_input_ACIA1
   BEQ INSEL_Check_ACIA2
-  JSR ACIA1in
-  RTS
+  JMP ACIA1in
 
 INSEL_Check_ACIA2
   LDA os_insel  
   BIT #OS_input_ACIA2                 ; Handle ACIA2 selected
   BEQ INSEL_ResetSource
-  JSR ACIA2in
-  RTS
+  JMP ACIA2in
 
 INSEL_ResetSource
   LDA #OS_input_ACIA1                 ; Reset source
@@ -229,28 +211,10 @@ no_ACIA2
 no_ANSI
   LDA #TPB_out_sw
   BIT os_outsel
-  BEQ no_TPB_LPT
+  BEQ MON_EndWRITE_B
   PLA
   JSR TPB_LPT_write_vec               ; Print to TPB LPT card
-
-  PHA  
-no_TPB_LPT                            ; "Print" to the TAPE interface
-  LDA #TAPE_out_sw
-  BIT os_outsel
-  BEQ MON_EndWRITE_B                  ; Dont write to tape unless selected.
-  PLA
-  PHA
-  CMP #10
-  BEQ MON_SkipLFtoTAPE
-  JSR TAPE_ByteOut_vec
-MON_SkipLFtoTAPE  
-  PLA
-  CMP #13                             ; Do a little delay if CR is detected to allow the system to catch up on read.
-  BNE MON_SkipTapeDelay
   
-  JSR MON_Do_CR_Delay
-  
-MON_SkipTapeDelay
   BRA MON_EndWRITE_B2
 
 MON_EndWRITE_B
@@ -276,25 +240,6 @@ TOE_PrintStr_L
 
 TOE_DonePrinting
   RTS
-
-; Tower CR delay for spooling routine.
-  
-MON_Do_CR_Delay
-  LDY #>MON_CR_Delay_C                          ; Get our delay value
-  LDX #<MON_CR_Delay_C
-  
-MON_CR_Delay_L                                  ; Iterate our delay on the counter.
-  NOP
-  NOP
-  NOP
-  NOP
-  DEX
-  BNE MON_CR_Delay_L                            ; Keep counting X down until 0
-  DEY
-  BNE MON_CR_Delay_L
-  
-  RTS
-  
   
 MON_CLS
   LDA #24					; Clear the screen to bold, 80 columns and text
@@ -337,9 +282,10 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 6.3.2023.1 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 6.4.2023.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
+  
 
 ; ACIA Vectors
   *= $FF42
@@ -451,9 +397,16 @@ TPB_Ctrl_Blk_Rd_vec
   JMP TPB_Ctrl_Blk_Rd      ; FFB7
   
 
-  *= $FFCF
+; Extra TAPE sytem vector
+
+F_TAPE_SetKbd_vec          ; FFBA
+  JMP TAPE_SetKbd  
+
+  *= $FFCC
 ; AY Soundcard vectors.
 
+AY_Init_vec                ; FFCC
+  JMP AY_Init
 AY_Userwrite_16_vec        ; FFCF
   JMP AY_Userwrite_16
 AY_Userread_16_vec         ; FFD2

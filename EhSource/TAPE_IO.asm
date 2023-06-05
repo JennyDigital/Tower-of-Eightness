@@ -13,6 +13,13 @@
 ;		new configuration bit associated for preventing execution of !binary files upon LOADing.
 ;		
 ;		This new configuration bit is called TAPE_AutoEXEC_En and is on by default.
+;
+; 4/6/2023:	Adjusted the system by which LOAD, VERIFY and CAT escape such that the currently selected input
+;		stream escapes it.  Timings in the F_TAPE_GetByte routine are so ridiculously critical that it
+;		has to be done by adjusting a vector in RAM.  This implies that getbyte and putbyte operations
+;		need to be handled by a hardware timer/counter for better and more reliable operation.
+;
+;		THIS IS BECOMING AN URGENT CHANGE.
 
 
 ; Tape interface hardware bitfield definitions
@@ -136,6 +143,7 @@ V_TAPE_LOADSAVE_Type		= V_TAPE_Fname_Buffer + 18	; LOAD or SAVE type being curre
 V_TAPE_Address_Buff		= V_TAPE_LOADSAVE_Type + 1	; Address for LOAD and SAVE operations.
 V_TAPE_Size_Buff		= V_TAPE_Address_Buff + 2	; Temporary store of how big the file is.
 V_TAPE_Config			= V_TAPE_Size_Buff + 2		; TowerTAPE file system configuratuon bits.
+TAPE_KBD_vec			= V_TAPE_Config + 1		; Keyboard checking vector (must be in ram)
 
 ; Some more handy constants
 
@@ -160,7 +168,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
-  .BYTE "V2.51",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.54",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
@@ -694,12 +702,11 @@ B_TAPE_SAVE_BASIC
   RTS							; We're done for now.
   
   
-
 ; Tape VERIFY routine.
 ; --------------------
 
 F_TAPE_VERIFY_BASIC
-
+  
   JSR F_TAPE_GetName					; Get the filename string into our buffer
 
   ; Initial BASIC case.
@@ -938,16 +945,14 @@ TAPE_BlockIn_EscHandler
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
   
-  ; FINDME_LAB_WARM
   JMP LAB_WARM
   
-  ; RTS
-  
+
   
 ;To BASIC 'LOAD' entry point.
   
 F_TAPE_LOAD_BASIC
-
+  
   JSR F_TAPE_GetName					; Get the filename string into our buffer
   
   LDA #C_TAPE_FType_BASIC				; Initially set the type to BASIC
@@ -1315,6 +1320,20 @@ TAPE_No_Pulse
 ; Tape byte output routine LSb first.  Accumulator holds the current byte.
 
 F_TAPE_ByteOut
+  PHA
+  JSR TAPE_SetKbd						; Set our initial keyboard scanning routine choice
+  
+  JSR TAPE_KBD_vec						; Just in case the user needs to get out of this loop
+  
+  BCC TAPE_ContByteOut						; Since we didn't receive a keypress, let's continue.
+  EOR #3							; Ignore if not ^C
+  BNE TAPE_ContByteOut
+  
+  PLA
+  JMP TAPE_BlockIn_EscHandler					; Print Break and do a warm start
+
+TAPE_ContByteOut
+  PLA								; Retrieve out byte to transmit.
   PHP								; Save and disable IRQ status.
   SEI
   
@@ -1553,9 +1572,6 @@ TAPE_AtDataBit
 ;*****************************************************************************************
 
 
-
-
-
 F_TAPE_FindStart
   JSR F_TAPE_GetByte
   LDA TAPE_RX_Status
@@ -1587,6 +1603,8 @@ TAPE_LeaderNoBreak
 
 F_TAPE_BlockIn
 
+  JSR TAPE_SetKbd					; Set our initial keyboard scanning routine choice
+  
   JSR F_TAPE_FindStart						; Follow the leader signal
   
   LDA TAPE_RX_Status
@@ -1723,6 +1741,7 @@ TAPE_Verify_Finish
   STA V_TAPE_Verify_Status
   RTS
 
+
 ;===============================================================================================
 ; Byte Reader.
 
@@ -1744,8 +1763,11 @@ TAPE_pulselatch
   LDA TAPE_RX_Status
   BNE TAPE_ByteCaptured					; Check status for received byte.
   
-  JSR ACIA1in						; Just in case the user needs to get out of this loop
+  JSR TAPE_KBD_vec					; Just in case the user needs to get out of this loop
+  
   BCC TAPE_ContLoop					; Caught in a landsliiiide, no escape TO re-al-ih-teeeee!
+  EOR #$3
+  BNE TAPE_ContLoop
   LDA #TAPE_Stat_Escape
   STA TAPE_RX_Status
   
@@ -1791,4 +1813,30 @@ TAPE_AtMinimum
   LDA #0						; Clear our line status
   STA TAPE_Demod_Status
   JMP TAPE_pulselatch
+  
+TAPE_SetKbd
+  LDA #$4C						; Store JMP a in RAM
+  STA TAPE_KBD_vec
+  
+  LDA os_insel						; Check if we have chosen ACIA1 and skip to ACIA2 check if not.
+  BIT #OS_input_ACIA1
+  BEQ TAPE_CheckACIA2
+  
+TAPE_SetACIA1						; Set our vector to ACIA1in
+  LDA #<ACIA1in
+  STA TAPE_KBD_vec+1
+  LDA #>ACIA1in
+  STA TAPE_KBD_vec+2
+  RTS
+
+TAPE_CheckACIA2						; Check if we have chosen ACIA2 and default to ACIA1 if not.
+  LDA os_insel
+  BIT #OS_input_ACIA2
+  BEQ TAPE_SetACIA1
+  
+  LDA #<ACIA2in						; Set our vector to ACIA2in
+  STA TAPE_KBD_vec+1
+  LDA #>ACIA2in
+  STA TAPE_KBD_vec+2
+  RTS
 
