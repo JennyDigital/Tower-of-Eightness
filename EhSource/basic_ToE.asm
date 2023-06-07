@@ -66,7 +66,7 @@
 ;      INPUT now doesn't print the ? when it also prints the input string.
 ;      SWAP now works correctly, swapping only arguments of the same type as opposed to mismatched types.
 ;      FRE(O), DEEK, SADD and VARPTR now all return 16-bit unsigned integers.
-
+;      5/6/2023: Commented out memory size check to see how things go.
 
 
 
@@ -499,16 +499,17 @@ VEC_CAT           = VEC_VERIFY+2	; cat vector
 
 ; FINDME_LOWRAM
 
-; $5D0-$5DF for I2C
-; $5E0-$5EF for ToE_Mon
-; $5D0-$5D1 for I2C Engine
-
-; $5F2-$7FF for TPB bus card
-; $800-$8FF unallocated
+; $5D0-$5DF for I2C.
+; $5E0-$5EF for ToE_Mon.
+; $5D0-$5D1 for I2C Engine.
+; $5F2-$7FF for TPB bus card.
+; $800-$8FF unallocated.
 ; $900-$AFF Allocated to the cassette file system.  This is probably generous.
-; $A00-$A1F reserved for the AY card
-; $A20-$A49 Countdown timer IRQ memory
-; $A4A-$AFF unallocated
+; $A00-$A1F reserved for the AY card.
+; $A20-$A49 IRQ Handler memory.
+; $A4A-$A52 Countdown Timer memory.
+; $A4D-$AFF Unallocated.
+
 
 Ibuffs            = $B00       ; Start of input buffer
 Ibuffe            = Ibuffs+$7F ; end of input buffer
@@ -574,6 +575,8 @@ TabLoop
       LDX   #des_sk           ; descriptor stack start
       STX   next_s            ; set descriptor stack pointer
       JSR   LAB_CRLF          ; print CR/LF
+      
+  .IF [MEMCHECK==1]
       LDA   #<LAB_MSZM        ; point to memory size message (low addr)
       LDY   #>LAB_MSZM        ; point to memory size message (high addr)
       JSR   LAB_18C3          ; print null terminated string from memory
@@ -583,7 +586,8 @@ TabLoop
       JSR   LAB_GBYT          ; get last byte back
 
       BNE   LAB_2DAA          ; branch if not null (user typed something)
-
+  .ENDIF
+  
       LDY   #$00              ; else clear Y
                               ; character was null so get memory size the hard way
                               ; we get here with Y=0 and Itempl/h = Ram_base

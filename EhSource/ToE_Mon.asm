@@ -6,10 +6,52 @@
 ;		Added a vector F_TAPE_SetKbd_vec ($FFBA) so that routines that directly call F_TAPE_GetByte can
 ;			break out from the correct input stream.  This wouldn't be needed had the tape routines
 ;			not been extremely timing critical.
+; 5/6/2023	Added assembly switch for memory size question en/dis.
+; 6/6/2023	Moved the Countdown timer memory start address to $4A4
+;		Added some clearer configuration options.
+;		Slightly tidied some code and comments.
+;		Cleared the Countdown timer Command to IRQH_Service_CMD upon deactivation leaving it ready for
+;			next triggering.
+;		Moved the check on the countdown timer reaching zero to after the decrement to ensure it can't
+;			be mistriggered by rapid reloading.
+;		Added an optional Call vector to any address from the Counter.
+;		Added a new Variable CTR_Options with two control bits:-
+;			CTR_Reload_En	(b0)
+;			CTR_vec_En	(b1)
+;		See documentation for further details.
+; 7/6/2023	Added some more IRQ Masking to tape routines to limit disruption caused by delays.
+;			It would however be better if the tape routines took over the entire IRQ system and used
+;			it to drive a much more stable set of loops.
+;		Added the ability of CLS to set the current font attribute and for subsequent CLSs to remember it.
 
 ROMSTART = $C100
 
+; Configuration section.
+;
+MEMCHECK	= 0			; Options:	0 For no 'Memory size?'
+					;		1 for 'Memory size?'
+OUTSEL_DEFAULT	= ANSI_out_sw		;
+					; Options:	ANSI_out_sw		: Prints to the ANSI video out
+					;		ACIA1_out_sw		: Prints to ACIA1
+					;		ACIA2_out_sw		: Prints to ACIA2
+					;		TPB_Cen_out_sw		: Prints to Centronics
+					;
+					;		...These can be ORed together.
+					;
+INSEL_DEFAULT	= OS_input_ACIA1	; Choose only one of these Options:
+					;
+					; 		OS_input_ACIA1
+					;		OS_input_ACIA2
+					;________________________________________________________________________
+C_DEFAULT_FONT	= @00000011		; B7     ! B6     ! B5     ! B4     ! B3     ! B2     ! B1     ! B0     !
+					;------------------------------------------------------------------------
+					;         !        !        !       !        ! DOUBLE !        !   80   !
+					; GFX     ! SPARE  ! SPARE  ! SPARE ! SPARE  ! HEIGHT ! BOLD   ! COLUMN !
+					;_________!________!________!_______!________!________!________!________!
+					
+
   .include "basic_ToE.asm"
+  
 ; put the IRQ and MNI code in RAM so that it can be changed
 
 IRQ_vec		= IRQH_ProcessIRQs		; IRQ code vector
@@ -22,7 +64,9 @@ MON_sysvars_base  	= $5E0			; base address of the reserved base memory
 os_outsel		= MON_sysvars_base	; output selection variable
 os_infilt		= os_outsel+1		; Filter switches for character input filtering.
 os_insel		= os_infilt+1		; Input source for BASIC inputs.
-ToE_mon_vars_end	= os_insel
+MON_CurrAttr		= os_insel + 1		; Current Font Attribute
+ToE_mon_vars_end	= MON_CurrAttr
+
 
 
 TOE_MemptrLo  = $E7				; General purpose memory pointer low byte
@@ -33,7 +77,7 @@ TOE_MemptrHi  = $E8				; General purpose memory pointer high byte
 
 ACIA1_out_sw	= @00000001
 ANSI_out_sw	= @00000010
-TPB_out_sw	= @00000100
+TPB_Cen_out_sw	= @00000100
 ACIA2_out_sw	= @00001000
 OS_input_ACIA1  = @00000001
 OS_input_ACIA2  = @00001000
@@ -60,7 +104,7 @@ OS_input_ACIA2  = @00001000
   .INCLUDE "SPI_Lib.asm"
 
 
-; reset vector points here
+; Reset vector points here.
 
 RES_vec
   SEI					; Ensure IRQ's are turned off.
@@ -82,17 +126,20 @@ RES_vec
   CLI					; Enable IRQs globally.
 
   JSR TPB_delay
+  
+  LDA #OUTSEL_DEFAULT                 ; Set our default output options. See config section at the top
 
-; Uncomment whichever output source you wish to make your default.
-;  
-  LDA #ANSI_out_sw                    ; Set our default output options for ANSI output mode.
-;  LDA #ACIA1_out_sw                   ; Set our default output options for ACIA output mode.
-  STA os_outsel                       ; to the ANSI card only.
+  STA os_outsel                       ; Save our preference of output option.
   LDA #LF_filt_sw1
   STA os_infilt                       ; Switch on $A filtering on the ACIA.
   
-  LDA #OS_input_ACIA1                 ; Specify input source as ACIA1
+  LDA #INSEL_DEFAULT                  ; Specify input source as ACIA1
   STA os_insel
+  
+  LDA #C_DEFAULT_FONT		      ; Set is our default screen attribute at bootup time
+  STA MON_CurrAttr
+
+
   
 ; set up vectors and interrupt code, copy them to page 2
 
@@ -211,7 +258,7 @@ no_ACIA2
     
   PHA
 no_ANSI
-  LDA #TPB_out_sw
+  LDA #TPB_Cen_out_sw
   BIT os_outsel
   BEQ MON_EndWRITE_B
   PLA
@@ -243,14 +290,40 @@ TOE_PrintStr_L
 TOE_DonePrinting
   RTS
   
-MON_CLS
-  LDA #24					; Clear the screen to bold, 80 columns and text
+MON_CLS  
+  JSR LAB_GBYT					; Find out if we have extra parameters or not.
+  						; Firstly checking if we have a null.
+  BNE MON_AttribCLS				; Since we have nothing, we can continue with defaults
+  
+  BRA MON_DefaultCLS				; Else perform default CLS
+
+; Handle attrib case
+;
+MON_AttribCLS  
+  JSR LAB_EVNM					; evaluate expression and check is numeric,
+						; else do type mismatch
+  JSR LAB_F2FX					; save integer part of FAC1 in temporary integer.
+  LDA Itemph
+  BNE CLS_FCER
+  					
+  LDA Itempl					; Get our specified attribute
+  STA MON_CurrAttr
+  
+MON_DefaultCLS  
+  LDA #24					; Sent font attribute code
   JSR V_OUTP
-  LDA #3
+  
+MON_CLS_B  
+  LDA MON_CurrAttr				; Get the current font attribute and send it.
   JSR V_OUTP
-  LDA #12
+  
+  LDA #12					; Clear the screen to apply the attribute.
   JSR V_OUTP
   RTS
+  
+CLS_FCER  
+  JMP LAB_FCER
+  
   
 MON_PrintHexByte
   TAX						; Save the source for later
@@ -284,7 +357,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 6.4.2023.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 7.6.2023.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
   

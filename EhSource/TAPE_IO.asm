@@ -23,6 +23,10 @@
 ;
 ; 5/6/2023:	Added initial support for ccflag to prevent unwanted Breaks
 ;		Break from a BASIC LOAD now also performs a NEW.
+;		Fixed autorun of BASIC loaded with a bad checksum.
+; 6/6/2023:	Enhanced the Countdown timer code.
+;		Changed a function label to better reflect its use cases. Was TAPE_BlockIn_EscHandler
+;			but is now TAPE_BlockIO_EscHandler.
 
 
 ; Tape interface hardware bitfield definitions
@@ -176,7 +180,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
-  .BYTE "V2.56",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.58",$0D,$0A,$0D,$0A,$00
   
 
 TMSG_Ready
@@ -571,7 +575,7 @@ F_TAPE_PrintFname_in_Header
 ;
 
 F_TAPE_SAVE_BASIC
-
+  
   JSR F_TAPE_GetName					; Get the filename from the command stream
   JSR F_TAPE_Fname_Buf_to_Header			; and put it in the header.
   
@@ -782,7 +786,7 @@ TAPE_VERIFY_Header_B
   
   CMP #TAPE_BlockIn_Escape
   BNE TAPE_BlockIn_EscNotPressed_B
-  JMP TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+  JMP TAPE_BlockIO_EscHandler				; If escaping jump to the escape handler
 
 TAPE_BlockIn_EscNotPressed_B
 
@@ -857,7 +861,7 @@ B_TAPE_Verify_SkipBASIC_Sizing
 
   LDA V_TAPE_Verify_Status				; Check our status
   CMP #TAPE_Verify_Escape
-  BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+  BEQ TAPE_BlockIO_EscHandler				; If escaping jump to the escape handler
   
   CMP #TAPE_Verify_Error				; Check if verify passed or not.
   BNE TAPE_Verify_OK
@@ -946,7 +950,7 @@ B_TAPE_NoNew
   RTS
   
   
-TAPE_BlockIn_EscHandler
+TAPE_BlockIO_EscHandler
   LDA #<LAB_BMSG					; Tell the user that we are have pressed Escape.
   STA TOE_MemptrLo
   LDA #>LAB_BMSG
@@ -1030,7 +1034,7 @@ TAPE_LOAD_Header_Silent_B
   
   LDA TAPE_BlockIn_Status				; Branch on non load conditions
   CMP #TAPE_BlockIn_Escape
-  BEQ TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+  BEQ TAPE_BlockIO_EscHandler				; If escaping jump to the escape handler
   
   JSR F_TAPE_CheckHeaderID				; try again if not a valid header
   BCC TAPE_LOAD_Header_Silent_B
@@ -1085,7 +1089,7 @@ TAPE_BASIC_Load_Stage
   JMP TAPE_BASICLOAD_EscHandler
 
 B_TAPE_NotBASIC_Brk  
-  JMP TAPE_BlockIn_EscHandler				; If escaping jump to the escape handler
+  JMP TAPE_BlockIO_EscHandler				; If escaping jump to the escape handler
   
 TAPE_Skip_EscHandler_B  
 
@@ -1156,7 +1160,12 @@ TAPE_CS_Fail
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
   
-  BRA TAPE_BASICload_exit
+  LDA V_TAPE_LOADSAVE_Type
+  CMP #C_TAPE_FType_BASIC
+  BNE CS_Fail_NoNew_B
+  JMP LAB_1463
+CS_Fail_NoNew_B
+  JMP LAB_WARM
   
 B_CheckBinary_Run
   LDA V_TAPE_Config					; Autorun only if set in V_TAPE_Config
@@ -1345,6 +1354,7 @@ TAPE_No_Pulse
 ; Tape byte output routine LSb first.  Accumulator holds the current byte.
 
 F_TAPE_ByteOut
+  
   PHA
   JSR TAPE_SetKbd						; Set our initial keyboard scanning routine choice
   
@@ -1355,7 +1365,7 @@ F_TAPE_ByteOut
   BNE TAPE_ContByteOut
   
   PLA
-  JMP TAPE_BlockIn_EscHandler					; Print Break and do a warm start
+  JMP TAPE_BlockIO_EscHandler					; Print Break and do a warm start
 
 TAPE_ContByteOut
   PLA								; Retrieve out byte to transmit.
@@ -1627,7 +1637,9 @@ TAPE_LeaderNoBreak
 ; holds the starting address, which is incremented as used.
 
 F_TAPE_BlockIn
-
+  PHP								; Disable Interrupts
+  SEI								; and save state
+    
   JSR TAPE_SetKbd					; Set our initial keyboard scanning routine choice
   
   JSR F_TAPE_FindStart						; Follow the leader signal
@@ -1660,11 +1672,13 @@ L_TAPE_BlockIn
 TAPE_BlockIn_Sig_Escape  
   LDA #TAPE_BlockIn_Escape
   STA TAPE_BlockIn_Status
+  PLP
   RTS								; Escape
   
 TAPE_BlockIn_CheckError  
   LDA #TAPE_BlockIn_Error
   STA TAPE_BlockIn_Status
+  PLP
   RTS								; Failed  
   
 TAPE_BlockIn_Store
@@ -1694,10 +1708,13 @@ TAPE_CheckBlockInCounterZero_B
 TAPE_BlockIn_Finish
   LDA #TAPE_BlockIn_Complete					; Indicate tast completion
   STA TAPE_BlockIn_Status
+  PLP
   RTS
    
   
 F_TAPE_VerifyBlock
+  PHP								; Save P and set interrupt mask.
+  SEI
 
   JSR F_TAPE_FindStart						; Follow the leader signal
   
@@ -1729,11 +1746,13 @@ L_TAPE_BlockVerify
 TAPE_Verify_Sig_Escape  
   LDA #TAPE_Verify_Escape					; Signal that we pressed escape and return.
   STA V_TAPE_Verify_Status
+  PLP
   RTS
   
 TAPE_Verify_CheckError						; Signal the encountered error and return.
   LDA #TAPE_Verify_Error
   STA V_TAPE_Verify_Status
+  PLP
   RTS  
   
 TAPE_Verify_Check
@@ -1764,6 +1783,7 @@ TAPE_CheckCounterZero_B
 TAPE_Verify_Finish
   LDA #TAPE_Verify_Good						; Indicate test completion
   STA V_TAPE_Verify_Status
+  PLP
   RTS
 
 

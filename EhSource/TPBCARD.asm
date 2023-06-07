@@ -780,9 +780,6 @@ ATN_Resp_Dwell
   
 
 
-    
-FINDME:
-
 ; TPB LPT Write.
 ; *================================*
 ; *                                *

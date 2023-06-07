@@ -5,7 +5,7 @@
 
 ; System constants
 
-IRQH_Version_C		= 0					; Version 0 (Pre-release)
+IRQH_Version_C		= 1					; Version 0 (Pre-release)
 
 
 ; IRQ Handler command codes
@@ -15,7 +15,7 @@ IRQH_Shutdown_CMD	= 1					; Shutdown IRQ gracefully
 IRQH_Reset_CMD		= 2					; Reset the IRQ handler.
 
 
-; IRQ Memory table
+; IRQ Memory table.  Space Allocated $A20-$A49.  Used $A20-$A45.  Remaining: 4.
 ;
 IRQH_Table_Base		= $A20 					; Beginning of IRQ Handler Memory.
 IRQH_CallList		= IRQH_Table_Base			; All sixteen bytes for eight addresses.
@@ -25,14 +25,15 @@ IRQH_MaskByte		= IRQH_ClaimsList + 1			; Byte containing IRQ Table entry mask bi
 IRQH_WorkingMask	= IRQH_MaskByte + 1			; Walking bit for masking and setting purposes.
 IRQH_CurrentEntry	= IRQH_WorkingMask + 1			; Pointer for IRQ Table entries.
 IRQH_CMD_Table		= IRQH_CurrentEntry + 1			; Table of IRQ handler commands with parameter space.  16 bytes.
+IRQ_TableEnd		= IRQH_CMD_Table + 15			; Last address of IRQ Table
+
+
 
 IRQH_zero_range_C	= IRQH_CurrentEntry+17-IRQH_CallReg	; Amount to zero after IRQH_CallList.
 
-; Table current size is 21 bytes.
-
 
 ; IRQ Handler Initialisation Call
-
+;
 IRQH_Handler_Init_F
   SEI						; Disable IRQ's so we don't break anything already happening.
   
@@ -42,11 +43,11 @@ IRQH_Handler_Init_F
   STA IRQH_CallReg + 1
   
   LDA #7					; Point at the last table entry
-  TAY
+  TAY						; and preserve it in Y.
 
 IRQH_FillTable_L
-  JSR IRQH_SetIRQ_F				; Iterate copy to whole table
-  
+  JSR IRQH_SetIRQ_F				; Iterate copy to whole table setting each entry to IRQH_Null_F
+						; as a guard measure in case an unused entry is accidentaly enabled.
   TYA
   SEC
   SBC #1
@@ -62,8 +63,8 @@ IRQH_FillRemaining_L
   STA IRQH_CallReg,X
   INX
   
-  TXA						; Stop when the table is full.
-  CMP #IRQH_zero_range_C
+  
+  CPX #IRQH_zero_range_C			; Repeat until the table is zerod.
   BNE IRQH_FillRemaining_L
   
   RTS						; Return to caller.
@@ -80,9 +81,15 @@ IRQH_Null_F
   
   RTS
   
+  
+  
+; Enable/Disable Functions.
+; -------------------------
 
 ; Function to atomically add an IRQ to the IRQ Table.
-
+;
+; A=Table Entry to set. IRQ_CallReg contains the pointer to the IRQ service function call entry point.
+;
 IRQH_SetIRQ_F
 
   PHP						; Assure atomic
@@ -104,7 +111,7 @@ IRQH_SetIRQ_F
   
   
 ; Function to atomically clear an IRQ from the table
-
+;
 IRQH_ClrIRQ_F
   PHP						; Assure atomic
   SEI
@@ -121,9 +128,11 @@ IRQH_ClrIRQ_F
   PLP						; End atomic operation
   RTS
   
+ 
   
 ; IRQ Handler function.
-
+; --------------------
+;
 IRQH_ProcessIRQs
   PHA						; Save processor registers
   PHX
