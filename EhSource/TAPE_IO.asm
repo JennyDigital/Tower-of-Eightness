@@ -23,11 +23,11 @@
 ;
 ; 5/6/2023:	Added initial support for ccflag to prevent unwanted Breaks
 ;		Break from a BASIC LOAD now also performs a NEW.
-;		Fixed autorun of BASIC loaded with a bad checksum.
-; 6/6/2023:	Enhanced the Countdown timer code.
-;		Changed a function label to better reflect its use cases. Was TAPE_BlockIn_EscHandler
-;			but is now TAPE_BlockIO_EscHandler.
-;
+; 6/6/2023:	Changed a function label to better reflect its use cases. Was TAPE_BlockIn_EscHandler
+; 			but is now TAPE_BlockIO_EscHandler.
+; 7/6/2023:	Tape errors for Binary files now report line numbers if LOADed from within a running program.
+
+
 
 ; Tape interface hardware bitfield definitions
 
@@ -68,22 +68,21 @@ C_CCflag_bit		= @00000001
 
 ; Tape interface port addresses
 
-TAPE_IOBASE		= $C040				; Base address for tape port.  Normally set to GPIO card at $C040.
+TAPE_IOBASE		= $C040				; Base address for our tape port.  This is normally set to whatever the GPIO card is.
 TAPE_IOP		= TAPE_IOBASE			; We are currently using PORT B on the user port card for IO.
 TAPE_DDRB		= TAPE_IOBASE + 2
 
 
 ; Tape system storage zeropage addresses
-;
 TAPE_temp		= $E4				; Let's use one of the zero page addresses
 TAPE_BlockLo		= $E5
 TAPE_BlockHi		= $E6
-
 
 ; Tape timing values.
 
 ; Please note that all this is subject to changes as and when needed because I'm in uncharted territory
 ; and don't quite know what I'm doing yet.
+
 
 C_TAPE_Phasetime	= 8				; How long to wait between phases.  Bigger is slower
 C_TAPE_Sample_Offset	= 20				; How far is the middle of the bit. Note: timing errors will cause this to stretch
@@ -106,62 +105,59 @@ C_TAPE_FType_TEXT	= 2				; Pure text.  NOTE: Good for merging snippets of code.
 ; System variables for tape routines.
 
 
-; +==================+
-; !                  !
-; !   TAPE Memory    !
-; !                  !
-; !   Don't mess.    !
-; !                  !
-; +==================+
+; +================================+
+; !                                !
+; ! TAPE SPACE FROM $900 TO $9FF   !
+; !                                !
+; !                                !
+; !                                !
+; +================================+
 
 TAPE_RAM_Start			= $900				; Base address of the tape filing system main memory
-TAPE_RAM_lim			= $9FF
 
 V_TAPE_BlockSize		= TAPE_RAM_Start		; 2 Byte address for block size
-TAPE_temp2			= TAPE_RAM_Start 	+ 2	; Second temporary store for tape functions.
-TAPE_temp3			= TAPE_RAM_Start 	+ 3	; Third temporary store for tape functions.
-TAPE_temp4			= TAPE_RAM_Start 	+ 4	; Fourth temporary store for tape functions.
-TAPE_LineUptime			= TAPE_RAM_Start 	+ 5	; How many passes of the superloop the line has been up.
-TAPE_Demod_Status		= TAPE_RAM_Start 	+ 6	; Demodulated bit status.
-TAPE_Demod_Last			= TAPE_RAM_Start 	+ 7	; Our previous demod status.  Used for edge detection etc.
-TAPE_StartDet			= TAPE_RAM_Start 	+ 8	; Start bit detected is 1, 0 otherwise
-TAPE_RX_Status			= TAPE_RAM_Start 	+ 9	; Receive engine status bitfield.
-TAPE_BitsToDecode		= TAPE_RAM_Start 	+ 10	; Bit countdown counter when decoding
-TAPE_ByteReceived		= TAPE_RAM_Start 	+ 11	; Last byte received
-TAPE_Sample_Position		= TAPE_RAM_Start 	+ 12	; Countdown timer for bit engine sample synchronization
-TAPE_BlockIn_Status		= TAPE_RAM_Start 	+ 13	; Status register for the F_TAPE_BlockIn function.
+TAPE_temp2			= TAPE_RAM_Start + 2		; Second temporary store for tape functions.
+TAPE_temp3			= TAPE_RAM_Start + 3		; Third temporary store for tape functions.
+TAPE_temp4			= TAPE_RAM_Start + 4		; Fourth temporary store for tape functions.
+TAPE_LineUptime			= TAPE_RAM_Start + 5		; How many passes of the superloop the line has been up.
+TAPE_Demod_Status		= TAPE_RAM_Start + 6		; Demodulated bit status.
+TAPE_Demod_Last			= TAPE_RAM_Start + 7		; Our previous demod status.  Used for edge detection etc.
+TAPE_StartDet			= TAPE_RAM_Start + 8		; Start bit detected is 1, 0 otherwise
+TAPE_RX_Status			= TAPE_RAM_Start + 9		; Receive engine status bitfield.
+TAPE_BitsToDecode		= TAPE_RAM_Start + 10		; Bit countdown counter when decoding
+TAPE_ByteReceived		= TAPE_RAM_Start + 11		; Last byte received
+TAPE_Sample_Position		= TAPE_RAM_Start + 12		; Countdown timer for bit engine sample synchronization
+TAPE_BlockIn_Status		= TAPE_RAM_Start + 13		; Status register for the F_TAPE_BlockIn function.
 
-TAPE_Header_Buffer		= TAPE_BlockIn_Status 	+ 1	; This is where the tape header data starts
+TAPE_Header_Buffer		= TAPE_BlockIn_Status + 1	; This is where the tape header data starts
 TAPE_HeaderID			= TAPE_Header_Buffer		; Just stores 'HEAD'.  Used to identify headers from other stuff.
-TAPE_FileType			= TAPE_HeaderID 	+ 4	; This is the file type ID goes. 0 is for BASIC, otherwise ignored by LOAD.
-TAPE_FileSizeLo			= TAPE_FileType 	+ 1	; Low byte of the file size
-TAPE_FileSizeHi			= TAPE_FileSizeLo 	+ 1	; High byte of the file size
-TAPE_LoadAddrLo			= TAPE_FileSizeHi 	+ 1	; Low byte of the file load address
-TAPE_LoadAddrHi			= TAPE_LoadAddrLo 	+ 1	; High byte of the file load address
-TAPE_FileName			= TAPE_LoadAddrHi 	+ 1	; Null terminated filename field 17 bytes long.
-TAPE_ChecksumLo	= TAPE_FileName + C_TAPE_Fname_BufferSize	; Checksum Low byte
-TAPE_ChecksumHi			= TAPE_ChecksumLo 	+ 1	; Checksum High byte
+TAPE_FileType			= TAPE_HeaderID + 4		; This is the file type ID goes. 0 is for BASIC, otherwise ignored by LOAD.
+TAPE_FileSizeLo			= TAPE_FileType + 1		; Low byte of the file size
+TAPE_FileSizeHi			= TAPE_FileSizeLo + 1		; High byte of the file size
+TAPE_LoadAddrLo			= TAPE_FileSizeHi + 1		; Low byte of the file load address
+TAPE_LoadAddrHi			= TAPE_LoadAddrLo + 1		; High byte of the file load address
+TAPE_FileName			= TAPE_LoadAddrHi + 1		; Null terminated filename field 17 bytes long.
+TAPE_ChecksumLo			= TAPE_FileName + C_TAPE_Fname_BufferSize	; Checksum Low byte
+TAPE_ChecksumHi			= TAPE_ChecksumLo + 1		; Checksum High byte
 TAPE_Header_End			= TAPE_ChecksumHi		; End of header space
 
+TAPE_CS_AccLo			= TAPE_Header_End + 1		; Tape checksum Accumulator low byte
+TAPE_CS_AccHi			= TAPE_CS_AccLo + 1		; Tape checksum Accumulator high byte
 
-TAPE_CS_AccLo			= TAPE_Header_End 	+ 1	; Tape checksum Accumulator low byte
-TAPE_CS_AccHi			= TAPE_CS_AccLo 	+ 1	; Tape checksum Accumulator high byte
+V_TAPE_Phasetime		= TAPE_CS_AccHi + 1		; Tape phasetime variable
+V_TAPE_Sample_Offset		= V_TAPE_Phasetime + 1		; Sample offset variable
+V_TAPE_Bitlength		= V_TAPE_Sample_Offset + 1	; How long a bit is in passes variable
+V_TAPE_bitcycles		= V_TAPE_Bitlength + 1		; Number of cycles to a bit variable
 
-V_TAPE_Phasetime		= TAPE_CS_AccHi 	+ 1	; Tape phasetime variable
-V_TAPE_Sample_Offset		= V_TAPE_Phasetime 	+ 1	; Sample offset variable
-V_TAPE_Bitlength		= V_TAPE_Sample_Offset 	+ 1	; How long a bit is in passes variable
-V_TAPE_bitcycles		= V_TAPE_Bitlength 	+ 1	; Number of cycles to a bit variable
+V_TAPE_Verify_Status		= V_TAPE_bitcycles + 1		; Status register for the F_TAPE_Verify function.
+V_TAPE_Fname_Buffer		= V_TAPE_Verify_Status + 1	; Filename Buffer for null terminated filename.
+V_TAPE_LOADSAVE_Type		= V_TAPE_Fname_Buffer + 18	; LOAD or SAVE type being currently handled.
+V_TAPE_Address_Buff		= V_TAPE_LOADSAVE_Type + 1	; Address for LOAD and SAVE operations.
+V_TAPE_Size_Buff		= V_TAPE_Address_Buff + 2	; Temporary store of how big the file is.
+V_TAPE_Config			= V_TAPE_Size_Buff + 2		; TowerTAPE file system configuratuon bits.
+TAPE_KBD_vec			= V_TAPE_Config + 1		; Keyboard checking vector (must be in ram)
 
-V_TAPE_Verify_Status		= V_TAPE_bitcycles 	+ 1	; Status register for the F_TAPE_Verify function.
-V_TAPE_Fname_Buffer		= V_TAPE_Verify_Status 	+ 1	; Filename Buffer for null terminated filename.
-V_TAPE_LOADSAVE_Type		= V_TAPE_Fname_Buffer 	+ 18	; LOAD or SAVE type being currently handled.
-V_TAPE_Address_Buff		= V_TAPE_LOADSAVE_Type 	+ 1	; Address for LOAD and SAVE operations.
-V_TAPE_Size_Buff		= V_TAPE_Address_Buff 	+ 2	; Temporary store of how big the file is.
-V_TAPE_Config			= V_TAPE_Size_Buff	+ 2	; TowerTAPE file system configuratuon bits.
-TAPE_KBD_vec			= V_TAPE_Config		+ 1	; Keyboard checking vector (must be in ram)
-
-TAPE_RAM_end			= TAPE_KBD_vec 		+ 2	; End of TAPE RAM allocations.
-
+TAPE_RAM_end			= V_TAPE_Config
 
 ; Some more handy constants
 
@@ -170,10 +166,10 @@ C_TAPE_Fname_BuffEnd		= V_TAPE_Fname_Buffer + C_TAPE_Fname_BufferSize
 C_TAPE_HeaderSize		= TAPE_Header_End - TAPE_Header_Buffer + 1
 
 
-;  .IF [ TAPE_RAM_end>TAPE_RAM_lim ]
-;    .ERROR "Memory overrun in ToE_Mon.asm"
-;  .ENDIF
 
+
+
+; Next is $948.
 
 ; +-------------------------------------------------------------------------------------------+
 ; +                                                                                           +
@@ -187,8 +183,13 @@ TMSG_init_msg						; Filing System initialisation string.
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
   .BYTE "V2.58",$0D,$0A,$0D,$0A,$00
-  
 
+
+TMSG_Break
+  
+  .BYTE $D,$A,$A
+  .BYTE "Break",$D,$A,0
+  
 TMSG_Ready
 
   .BYTE "Ready",$D,$A,0
@@ -232,13 +233,19 @@ TMSG_VerifyError
 TMSG_TapeError
 
   .BYTE $D,$A
-  .BYTE "Tape loading Error.",$D,$A,0
+  .BYTE "Tape loading Error",0
   
   
 TMSG_HeaderError  
 
   .BYTE $D,$A
   .BYTE "Header error. Retrying.",$D,$A,0
+
+TMSG_NewPerformed
+
+  .BYTE $D,$A
+  .BYTE "NEW performed.",$D,$A,$A,0
+  
   
 TMSG_TypeBASIC
 
@@ -581,7 +588,7 @@ F_TAPE_PrintFname_in_Header
 ;
 
 F_TAPE_SAVE_BASIC
-  
+
   JSR F_TAPE_GetName					; Get the filename from the command stream
   JSR F_TAPE_Fname_Buf_to_Header			; and put it in the header.
   
@@ -722,7 +729,7 @@ B_TAPE_SAVE_BASIC
   
 ; Tape VERIFY routine.
 ; --------------------
-;
+
 F_TAPE_VERIFY_BASIC
   
   JSR F_TAPE_GetName					; Get the filename string into our buffer
@@ -867,8 +874,10 @@ B_TAPE_Verify_SkipBASIC_Sizing
 
   LDA V_TAPE_Verify_Status				; Check our status
   CMP #TAPE_Verify_Escape
-  BEQ TAPE_BlockIO_EscHandler				; If escaping jump to the escape handler
+  BNE TAPE_Skip_BlockIO_EscHandler			; If escaping jump to the escape handler
+  JMP TAPE_BlockIO_EscHandler
   
+TAPE_Skip_BlockIO_EscHandler  
   CMP #TAPE_Verify_Error				; Check if verify passed or not.
   BNE TAPE_Verify_OK
   
@@ -939,31 +948,40 @@ TAPE_CAT_Exit_B
 
 ; Tape Reporting routines.
 ; ------------------------
-;
+
 TAPE_BlockIn_LoadErr
-  LDA #<TMSG_TapeError					; Tell the user that we are have encountered an error.
+  LDA TAPE_FileType
+  CMP #C_TAPE_FType_BASIC
+  BNE B_TAPE_NoNew
+  
+  LDA #<TMSG_TapeError					; Handle BASIC case.
   STA TOE_MemptrLo
   LDA #>TMSG_TapeError
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
+
+  JSR LAB_CRLF
+  JSR LAB_CRLF
   
-  LDA TAPE_FileType
-  CMP #C_TAPE_FType_BASIC
-  BNE B_TAPE_NoNew
-  JMP LAB_1463 
-B_TAPE_NoNew
-  JMP LAB_WARM
-  RTS
-  
-  
-TAPE_BlockIO_EscHandler
-  LDA #<LAB_BMSG					; Tell the user that we are have pressed Escape.
+  LDA #<TMSG_NewPerformed
   STA TOE_MemptrLo
-  LDA #>LAB_BMSG
+  LDA #>TMSG_NewPerformed
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
   
-  JMP LAB_WARM
+  JSR LAB_1269						; Perform New
+
+B_TAPE_NoNew
+  LDA #<TMSG_TapeError					; Inform the user of the tape error
+  LDY #>TMSG_TapeError
+  
+  JMP LAB_1269						; Break and WARM Start.   
+  
+TAPE_BlockIO_EscHandler
+  LDA #<TMSG_Break					; Tell the user that we are have pressed Escape.
+  LDY #>TMSG_Break
+  JMP LAB_1269
+
   
 TAPE_BASICLOAD_EscHandler
   LDA #<LAB_BMSG					; Tell the user that we are have pressed Escape.
@@ -972,13 +990,19 @@ TAPE_BASICLOAD_EscHandler
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
   
-  JMP LAB_1463						; Perform a NEW and WARM start.
-  JMP LAB_WARM
+TAPE_NewMSG_WS  
+  LDA #<TMSG_NewPerformed				; Tell the user that we are have pressed Escape.
+  STA TOE_MemptrLo
+  LDA #>TMSG_NewPerformed
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+
+  JMP LAB_1463						; Perform a NEW and WARM start. 
   
 
   
 ;To BASIC 'LOAD' entry point.
-;  
+  
 F_TAPE_LOAD_BASIC
   
   JSR F_TAPE_GetName					; Get the filename string into our buffer
@@ -992,7 +1016,8 @@ F_TAPE_LOAD_BASIC
   STA V_TAPE_Address_Buff + 1
 
 
-  JSR LAB_GBYT						; Find out if we have extra parameters or not.						; Firstly checking if we have a null.
+  JSR LAB_GBYT						; Find out if we have extra parameters or not.
+							; Firstly checking if we have a null.
   BEQ TAPE_LOAD_Header_B				; Since we have nothing, we can continue as LOADing BASIC
   
 
@@ -1118,6 +1143,7 @@ TAPE_BASIC_LoadingDone
   
   LDA TAPE_ChecksumHi					; And then if necessary, we check the high byte.
   CMP TAPE_CS_AccHi
+  
   BNE TAPE_CS_Fail
 
 TAPE_BASICload_exit
@@ -1160,18 +1186,16 @@ B_TAPE_NoRun
   JMP LAB_1319						; Tidy up system.
   
 TAPE_CS_Fail
-  LDA #<TMSG_TapeError					; Inform the user of their loading error.
-  STA TOE_MemptrLo
-  LDA #>TMSG_TapeError
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
-  
-  LDA V_TAPE_LOADSAVE_Type
+  LDA V_TAPE_LOADSAVE_Type				; Is the Checksum for a BASIC program?
   CMP #C_TAPE_FType_BASIC
-  BNE CS_Fail_NoNew_B
-  JMP LAB_1463
+  BNE CS_Fail_NoNew_B  
+  
+  JMP LAB_1463						; Perform NEW as Corrupt BASIC is bad for business.
+  
 CS_Fail_NoNew_B
-  JMP LAB_WARM
+  LDA #<TMSG_TapeError					; Tell the user that we are have pressed Escape,
+  LDY #>TMSG_TapeError					; and what line number if appropriate and warm start.
+  JMP LAB_1269
   
 B_CheckBinary_Run
   LDA V_TAPE_Config					; Autorun only if set in V_TAPE_Config
@@ -1360,7 +1384,6 @@ TAPE_No_Pulse
 ; Tape byte output routine LSb first.  Accumulator holds the current byte.
 
 F_TAPE_ByteOut
-  
   PHA
   JSR TAPE_SetKbd						; Set our initial keyboard scanning routine choice
   
@@ -1463,6 +1486,7 @@ TAPE_BlockOut_CheckZero_B
   CPX #0
   BNE B_TAPE_BlockOut_Decrement
 
+  PLP
   RTS
 
 B_TAPE_BlockOut_Decrement
@@ -1647,9 +1671,9 @@ TAPE_LeaderNoBreak
 F_TAPE_BlockIn
   PHP								; Disable Interrupts
   SEI								; and save state
-    
-  JSR TAPE_SetKbd					; Set our initial keyboard scanning routine choice
-  
+
+  JSR TAPE_SetKbd						; Set our initial keyboard scanning routine choice
+
   JSR F_TAPE_FindStart						; Follow the leader signal
   
   LDA TAPE_RX_Status
@@ -1677,17 +1701,17 @@ L_TAPE_BlockIn
   CMP #TAPE_Stat_Escape
   BNE TAPE_BlockIn_CheckError
   
-TAPE_BlockIn_Sig_Escape  
+TAPE_BlockIn_Sig_Escape						; Return escape
   LDA #TAPE_BlockIn_Escape
   STA TAPE_BlockIn_Status
   PLP
-  RTS								; Escape
+  RTS
   
-TAPE_BlockIn_CheckError  
+TAPE_BlockIn_CheckError						; Return failed  
   LDA #TAPE_BlockIn_Error
   STA TAPE_BlockIn_Status
   PLP
-  RTS								; Failed  
+  RTS  
   
 TAPE_BlockIn_Store
   LDA TAPE_ByteReceived						; Store our received byte to our current pointer address.
@@ -1721,8 +1745,6 @@ TAPE_BlockIn_Finish
    
   
 F_TAPE_VerifyBlock
-  PHP								; Save P and set interrupt mask.
-  SEI
 
   JSR F_TAPE_FindStart						; Follow the leader signal
   
@@ -1754,13 +1776,11 @@ L_TAPE_BlockVerify
 TAPE_Verify_Sig_Escape  
   LDA #TAPE_Verify_Escape					; Signal that we pressed escape and return.
   STA V_TAPE_Verify_Status
-  PLP
   RTS
   
 TAPE_Verify_CheckError						; Signal the encountered error and return.
   LDA #TAPE_Verify_Error
   STA V_TAPE_Verify_Status
-  PLP
   RTS  
   
 TAPE_Verify_Check
@@ -1791,7 +1811,6 @@ TAPE_CheckCounterZero_B
 TAPE_Verify_Finish
   LDA #TAPE_Verify_Good						; Indicate test completion
   STA V_TAPE_Verify_Status
-  PLP
   RTS
 
 
@@ -1914,5 +1933,6 @@ TAPE_NoCC_L
   CLC							;			2 now at 30
   RTS							;			6 now at 33
   
-;  RTS							;			6
+  
+  RTS							;			6
 

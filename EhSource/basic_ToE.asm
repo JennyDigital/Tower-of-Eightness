@@ -477,21 +477,25 @@ LAB_SKFF          = LAB_STAK+$FF
                               ; flushed stack address
 
 ; the following locations are bulk initialized from PG2_TABS at LAB_COLD
+;
 ccflag            = $0200     ; BASIC CTRL-C flag, 00 = enabled, 01 = dis
 ccbyte            = ccflag+1  ; BASIC CTRL-C byte
 ccnull            = ccbyte+1  ; BASIC CTRL-C byte timeout
 
 VEC_CC            = ccnull+1  ; ctrl c check vector
+;
 ; end bulk initialize from PG2_TABS at LAB_COLD
 
+
 ; the following locations are bulk initialized by min_mon.asm from LAB_vec at LAB_stlp
+;
 VEC_IN            = VEC_CC+2		; input vector
 VEC_OUT           = VEC_IN+2		; output vector
 VEC_LD            = VEC_OUT+2		; load vector
 VEC_SV            = VEC_LD+2		; save vector
 VEC_VERIFY        = VEC_SV+2		; verify vector
 VEC_CAT           = VEC_VERIFY+2	; cat vector
-
+;
 ; end bulk initialize by min_mon.asm from LAB_vec at LAB_stlp
 
 ; Ibuffs can now be anywhere in RAM, ensure that the max length is < $80,
@@ -859,6 +863,7 @@ LAB_XERR
       LDY   #>LAB_EMSG        ; point to " Error" high addr
 LAB_1269
       JSR   LAB_18C3          ; print null terminated string from memory
+LAB_ATLINE
       LDY   Clineh            ; get current line high byte
       INY                     ; increment it
       BEQ   LAB_1274          ; go do warm start (was immediate mode)
@@ -1733,6 +1738,9 @@ LAB_1651
                               ; else ..
       LDA   #<LAB_BMSG        ; point to "Break" low byte
       LDY   #>LAB_BMSG        ; point to "Break" high byte
+      
+; FINDME_PRN_OFF
+;      
       JMP   LAB_1269          ; print "Break" and do warm start
 
 LAB_165E
@@ -7491,8 +7499,8 @@ LAB_CBIN
 LAB_EXCH
       JMP   LAB_28F6          ; evaluate -ve flag and return
 
+
 ; ctrl-c check routine. includes limited "life" byte save for INGET routine
-; now also the code that checks to see if an interrupt has occurred
 
 CTRLC
       LDA   ccflag            ; get [CTRL-C] check flag

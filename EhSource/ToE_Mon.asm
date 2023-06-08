@@ -7,7 +7,7 @@
 ;			break out from the correct input stream.  This wouldn't be needed had the tape routines
 ;			not been extremely timing critical.
 ; 5/6/2023	Added assembly switch for memory size question en/dis.
-; 6/6/2023	Moved the Countdown timer memory start address to $4A4
+; 6/6/2023	Moved the Countdown timer memory start address to $A4A
 ;		Added some clearer configuration options.
 ;		Slightly tidied some code and comments.
 ;		Cleared the Countdown timer Command to IRQH_Service_CMD upon deactivation leaving it ready for
@@ -353,7 +353,8 @@ MON_CLS_B
 CLS_FCER  
   JMP LAB_FCER
   
-  
+; TOE Hex printing routine.
+;  
 MON_PrintHexByte
   TAX						; Save the source for later
   
