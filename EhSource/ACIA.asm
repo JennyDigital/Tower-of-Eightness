@@ -104,12 +104,21 @@ LF_filt_sw1	    = @00000001
 LF_filt_sw2	    = @00000010
 
 ; Baud rate registers
-ACIA_vars_base  = ToE_mon_vars_end + 1
+;
+ACIA_Start	= $800
+ACIA_vars_lim	= $80F	
+
+ACIA_vars_base  = ACIA_Start
 ACIA1_cfg_cmd   = ACIA_vars_base
-ACIA1_cfg_ctrl  = ACIA1_cfg_cmd   + 1
-ACIA2_cfg_cmd   = ACIA1_cfg_ctrl  + 1
-ACIA2_cfg_ctrl  = ACIA2_cfg_cmd   + 1
+ACIA1_cfg_ctrl  = ACIA1_cfg_cmd		+ 1
+ACIA2_cfg_cmd   = ACIA1_cfg_ctrl	+ 1
+ACIA2_cfg_ctrl  = ACIA2_cfg_cmd		+ 1
 ACIA_vars_end   = ACIA2_cfg_ctrl
+
+  .IF [ ACIA_vars_end>ACIA_vars_lim ]
+    .ERROR "Memory overrun in ACIA.asm"
+  .ENDIF
+
 
 
 

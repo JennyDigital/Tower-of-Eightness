@@ -10,21 +10,28 @@
 ; 4) We ain't gonna be particularly fast, that's for sure.
 
 
-; Pin Bit spec
-;
-I2C_SDA_Pin	= @00000001
-I2C_SCL_Pin	= @00000010
-
-
-; Useful addresses
+; Port addresses addresses
 ;
 I2C_DDR		= $C043
 I2C_PORT	= $C041
 
-I2C_Base	= $5D0				; NOT the Final location.
-I2C_Status	= I2C_Base
+
+; Memory Allocations
+;
+I2C_RAMBase	= $5D0				; NOT the Final location.
+I2C_Lim		= $5DF				; Upper bound of RAM permitted for this module.
+
+I2C_Status	= I2C_RAMBase
 I2C_Byte	= I2C_Status+1
-I2C_Timeout_V	= I2C_Byte + 1			; Timeout counter variable.
+I2C_Timeout_V	= I2C_Byte + 1			; 16-bit timeout counter variable.
+I2C_RAMend	= I2C_Timeout_V + 1		; 
+
+
+; Bounds checking.
+;
+  .IF [ I2C_RAMend>I2C_Lim ]
+    .ERROR "Memory overrun in I2C_Lib.asm"
+  .ENDIF
 
 
 ; I2C State machine bitfield
@@ -33,6 +40,12 @@ I2C_STA_NAK	= @00000001
 I2C_STA_Timeout	= @00000010
 I2C_STA_Rd_nWr	= @00000100
 I2C_STA_Master	= @00001000
+
+
+; Pin Bit spec
+;
+I2C_SDA_Pin	= @00000001
+I2C_SCL_Pin	= @00000010
 
 
 ; I2C handy constants

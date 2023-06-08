@@ -1,9 +1,14 @@
 ; SPI Driver by Jennifer Gunn
 ;
 
+; SPI Memory range
+;
+SPI_RAM_start		= $400					; Start of SPI memory
+SPI_RAM_lim		= $40F					; Limit of SPI memory
+
 ; SPI System variables
 ;
-SPI_Struct		= $400					; Base address of SPI data structure below.
+SPI_Struct		= SPI_RAM_start				; Base address of SPI data structure below.
 
 SPI_In			= SPI_Struct				; Byte received by the SPI subsystem
 SPI_Out			= SPI_In + 1				; Byte to be transmitted by the SPI subsystem
@@ -15,7 +20,16 @@ SPI_MISO_Pin		= SPI_MOSI_Pin + 1			; Master In, Slave Out pin.  This pin reads t
 SPI_SCK_Pin		= SPI_MISO_Pin +1			; Serial clock output pin. Without clocks, most of us wouldn't exist!
 SPI_Temp		= SPI_SCK_Pin + 1			; Temporary store for internal operations.
 
+SPI_RAM_end		= SPI_Temp
 
+
+; Bounds checking for SPI memory
+;
+  .IF [ SPI_RAM_end>SPI_RAM_lim ]
+    .ERROR "Memory overrun in SPI_Lib.asm"
+  .ENDIF
+  
+  
 ; SPI Mode bitfields
 ;
 SPI_CPOL_bit		= @00000010

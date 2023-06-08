@@ -5,15 +5,19 @@
 ; Adds a system countdown timer.  This is to be driven from the timer on the first GPIO card.  This is also the one that
 ; is used by the TowerTAPE interface and filing system.
 ;
-; This defaults to 40000 counts including the 0 giving us a 10ms delay at 4MHz, and may be changed in software provided
-; that one programs for an atomic operation or stops operation first.  The system uses a free running mode 
+; Setting it to 39999 Counts gives us a 10ms delay at 4MHz, and must be set in software.
+; 
+; The data structure below must be loaded before initialisation.
 ;
 
 
-; Variables
+; Counter data structure variables.
 ;
 ; Start: $A4A.  End $A52. Size 9.
+;
 CTR_V_Start		= $A4A
+CTR_V_lim		= $A5F
+
 CTR_V			= CTR_V_Start			; This is our counter variable base address.
 CTR_RELOAD_V		= CTR_V 	   + 2		; This is the value the counter will be reloaded with if enabled.
 CTR_PERIOD_V		= CTR_RELOAD_V 	   + 2		; This is the interval between counts in PHI2 ticks
@@ -22,6 +26,10 @@ CTR_Options		= CTR_External_vec + 2		; Bitfield containing enable bits for the f
 							;	CTR_Reload_En	b0
 							;	CTR_vec_En	b1
 CTR_V_End		= CTR_Options
+
+  .IF [ CTR_V_End>CTR_V_lim ]
+    .ERROR "Memory overrun in COUNTDOWN_IRQ.asm"
+  .ENDIF
 
 
 ; Control bits

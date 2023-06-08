@@ -23,6 +23,11 @@
 ;			It would however be better if the tape routines took over the entire IRQ system and used
 ;			it to drive a much more stable set of loops.
 ;		Added the ability of CLS to set the current font attribute and for subsequent CLSs to remember it.
+; 8/6/2023	Added bounds checking to many of the areas of RAM in use across most of the .asm files.
+;		Corrected a few documentation bugs.
+;		Changed the NMI and IRQ code so that it has redirectable vectors for TOTAL control.
+;
+
 
 ROMSTART = $C100
 
@@ -52,20 +57,27 @@ C_DEFAULT_FONT	= @00000011		; B7     ! B6     ! B5     ! B4     ! B3     ! B2   
 
   .include "basic_ToE.asm"
   
-; put the IRQ and MNI code in RAM so that it can be changed
-
-IRQ_vec		= IRQH_ProcessIRQs		; IRQ code vector
-NMI_vec		= IRQ_vec+$0A           	; NMI code vector
+;IRQ_vec		= IRQH_ProcessIRQs		; IRQ code vector
+;NMI_vec		= IRQ_vec+$0A           	; NMI code vector
 
 
 ; TowerOS System variables
 
-MON_sysvars_base  	= $5E0			; base address of the reserved base memory
+MON_sysvars_base  	= $5E0			; Base address of the reserved base memory
+MON_sysvars_lim		= $5EF			; Upper bound of reserved memory for this module.
+
 os_outsel		= MON_sysvars_base	; output selection variable
 os_infilt		= os_outsel+1		; Filter switches for character input filtering.
 os_insel		= os_infilt+1		; Input source for BASIC inputs.
 MON_CurrAttr		= os_insel + 1		; Current Font Attribute
-ToE_mon_vars_end	= MON_CurrAttr
+IRQ_User_vec		= MON_CurrAttr +1
+NMI_User_vec		= IRQ_User_vec + 2
+ToE_mon_vars_end	= NMI_User_vec + 1
+
+
+  .IF [ ToE_mon_vars_end>MON_sysvars_lim ]
+    .ERROR "Memory overrun in ToE_Mon.asm"
+  .ENDIF
 
 
 
@@ -106,14 +118,31 @@ OS_input_ACIA2  = @00001000
 
 ; Reset vector points here.
 
+NMI_vec_dummy
+  RTI
+
+
 RES_vec
   SEI					; Ensure IRQ's are turned off.
   CLD					; clear decimal mode
   LDX #$FF				; empty stack
   TXS					; set the stack
+  
+  ; put the IRQ and MNI code in RAM so that it can be changed
+  ;
+  LDA #<IRQH_ProcessIRQs
+  STA IRQ_User_vec
+  LDA #>IRQH_ProcessIRQs
+  STA IRQ_User_vec + 1
+
+  LDA #<NMI_vec_dummy
+  STA NMI_User_vec
+  LDA #>IRQH_ProcessIRQs
+  STA NMI_vec_dummy + 1
+
 
 ; Set up system timing function
-
+;
   JSR IRQH_Handler_Init_vec		; Initialise the IRQ Handler
 
   LDA #<COUNTDOWN_IRQ			; Put the test IRQ address into the table at IRQ Location 0
@@ -141,7 +170,7 @@ RES_vec
 
 
   
-; set up vectors and interrupt code, copy them to page 2
+; Set up TowerBASIC vectors, copy them to page 2
 
   LDY #END_CODE-LAB_vec               ; set index/count
 LAB_stlp
@@ -189,8 +218,8 @@ LAB_dowarm
   JMP LAB_WARM                        ; do EhBASIC warm start
 
 
-; EhBASIC vector tables
-
+; EhBASIC vector table
+;
 LAB_vec
   .word RD_char                       ; byte in from Selected source
   .word WR_char                       ; byte out to ACIA1
@@ -357,9 +386,16 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 7.6.2023.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 8.6.2023.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
+
+; IRQ Vectors
+  *= $FF3C
+IRQ_vec
+  JMP (IRQ_User_vec)
+NMI_vec
+  JMP (NMI_User_vec)
   
 
 ; ACIA Vectors

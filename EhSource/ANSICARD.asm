@@ -21,7 +21,8 @@ ANSI_ACK	= @10000000
 
 ANSI_area	= $5F0
 ANSI_LastACK	= ANSI_area
-ANSI_LastAVL	= ANSI_area+1
+ANSI_LastAVL	= ANSI_LastACK + 1
+ANSI_end	= ANSI_LastAVL
 
 
 ; Initialisation Routine

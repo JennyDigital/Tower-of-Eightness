@@ -18,6 +18,8 @@ IRQH_Reset_CMD		= 2					; Reset the IRQ handler.
 ; IRQ Memory table.  Space Allocated $A20-$A49.  Used $A20-$A45.  Remaining: 4.
 ;
 IRQH_Table_Base		= $A20 					; Beginning of IRQ Handler Memory.
+IRQH_Table_lim		= $A49
+
 IRQH_CallList		= IRQH_Table_Base			; All sixteen bytes for eight addresses.
 IRQH_CallReg		= IRQH_CallList + 16			; Two bytes containing an address being transferred.
 IRQH_ClaimsList		= IRQH_CallReg + 2			; Byte with list of calls that returned and IRQ Claim
@@ -30,6 +32,14 @@ IRQ_TableEnd		= IRQH_CMD_Table + 15			; Last address of IRQ Table
 
 
 IRQH_zero_range_C	= IRQH_CurrentEntry+17-IRQH_CallReg	; Amount to zero after IRQH_CallList.
+
+; Bounds checking.
+;
+  .IF [ IRQ_TableEnd>IRQH_Table_lim ]
+    .ERROR "Memory overrun in IRQ_Handler.asm"
+  .ENDIF
+
+
 
 
 ; IRQ Handler Initialisation Call
@@ -59,7 +69,7 @@ IRQH_FillTable_L
   LDX #0
   
 IRQH_FillRemaining_L
-  LDA #0
+  LDA #IRQH_Service_CMD
   STA IRQH_CallReg,X
   INX
   

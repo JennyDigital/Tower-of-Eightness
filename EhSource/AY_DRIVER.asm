@@ -109,20 +109,28 @@ AY_LAT_ADDR		= AY_CTRL_bit_BC1 | AY_CTRL_bit_BDIR
 
 ; AY Soundcard memory allocations.
 
-AY_Memstart		= $A00
-AY_Reg			= AY_Memstart
-AY_Data			= AY_Reg             + 1		; 16-bit reg for purposes of including double register accesses.
-AY_Mask			= AY_Data            + 2
-AY_Channel		= AY_Mask            + 1
-AY_Period		= AY_Channel         + 1
-AY_Volume		= AY_Period          + 2
-AY_Envelope_Period	= AY_Volume          + 1
-AY_Envelope_Mode 	= AY_Envelope_Period + 2
+AY_Memstart		= $A00				; Beginning of AY driver memory allocations
+AY_Mem_limit		= $A1F				; Last permitted memory location.
 
+AY_Reg			= AY_Memstart
+AY_Data			= AY_Reg             + 1	; 16-bit reg for purposes of including double register accesses.
+AY_Mask			= AY_Data            + 2	; Used for managing which channels are enabled/disabled
+AY_Channel		= AY_Mask            + 1	; Store of channel data for the TowerBASIC SOUND command.
+AY_Period		= AY_Channel         + 1	; Stores the period data for the TowerBASIC SOUND command.
+AY_Volume		= AY_Period          + 2	; Stores the Volume value for the SOUND command.
+AY_Envelope_Period	= AY_Volume          + 1	; Store of period data for the TowerBASIC ENVELOPE command.
+AY_Envelope_Mode 	= AY_Envelope_Period + 2	; Stores the mode parameter for the TowerBASIC ENVELOPE command.
+
+AY_Mem_end		= AY_Envelope_Mode		; The calculated last byte consumed.
+
+
+  .IF [ AY_Mem_end>AY_Mem_limit ]
+    .ERROR "Memory overrun in AY_DRIVER.asm"
+  .ENDIF
 
 
 ; AY_Initialisation routine.
-
+;
 AY_Init
   LDA #0
   STA AY_CTRLPORT	; Let's make our control port inactive first.
@@ -149,7 +157,7 @@ AY_Init_Loop
 
 
 ; Channel enable function (VERIFIED)
-
+;
 AY_EnableCh
   AND #7		; Get our channel selection, this includes noise.
   
@@ -203,11 +211,12 @@ AY_Disable_B
 
 
 ; AY register read-write primitives
+; ---------------------------------
 ;
-
 ; Writes the register address to the AY
 ;
 ; Takes A as the register parameter. Corrupts A
+;
 AY_wr_reg
   STA AY_DATAPORT	; Place our register value on the AY bus
   
@@ -216,15 +225,16 @@ AY_wr_reg
   
   LDA #AY_LAT_ADDR	; Latch our data to the AY
   STA AY_CTRLPORT
-  ;NOP
-  ;NOP
+  
   LDA #AY_INACK		; And ensure out bus goes inactive again.
   STA AY_CTRLPORT
   RTS
 
+
 ; Writes data to the currently selected register
 ;
 ; Takes A as the register parameter. Corrupts A
+;
 AY_wr_data
   STA AY_DATAPORT	; Place our data on the AY bus
 
@@ -238,7 +248,9 @@ AY_wr_data
   STA AY_CTRLPORT
   RTS
 
+
 ; Read register		; Corrupts Y, returns the result in A.
+;
 AY_rd_data
   LDA #AY_DATA_in	; Make our bus an input so that the AY can drive it.
   STA AY_DDR_DATA
@@ -270,7 +282,7 @@ AY_wr_to_reg
   
 
 ; For the users of BASIC, here's the easier read/write functions. 
-
+;
 AY_Userwrite
   LDA AY_Data
   LDX AY_Reg
@@ -312,6 +324,7 @@ AY_Userread_16
   RTS
   
 
+
 ; *********************************************************************
 ;
 ;                       BASIC Extension commands
@@ -321,7 +334,7 @@ AY_Userread_16
 ; Sound command for BASIC
 ;
 ; Format: SOUND channel,period,vol
-
+;
 AY_SOUND
 
 ; Get channel.
@@ -344,7 +357,7 @@ AY_SOUND
     
 
 ; Get period.
-
+;
   JSR LAB_EVNM					; evaluate expression and check is numeric,
 						; else do type mismatch
   JSR LAB_F2FX					; save integer part of FAC1 in temporary integer
@@ -358,7 +371,7 @@ AY_SOUND
   
   
 ; Get volume
-  
+;  
   JSR LAB_EVNM					; evaluate expression and check is numeric,
 						; else do type mismatch
   JSR LAB_F2FX					; save integer part of FAC1 in temporary integer
@@ -368,7 +381,7 @@ AY_SOUND
   
   
 ; Enact upon sound parameters
-  
+;  
   LDA AY_Channel				; Set our period
   AND #7
   CLC
@@ -408,8 +421,7 @@ AY_Parameter_FCER_B
 ; ENVELOPE command.
 ;
 ; Format ENVELOPE period, mode  
-
-
+;
 AY_ENVELOPE
 
 ; Get period.
