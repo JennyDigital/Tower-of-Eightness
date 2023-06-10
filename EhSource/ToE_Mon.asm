@@ -26,7 +26,7 @@
 ; 8/6/2023	Added bounds checking to many of the areas of RAM in use across most of the .asm files.
 ;		Corrected a few documentation bugs.
 ;		Changed the NMI and IRQ code so that it has redirectable vectors for TOTAL control.
-;
+; 106/2023	Spent some time optimising the ANSI_write function to make printint a little faster.
 
 
 ROMSTART = $C100
@@ -102,6 +102,9 @@ OS_input_ACIA2  = @00001000
 
   .ROM_AREA ROMSTART,$FFFF
 
+  *= AA_end_basic
+  
+  .INCLUDE "BlobPlot.asm"
  
   *= $EA00                              ; Give ourselves room for the OS. Formerly F000
   .INCLUDE "ACIA.asm"
@@ -116,17 +119,45 @@ OS_input_ACIA2  = @00001000
   .INCLUDE "SPI_Lib.asm"
 
 
-; Reset vector points here.
+; NMI_vec points here.
 
 NMI_vec_dummy
   RTI
 
+
+; RES_vec points here.
 
 RES_vec
   SEI					; Ensure IRQ's are turned off.
   CLD					; clear decimal mode
   LDX #$FF				; empty stack
   TXS					; set the stack
+  
+
+; TEST CODE
+;  LDA #$20
+;  STA BLOB_X_U8					; Initial Coords
+;  STA BLOB_Y_U8
+;
+;  LDA #BLOB_ModeSet_Cb | BLOB_ModeClr_Cb		; Mode
+;  STA BLOB_Mode_U8
+;  
+;  LDA #0					; Blob we is wukkin on.
+;  STA BLOB_CurrBlob_U8
+;  
+;  LDA #$00					; Base Address
+;  STA BLOB_BaseAddr_U16
+;  LDA #$B0
+;  STA BLOB_BaseAddr_U16 + 1
+;  
+;  LDA #$AA
+;  STA $B000
+;  LDA #$55
+;  STA $B001
+;  
+;  JSR BLOB_Plot					; Action!
+; END TEST CODE  
+  
   
   ; put the IRQ and MNI code in RAM so that it can be changed
   ;
@@ -377,7 +408,6 @@ B_PrintHexDig
   JSR V_OUTP
   RTS
   
-  
 END_CODE
 
 MON_HexDigits_T  
@@ -387,9 +417,10 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 8.6.2023.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 10.6.2023.1 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
+END_SOS
 
 ; IRQ Vectors
   *= $FF3C

@@ -13,8 +13,8 @@ ANSI_ddr_a	= ANSI_base+3
 
 ; Control Bits
 
-ANSI_AVAIL	= @01000000
-ANSI_ACK	= @10000000
+ANSI_AVAIL_bit	= @01000000
+ANSI_ACK_bit	= @10000000
 
 
 ; Memory allocations
@@ -30,12 +30,12 @@ ANSI_end	= ANSI_LastAVL
 ANSI_INIT
   LDA #12
   STA ANSI_reg_b
-  LDA #ANSI_AVAIL
+  LDA #ANSI_AVAIL_bit
   STA ANSI_ddr_a
   LDA #$FF
   STA ANSI_ddr_b
   LDA ANSI_reg_a
-  AND ANSI_ACK
+  AND ANSI_ACK_bit
   STA ANSI_LastACK
   ASL
   STA ANSI_LastAVL
@@ -54,32 +54,40 @@ ANSI_INIT
 
 ANSI_write
 
-  PHP			; Save Register States
-  PHA
+; TEST CODE
+;  RTS
+; End TEST CODE
   
-  JSR ANSI_wait		; Wait until AVAIL and ACK agree
+  PHP			; Save Register States				3
+  PHX			;						3
+  PHA			;						3
+     
+  TAX 			; Save our char in				2 = 11
   
-  STA ANSI_reg_b	; Write the char to output
-  LDA ANSI_LastAVL	; Flip and re-write avail bit to tell
-  EOR #ANSI_AVAIL	; the ANSI processor of new data
-  STA ANSI_reg_a
-  STA ANSI_LastAVL
+ANSI_wait_L 
+ 
+  LDA ANSI_reg_a	; Check ACK against AVAIL			4
+  AND #ANSI_ACK_bit	;						4
+  LSR			;						3
+  CMP ANSI_LastAVL	;						4
+  BNE ANSI_wait_L	; Until they match				2/3 whem taken
   
-  PLA
-  PLP
-  RTS
+  STX ANSI_reg_b	; Write the char to output			4 = 21 +..loops
   
-ANSI_wait
-  PHA
+  LDA ANSI_LastAVL	; Flip and re-write avail bit to tell		4
+  EOR #ANSI_AVAIL_bit	; the ANSI processor of new data		2
+  STA ANSI_reg_a	;						4
+  STA ANSI_LastAVL	;						4
   
-ANSI_w_loop
-  LDA ANSI_reg_a	; Check ACK against AVAIL
-  AND #ANSI_ACK
-  LSR
-  CMP ANSI_LastAVL
-  BNE ANSI_w_loop	; Until they match
+  PLA			;						3
+  PLX			;						3
+  PLP			;						3
   
-  PLA
-  RTS
+  RTS			;						6 = 29
+  
+  			;						11
+  			;						21
+  			;						29 = 61 - 12 = 49.
+  			;						The jury is out if upsetting X and P matter.
  
 
