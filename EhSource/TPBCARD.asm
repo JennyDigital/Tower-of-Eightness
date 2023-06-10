@@ -1,4 +1,4 @@
-; Jennifer's TPB Card driver
+; Duncan's TPB Card driver
 ;
 ; This card is based on a 6522 VIA chip.
 
@@ -779,6 +779,9 @@ ATN_Resp_Dwell
   RTS
   
 
+
+    
+FINDME:
 
 ; TPB LPT Write.
 ; *================================*

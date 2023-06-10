@@ -316,8 +316,8 @@ Rbyte3            = Rbyte4+3  ; least significant PRNG byte
 ;                 = $DF       ; Unused
 ;                 = $E0       ; Unused
 ;                 = $E1       ; Unused
-;                 = $E2       ; TPB card temporary location
-;                 = $E3       ; TPB card temporary location
+;                 = $E2       ; Unused
+;                 = $E3       ; Unused
 ;                 = $E4       ; TAPE tempoaray location.
 ;                 = $E5       ; TAPE BlockLo
 ;                 = $E6       ; TAPE blockHi
@@ -508,7 +508,7 @@ VEC_CAT           = VEC_VERIFY+2	; cat vector
 ; * $420-$430 for BobPlot.
 ; * $5D0-$5DF for I2C.
 ; * $5E0-$5EF for ToE_Mon.
-; $5F2-$7FF for TPB bus card.
+; * $5F2-$7FF for CenTPB card.
 ; * $800-$80F for ACIA cards.
 ; $810-$8FF unallocated.
 ; X $900-$9FF Allocated to the cassette file system.  This is probably generous.

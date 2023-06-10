@@ -26,7 +26,11 @@
 ; 8/6/2023	Added bounds checking to many of the areas of RAM in use across most of the .asm files.
 ;		Corrected a few documentation bugs.
 ;		Changed the NMI and IRQ code so that it has redirectable vectors for TOTAL control.
-; 106/2023	Spent some time optimising the ANSI_write function to make printint a little faster.
+; 10/6/2023	Spent some time optimising the ANSI_write function to make printint a little faster.
+;		Started nearly from scratch with LPT and TPB support.  Basically, there's only the LPT stuff left
+;			and that has been tweaked.
+;		There is now an embedded BLOB plotting routine, though it remains to be seen if it has a place in ROM.
+;			There is therefore, no vector for BLOB_Plot yet.
 
 
 ROMSTART = $C100
@@ -89,7 +93,7 @@ TOE_MemptrHi  = $E8				; General purpose memory pointer high byte
 
 ACIA1_out_sw	= @00000001
 ANSI_out_sw	= @00000010
-TPB_Cen_out_sw	= @00000100
+CEN_LPT_out_sw	= @00000100
 ACIA2_out_sw	= @00001000
 OS_input_ACIA1  = @00000001
 OS_input_ACIA2  = @00001000
@@ -109,7 +113,8 @@ OS_input_ACIA2  = @00001000
   *= $EA00                              ; Give ourselves room for the OS. Formerly F000
   .INCLUDE "ACIA.asm"
   .INCLUDE "ANSICARD.asm"
-  .INCLUDE "TPBCARD.asm"
+;  .INCLUDE "TPBCARD.asm"
+  .INCLUDE "CenTPB.asm"
   .INCLUDE "TAPE_IO.asm"
   .INCLUDE "AY_DRIVER.asm"
   .INCLUDE "IRQ_Handler.asm"
@@ -132,31 +137,6 @@ RES_vec
   CLD					; clear decimal mode
   LDX #$FF				; empty stack
   TXS					; set the stack
-  
-
-; TEST CODE
-;  LDA #$20
-;  STA BLOB_X_U8					; Initial Coords
-;  STA BLOB_Y_U8
-;
-;  LDA #BLOB_ModeSet_Cb | BLOB_ModeClr_Cb		; Mode
-;  STA BLOB_Mode_U8
-;  
-;  LDA #0					; Blob we is wukkin on.
-;  STA BLOB_CurrBlob_U8
-;  
-;  LDA #$00					; Base Address
-;  STA BLOB_BaseAddr_U16
-;  LDA #$B0
-;  STA BLOB_BaseAddr_U16 + 1
-;  
-;  LDA #$AA
-;  STA $B000
-;  LDA #$55
-;  STA $B001
-;  
-;  JSR BLOB_Plot					; Action!
-; END TEST CODE  
   
   
   ; put the IRQ and MNI code in RAM so that it can be changed
@@ -185,7 +165,7 @@ RES_vec
    
   CLI					; Enable IRQs globally.
 
-  JSR TPB_delay
+  JSR CEN_Delay
   
   LDA #OUTSEL_DEFAULT                 ; Set our default output options. See config section at the top
 
@@ -203,21 +183,21 @@ RES_vec
   
 ; Set up TowerBASIC vectors, copy them to page 2
 
-  LDY #END_CODE-LAB_vec               ; set index/count
+  LDY #END_CODE-LAB_vec			; set index/count
 LAB_stlp
-  LDA LAB_vec-1,Y                     ; get byte from interrupt code
-  STA VEC_IN-1,Y                      ; save to RAM
-  DEY                                 ; decrement index/count
-  BNE LAB_stlp                        ; loop if more to do
+  LDA LAB_vec-1,Y			; get byte from interrupt code
+  STA VEC_IN-1,Y			; save to RAM
+  DEY					; decrement index/count
+  BNE LAB_stlp				; loop if more to do
 
   
 ; Initialise system components
 
-  JSR INI_ACIA_SYS                    ; Init ACIAs. We currently need ACIA1 for the keyboard at startup.
-  JSR ANSI_init_vec                   ; Initialise the ANSI text video card.
-  JSR TPB_init_vec                    ; Init Tower Peripheral Bus
-  JSR AY_Init_vec                     ; Initialise the AY sound system.
-  JSR TAPE_init_vec                   ; Initialise TowerTAPE filing system.
+  JSR INI_ACIA_SYS			; Init ACIAs. We currently need ACIA1 for the keyboard at startup.
+  JSR ANSI_init_vec			; Initialise the ANSI text video card.
+  JSR CEN_INIT				; Init Centronics TPB card.
+  JSR AY_Init_vec			; Initialise the AY sound system.
+  JSR TAPE_init_vec			; Initialise TowerTAPE filing system.
   
     
 ; now do the signon message
@@ -306,7 +286,7 @@ no_ACIA1
   BIT os_outsel
   BEQ no_ACIA2
   PLA
-  JSR ACIA2out                         ; Print to ACIA2
+  JSR ACIA2out				; Print to ACIA2
   
   PHA
 no_ACIA2
@@ -314,20 +294,20 @@ no_ACIA2
   BIT os_outsel
   BEQ no_ANSI
   PLA
-  JSR ANSI_write_vec                  ; Print to ANSI video card
+  JSR ANSI_write_vec			; Print to ANSI video card
     
   PHA
 no_ANSI
-  LDA #TPB_Cen_out_sw
+  LDA #CEN_LPT_out_sw
   BIT os_outsel
   BEQ MON_EndWRITE_B
   PLA
-  JSR TPB_LPT_write_vec               ; Print to TPB LPT card
+  JSR CEN_LPT_write			; Print to LPT.
   
   BRA MON_EndWRITE_B2
 
 MON_EndWRITE_B
-  PLA                                   ; Clean up stack including restoring P and return.
+  PLA					; Clean up stack including restoring P and return.
 MON_EndWRITE_B2
   PLA
   PLY
@@ -417,7 +397,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 10.6.2023.1 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 10.6.2023.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 END_SOS
@@ -512,36 +492,17 @@ ANSI_write_vec
   JMP ANSI_write           ; FF93
   
 
-; Tower Peripheral Bus vectors
+; centronic/TPB vectors. Not many here RN, the fat has been trimmed
 
-TPB_init_vec
-  JMP TPB_INIT             ; FF96
+CEN_init_vec
+  JMP CEN_INIT             ; FF96
 TPB_LPT_write_vec
-  JMP TPB_LPT_write        ; FF99
-TPB_tx_byte_vec
-  JMP TPB_tx_byte          ; FF9C
-TPB_tx_block_vec
-  JMP TPB_tx_block         ; FF9F
-TPB_ATN_handler_vec
-  JMP TPB_ATN_handler      ; FFA2
-TPB_rx_byte_vec  
-  JMP TPB_rx_byte          ; FFA5
-TPB_rx_block_vec
-  JMP TPB_rx_block         ; FFA8
-TPB_Dev_Presence_vec
-  JMP TPB_Dev_Presence     ; FFAB
-TPB_Req_Dev_Type_vec
-  JMP TPB_Req_Dev_Type     ; FFAE
-TPB_dev_select_vec
-  JMP TPB_dev_select       ; FFB1
-TPB_Ctrl_Blk_Wr_vec
-  JMP TPB_Ctrl_Blk_Wr      ; FFB4
-TPB_Ctrl_Blk_Rd_vec
-  JMP TPB_Ctrl_Blk_Rd      ; FFB7
+  JMP CEN_LPT_write        ; FF99
+
   
 
 ; Extra TAPE sytem vector
-
+  *= $FFBA
 F_TAPE_SetKbd_vec          ; FFBA
   JMP TAPE_SetKbd  
 
