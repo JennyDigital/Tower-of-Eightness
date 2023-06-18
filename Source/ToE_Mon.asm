@@ -40,7 +40,7 @@ ROMSTART = $C100
 ;
 MEMCHECK	= 0			; Options:	0 For no 'Memory size?'
 					;		1 for 'Memory size?'
-OUTSEL_DEFAULT	= ACIA1_out_sw		;
+OUTSEL_DEFAULT	= ANSI_out_sw		;
 					; Options:	ANSI_out_sw		: Prints to the ANSI video out
 					;		ACIA1_out_sw		: Prints to ACIA1
 					;		ACIA2_out_sw		: Prints to ACIA2
