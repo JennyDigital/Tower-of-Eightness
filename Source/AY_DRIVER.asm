@@ -107,6 +107,13 @@ AY_WRITE		= AY_CTRL_bit_BDIR
 AY_LAT_ADDR		= AY_CTRL_bit_BC1 | AY_CTRL_bit_BDIR
 
 
+;AY SOUND command bits
+
+AY_NoiseChBit_b		= @00000100
+AY_SoundChBits_b	= @00000011
+AY_NoiseAndChBits	= @00000111
+
+
 ; AY Soundcard memory allocations.
 
 AY_Memstart		= $A00				; Beginning of AY driver memory allocations
@@ -133,11 +140,11 @@ AY_Mem_end		= AY_Envelope_Mode		; The calculated last byte consumed.
 ;
 AY_Init
   LDA #0
-  STA AY_CTRLPORT	; Let's make our control port inactive first.
+  STA AY_CTRLPORT				; Let's make our control port inactive first.
   LDA #AY_CTRL_dir
   STA AY_DDR_CTRL  
 
-  LDX #$F		; Clear all the registers
+  LDX #$F					; Clear all the registers.
 AY_Init_Loop
 
   LDA #0
@@ -148,7 +155,7 @@ AY_Init_Loop
   LDA #AY_NOT_ENABLE
   JSR AY_wr_to_reg
 
-  LDA #AY_AllOff	; Set all our enable bits to disabled. Blissful quiet!
+  LDA #AY_AllOff				; Set all our enable bits to disabled. Blissful quiet!
   STA AY_Mask
   LDX #AY_NOT_ENABLE
   JSR AY_wr_to_reg
@@ -156,25 +163,25 @@ AY_Init_Loop
   RTS
 
 
-; Channel enable function (VERIFIED)
+; Channel enable function.
 ;
 AY_EnableCh
-  AND #7		; Get our channel selection, this includes noise.
+  AND #AY_NoiseAndChBits			; Get our channel selection, this includes noise.
   
-  TAX			; Put our shift counter in X
-  LDA #1		; and set our enable bit to 1
+  TAX						; Put our shift counter in X.
+  LDA #1					; and set our enable bit to 1.
   
   CLC
-AY_Enable_L		; Loop while X > 0
+AY_Enable_L					; Loop while X > 0.
   CPX #0
-  BEQ AY_Enable_B	; including 0 times for channel A (0)
+  BEQ AY_Enable_B				; including 0 times for channel A (0).
   
-  DEX			; Moving the 0
+  DEX						; Moving the 0.
   ASL
   BRA AY_Enable_L
 
 AY_Enable_B
-  EOR #$FF		; Make sure our enable bit is 0
+  EOR #$FF					; Make sure our enable bit is 0.
   AND AY_Mask
   STA AY_Mask
   
@@ -183,20 +190,20 @@ AY_Enable_B
   RTS
   
   
-; Channel disable function (VERIFIED)
+; Channel disable function.
 
 AY_DisableCh
-  AND #7		; Get our channel selection, this includes noise.
+  AND #AY_NoiseAndChBits			; Get our channel selection, this includes noise.
   
-  TAX			; Put our shift counter in X
-  LDA #1		; and set our enable bit to 1
+  TAX						; Put our shift counter in X.
+  LDA #1					; and set our enable bit to 1.
   
   CLC
-AY_Disable_L		; Loop while X > 0
+AY_Disable_L					; Loop while X > 0.
   CPX #0
-  BEQ AY_Disable_B	; including 0 times for channel A (0)
+  BEQ AY_Disable_B				; including 0 times for channel A (0).
   
-  DEX			; Moving the 0
+  DEX						; Moving the 0.
   ASL
   BRA AY_Disable_L
 
@@ -218,12 +225,12 @@ AY_Disable_B
 ; Takes A as the register parameter. Corrupts A
 ;
 AY_wr_reg
-  STA AY_DATAPORT	; Place our register value on the AY bus
+  STA AY_DATAPORT	; Place our register value on the AY bus.
   
   LDA #AY_DATA_out
   STA AY_DDR_DATA	; And ensure the bus is an output.
   
-  LDA #AY_LAT_ADDR	; Latch our data to the AY
+  LDA #AY_LAT_ADDR	; Latch our data to the AY.
   STA AY_CTRLPORT
   
   LDA #AY_INACK		; And ensure out bus goes inactive again.
@@ -231,12 +238,12 @@ AY_wr_reg
   RTS
 
 
-; Writes data to the currently selected register
+; Writes data to the currently selected register.
 ;
 ; Takes A as the register parameter. Corrupts A
 ;
 AY_wr_data
-  STA AY_DATAPORT	; Place our data on the AY bus
+  STA AY_DATAPORT		; Place our data on the AY bus.
 
   LDA #AY_DATA_out
   STA AY_DDR_DATA
@@ -244,32 +251,34 @@ AY_wr_data
   LDA #AY_WRITE
   STA AY_CTRLPORT
 
-  LDA #AY_INACK		; And ensure the bus is an output.
+  LDA #AY_INACK			; And ensure the bus is an output.
   STA AY_CTRLPORT
   RTS
 
 
-; Read register		; Corrupts Y, returns the result in A.
+; Read register.
+;
+; Corrupts Y, returns the result in A.
 ;
 AY_rd_data
-  LDA #AY_DATA_in	; Make our bus an input so that the AY can drive it.
+  LDA #AY_DATA_in		; Make our bus an input so that the AY can drive it.
   STA AY_DDR_DATA
   
-  LDA #AY_READ		; Set our AY to output it's register contents
+  LDA #AY_READ			; Set our AY to output it's register contents.
   STA AY_CTRLPORT
   
-  LDA AY_DATAPORT	; Grab those contents and put them in Y
+  LDA AY_DATAPORT		; Grab those contents and put them in Y.
   TAY
   
-  LDA #AY_INACK		; Put our AY but back inactive.
+  LDA #AY_INACK			; Put our AY but back inactive.
   STA AY_CTRLPORT
   
-  TYA			; Put our result back into A
+  TYA				; Put our result back into A.
   
-  RTS			; Were finished.
+  RTS				; Were finished.
   
   
-; The 'All in one' function.
+; The 'All in one' function.  A contains the value, and X the register to write to.
 ;
 AY_wr_to_reg
   PHA
@@ -290,10 +299,10 @@ AY_Userwrite
   RTS
   
 AY_Userread
-  LDA AY_Reg		; Select our register of interest.
+  LDA AY_Reg				; Select our register of interest.
   JSR AY_wr_reg
   
-  JSR AY_rd_data	; Get the contents of the register of interest.
+  JSR AY_rd_data			; Get the contents of the register of interest.
   STA AY_Data
   RTS
   
@@ -307,19 +316,19 @@ AY_Userwrite_16
   RTS
   
 AY_Userread_16
-  LDA AY_Reg		; Select our register of interest.
+  LDA AY_Reg				; Select our register of interest.
   JSR AY_wr_reg
   
-  JSR AY_rd_data	; Get the contents of the register of interest.
+  JSR AY_rd_data			; Get the contents of the register of interest.
   STA AY_Data
-  LDA AY_Reg		; Select our register of interest.
+  LDA AY_Reg				; Select our register of interest.
 
   SEC
   ADC #0
   
   JSR AY_wr_reg
   
-  JSR AY_rd_data	; Get the contents of the register of interest.
+  JSR AY_rd_data			; Get the contents of the register of interest.
   STA AY_Data + 1
   RTS
   
@@ -349,8 +358,9 @@ AY_SOUND
   JSR LAB_1C01					; scan for "," , else do syntax error then warm start
   
   LDA AY_Channel				; Mug trap channel for over range values.
-  BIT #@11111000
-  BNE AY_Parameter_FCER_B
+;  BIT #~[AY_NoiseChBit_b | AY_SoundChBits_b]
+;  BNE AY_Parameter_FCER_B
+  AND #$7F
   SEC
   SBC #6
   BPL AY_Parameter_FCER_B
@@ -383,29 +393,58 @@ AY_SOUND
 ; Enact upon sound parameters
 ;  
   LDA AY_Channel				; Set our period
-  AND #7
+  SEC
+  SBC #3
+  BMI AY_Snd_Tone_B
+  
+  LDX #AY_NOISE_PERIOD				; If our channel is between 3 and 5, set noise instead.
+
+  LDA AY_Period					; First set our period.
+  JSR AY_wr_to_reg
+  
+  BRA AY_SetVolAndCh_B
+  
+AY_Snd_Tone_B
+  LDA AY_Channel				; Set period
+  AND #AY_SoundChBits_b
   CLC
   ASL
   TAX
-  
+    
   LDA AY_Period
   JSR AY_wr_to_reg
   INX
   LDA AY_Period + 1
   JSR AY_wr_to_reg
+
+AY_SetVolAndCh_B
   
-  LDA AY_Channel				; Set our volume
-  AND #7
+  LDA AY_Channel				; Set our volume.
+
+  SEC						; Check whether we are dealing with noise or tone.
+  SBC #3
+  BMI AY_ToneChVol_B
+  
+  BRA AY_DoVol_B
+
+AY_ToneChVol_B
+
+  LDA AY_Channel				; Put it back as we found it.
+  
+AY_DoVol_B
+
   CLC
   ADC #8
   TAX
+  
   LDA AY_Volume
   JSR AY_wr_to_reg
   
-  LDA AY_Channel
+  LDA AY_Channel				; Decide if we are enbling a channel or not.
   LDX AY_Volume
   CPX #0
   BNE AY_EnableCh_B
+  
   JSR AY_DisableCh
   
   RTS

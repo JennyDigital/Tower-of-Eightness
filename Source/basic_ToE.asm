@@ -8892,7 +8892,7 @@ ERR_BF      .byte "Filename too long",$00
 
 ;ERR_UA     .byte "Undimensioned array",$00
 
-LAB_BMSG    .byte $0D,$0A,"Break",$00
+LAB_BMSG    .byte $0D,$0A,$0A,"Break",$00
 LAB_EMSG    .byte " Error",$00
 LAB_LMSG    .byte " in line ",$00
 LAB_RMSG    .byte $0D,$0A,"Ready",$0D,$0A,$00

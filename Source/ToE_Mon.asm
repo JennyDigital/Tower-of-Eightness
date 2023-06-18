@@ -31,6 +31,7 @@
 ;			and that has been tweaked.
 ;		There is now an embedded BLOB plotting routine, though it remains to be seen if it has a place in ROM.
 ;			There is therefore, no vector for BLOB_Plot yet.
+; 18/5/2023	Found and fixed a bug with SOUND in AY_DRIVER.asm which prevented noise from being controlled properly.
 
 
 ROMSTART = $C100
@@ -39,7 +40,7 @@ ROMSTART = $C100
 ;
 MEMCHECK	= 0			; Options:	0 For no 'Memory size?'
 					;		1 for 'Memory size?'
-OUTSEL_DEFAULT	= ANSI_out_sw		;
+OUTSEL_DEFAULT	= ACIA1_out_sw		;
 					; Options:	ANSI_out_sw		: Prints to the ANSI video out
 					;		ACIA1_out_sw		: Prints to ACIA1
 					;		ACIA2_out_sw		: Prints to ACIA2
@@ -137,8 +138,8 @@ RES_vec
   CLD					; clear decimal mode
   LDX #$FF				; empty stack
   TXS					; set the stack
-  
-  
+
+
   ; put the IRQ and MNI code in RAM so that it can be changed
   ;
   LDA #<IRQH_ProcessIRQs
@@ -195,7 +196,7 @@ LAB_stlp
 
   JSR INI_ACIA_SYS			; Init ACIAs. We currently need ACIA1 for the keyboard at startup.
   JSR ANSI_init_vec			; Initialise the ANSI text video card.
-  JSR CEN_INIT				; Init Centronics TPB card.
+  JSR CEN_TPB_init_vec			; Init Centronics TPB card.
   JSR AY_Init_vec			; Initialise the AY sound system.
   JSR TAPE_init_vec			; Initialise TowerTAPE filing system.
   
@@ -397,7 +398,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 10.6.2023.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 18.6.2023.1 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 END_SOS
@@ -492,11 +493,11 @@ ANSI_write_vec
   JMP ANSI_write           ; FF93
   
 
-; centronic/TPB vectors. Not many here RN, the fat has been trimmed
+; Centronics/TPB vectors. Not many here RN, the fat has been trimmed
 
-CEN_init_vec
-  JMP CEN_INIT             ; FF96
-TPB_LPT_write_vec
+CEN_TPB_init_vec
+  JMP CEN_TPB_INIT         ; FF96
+CEN_LPT_write_vec
   JMP CEN_LPT_write        ; FF99
 
   

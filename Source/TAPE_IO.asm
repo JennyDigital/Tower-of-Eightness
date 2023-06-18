@@ -157,7 +157,7 @@ V_TAPE_Size_Buff		= V_TAPE_Address_Buff + 2	; Temporary store of how big the fil
 V_TAPE_Config			= V_TAPE_Size_Buff + 2		; TowerTAPE file system configuratuon bits.
 TAPE_KBD_vec			= V_TAPE_Config + 1		; Keyboard checking vector (must be in ram)
 
-TAPE_RAM_end			= V_TAPE_Config
+TAPE_RAM_end			= TAPE_KBD_vec + 2
 
 ; Some more handy constants
 
@@ -166,7 +166,9 @@ C_TAPE_Fname_BuffEnd		= V_TAPE_Fname_Buffer + C_TAPE_Fname_BufferSize
 C_TAPE_HeaderSize		= TAPE_Header_End - TAPE_Header_Buffer + 1
 
 
-
+;  .IF [ TAPE_RAM_end>TAPE_RAM_Start ]
+;    .ERROR "Memory overrun in TAPE_IO.asm"
+;  .ENDIF
 
 
 ; Next is $948.
