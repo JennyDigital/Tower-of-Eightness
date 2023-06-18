@@ -32,7 +32,8 @@
 ;		There is now an embedded BLOB plotting routine, though it remains to be seen if it has a place in ROM.
 ;			There is therefore, no vector for BLOB_Plot yet.
 ; 18/5/2023	Found and fixed a bug with SOUND in AY_DRIVER.asm which prevented noise from being controlled properly.
-
+;		Removed BlobPlot from the ROM and placed it as a loadable resource.  It's relocatable code anyway.
+;
 
 ROMSTART = $C100
 
@@ -106,10 +107,6 @@ OS_input_ACIA2  = @00001000
 ; Also, during the running phase, the extra OS features are hosted here.
 
   .ROM_AREA ROMSTART,$FFFF
-
-  *= AA_end_basic
-  
-  .INCLUDE "BlobPlot.asm"
  
   *= $EA00                              ; Give ourselves room for the OS. Formerly F000
   .INCLUDE "ACIA.asm"
@@ -398,7 +395,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 18.6.2023.1 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 18.6.2023.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 END_SOS

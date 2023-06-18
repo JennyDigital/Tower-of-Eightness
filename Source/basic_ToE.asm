@@ -505,7 +505,7 @@ VEC_CAT           = VEC_VERIFY+2	; cat vector
 ; FINDME_LOWRAM
 
 ; * $400-$40F for SPI_Lib.
-; * $420-$430 for BobPlot.
+; * $420-$430 for User purposes ATM.
 ; * $5D0-$5DF for I2C.
 ; * $5E0-$5EF for ToE_Mon.
 ; * $5F2-$7FF for CenTPB card.
