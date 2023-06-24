@@ -487,7 +487,7 @@ VEC_CC            = ccnull+1  ; ctrl c check vector
 ; end bulk initialize from PG2_TABS at LAB_COLD
 
 
-; the following locations are bulk initialized by min_mon.asm from LAB_vec at LAB_stlp
+; the following locations are bulk initialized by ToE_Mon.asm from LAB_vec at LAB_stlp
 ;
 VEC_IN            = VEC_CC+2		; input vector
 VEC_OUT           = VEC_IN+2		; output vector
@@ -512,7 +512,8 @@ VEC_CAT           = VEC_VERIFY+2	; cat vector
 ; * $800-$80F for ACIA cards.
 ; $810-$8FF unallocated.
 ; X $900-$9FF Allocated to the cassette file system.  This is probably generous.
-; * $A00-$A1F reserved for the AY card.
+; * $A00-$A0F AY card.
+; * $A10-$A1F XTRA_BASIC memory.
 ; * $A20-$A49 IRQ Handler memory.
 ; * $A4A-$A5F Countdown Timer memory.
 ;   $A60-$AFF Unallocated.

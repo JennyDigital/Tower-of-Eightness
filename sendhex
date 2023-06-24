@@ -1,0 +1,7 @@
+#!/bin/bash
+echo -e "SendHex for ToE V1.0\n\r"
+r1="$(basename -- $1)"
+d1="$(dirname $1)"
+
+
+pv -L 12 "$d1/$r1" >  /dev/ttyS5

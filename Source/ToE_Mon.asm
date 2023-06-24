@@ -31,9 +31,16 @@
 ;			and that has been tweaked.
 ;		There is now an embedded BLOB plotting routine, though it remains to be seen if it has a place in ROM.
 ;			There is therefore, no vector for BLOB_Plot yet.
-; 18/5/2023	Found and fixed a bug with SOUND in AY_DRIVER.asm which prevented noise from being controlled properly.
+; 18/6/2023	Found and fixed a bug with SOUND in AY_DRIVER.asm which prevented noise from being controlled properly.
 ;		Removed BlobPlot from the ROM and placed it as a loadable resource.  It's relocatable code anyway.
+; 24/6/2023	Added bounds checking to the PLOT command to prevent screen corruption associated with out-of-bounds PLOTs.
+;		Added three new control bits for PLOTting:-
+;			XTRA_CFG_silent_b   (b0).  Setting this means out of bounds PLOTs are ignored.
+;			XTRA_CFG_capped_b   (b1).  Setting this means plots are restricted to 159 by 99 max.
+;			XTRA_CFG_NoChecks_b (b2).  Setting this overrides the checks.
+;		Fixed a bug where the NMI vector high byte was being stored to ROM.  Incorrect label used.
 ;
+
 
 ROMSTART = $C100
 
@@ -59,6 +66,7 @@ C_DEFAULT_FONT	= @00000011		; B7     ! B6     ! B5     ! B4     ! B3     ! B2   
 					;         !        !        !       !        ! DOUBLE !        !   80   !
 					; GFX     ! SPARE  ! SPARE  ! SPARE ! SPARE  ! HEIGHT ! BOLD   ! COLUMN !
 					;_________!________!________!_______!________!________!________!________!
+
 					
 
   .include "basic_ToE.asm"
@@ -147,7 +155,7 @@ RES_vec
   LDA #<NMI_vec_dummy
   STA NMI_User_vec
   LDA #>IRQH_ProcessIRQs
-  STA NMI_vec_dummy + 1
+  STA NMI_User_vec + 1
 
 
 ; Set up system timing function
@@ -165,18 +173,20 @@ RES_vec
 
   JSR CEN_Delay
   
-  LDA #OUTSEL_DEFAULT                 ; Set our default output options. See config section at the top
+  LDA #OUTSEL_DEFAULT			; Set our default output options. See config section at the top
 
-  STA os_outsel                       ; Save our preference of output option.
+  STA os_outsel				; Save our preference of output option.
   LDA #LF_filt_sw1
-  STA os_infilt                       ; Switch on $A filtering on the ACIA.
+  STA os_infilt				; Switch on $A filtering on the ACIA.
   
-  LDA #INSEL_DEFAULT                  ; Specify input source as ACIA1
+  LDA #INSEL_DEFAULT			; Specify input source as ACIA1
   STA os_insel
   
-  LDA #C_DEFAULT_FONT		      ; Set is our default screen attribute at bootup time
+  LDA #C_DEFAULT_FONT			; Set is our default screen attribute at bootup time
   STA MON_CurrAttr
 
+  LDA #XTRA_DefaultPlot_C		; Set up the PLOT configuration.
+  STA V_XTRA_Config
 
   
 ; Set up TowerBASIC vectors, copy them to page 2
@@ -395,7 +405,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 18.6.2023.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 24.6.2023.7 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 END_SOS
@@ -501,7 +511,7 @@ CEN_LPT_write_vec
 
 ; Extra TAPE sytem vector
   *= $FFBA
-F_TAPE_SetKbd_vec          ; FFBA
+TAPE_SetKbd_vec            ; FFBA
   JMP TAPE_SetKbd  
 
   *= $FFCC

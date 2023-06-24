@@ -117,7 +117,7 @@ AY_NoiseAndChBits	= @00000111
 ; AY Soundcard memory allocations.
 
 AY_Memstart		= $A00				; Beginning of AY driver memory allocations
-AY_Mem_limit		= $A1F				; Last permitted memory location.
+AY_Mem_limit		= $A0F				; Last permitted memory location.
 
 AY_Reg			= AY_Memstart
 AY_Data			= AY_Reg             + 1	; 16-bit reg for purposes of including double register accesses.
