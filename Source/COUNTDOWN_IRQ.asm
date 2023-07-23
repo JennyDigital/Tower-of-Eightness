@@ -15,10 +15,10 @@
 ;
 ; Start: $A4A.  End $A52. Size 9.
 ;
-CTR_V_Start		= $A4A
-CTR_V_lim		= $A5F
+CTR_V_Start		= $A4A				; This is our counter variable base address.
+CTR_V_lim		= $A5F				; Limit our resource use so we don't overwrite anything by accident.
 
-CTR_V			= CTR_V_Start			; This is our counter variable base address.
+CTR_V			= CTR_V_Start			; Counter current count value.
 CTR_RELOAD_V		= CTR_V 	   + 2		; This is the value the counter will be reloaded with if enabled.
 CTR_PERIOD_V		= CTR_RELOAD_V 	   + 2		; This is the interval between counts in PHI2 ticks
 CTR_External_vec	= CTR_PERIOD_V	   + 2		; External call vector when enabled.

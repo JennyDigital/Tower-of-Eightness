@@ -3884,7 +3884,7 @@ LAB_1C18p2  = LAB_1C18+2
 ; this is where you would put the undefined variable error call e.g.
 
 ;                             ; variable doesn't exist so flag error
-;     LDX   #$24              ; error code $24 ("undefined variable" error)
+;     LDX   #$26              ; error code $26 ("undefined variable" error)
 ;     JMP   LAB_XERR          ; do error #X then warm start
 
 ; the above code has been tested and works a treat! (it replaces the three code lines
