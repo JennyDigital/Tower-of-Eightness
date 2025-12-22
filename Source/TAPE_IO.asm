@@ -59,6 +59,7 @@ TAPE_Verify_Error	= @00000100			; Signals an error was detected.
 TAPE_ParityMode		= @00000001
 TAPE_AutoRUN_En		= @00000010
 TAPE_AutoEXEC_En	= @00000100
+TAPE_UseHdrAddr		= @00001000
 
 
 ; CCflag bit constant
@@ -184,7 +185,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
-  .BYTE "V2.58",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.65",$0D,$0A,$0D,$0A,$00
 
 
 TMSG_Break
@@ -963,7 +964,7 @@ TAPE_BlockIn_LoadErr
   JSR TOE_PrintStr_vec
 
   JSR LAB_CRLF
-  JSR LAB_CRLF
+  ; JSR LAB_CRLF
   
   LDA #<TMSG_NewPerformed
   STA TOE_MemptrLo
@@ -971,7 +972,8 @@ TAPE_BlockIn_LoadErr
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
   
-  JSR LAB_1269						; Perform New
+  JSR LAB_1463						; Perform New
+  JMP LAB_1274						; Break and WARM Start.   
 
 B_TAPE_NoNew
   LDA #<TMSG_TapeError					; Inform the user of the tape error
@@ -999,13 +1001,18 @@ TAPE_NewMSG_WS
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
 
-  JMP LAB_1463						; Perform a NEW and WARM start. 
+  JSR LAB_1463						; Perform a NEW
+  JMP LAB_1274						; and WARM start.
   
 
   
 ;To BASIC 'LOAD' entry point.
   
 F_TAPE_LOAD_BASIC
+  
+  LDA V_TAPE_Config					; Clear loading at original address flag
+  AND #~TAPE_UseHdrAddr
+  STA V_TAPE_Config
   
   JSR F_TAPE_GetName					; Get the filename string into our buffer
   
@@ -1025,6 +1032,16 @@ F_TAPE_LOAD_BASIC
 
 ; Handle BINARY case.
   
+  CMP '$'						; Reload at original address if '$' is specified
+  BNE TAPE_LOAD_At_Address_B
+  JSR LAB_IGBY
+  
+  LDA V_TAPE_Config					; Set loading at original address flag
+  ORA #TAPE_UseHdrAddr
+  STA V_TAPE_Config
+  
+  
+TAPE_LOAD_At_Address_B
   JSR LAB_EVNM						; evaluate expression and check is numeric,
 							; else do type mismatch
   JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
@@ -1067,8 +1084,9 @@ TAPE_LOAD_Header_Silent_B
   
   LDA TAPE_BlockIn_Status				; Branch on non load conditions
   CMP #TAPE_BlockIn_Escape
-  BEQ TAPE_BlockIO_EscHandler				; If escaping jump to the escape handler
-  
+  BNE TAPE_SkipNonLoadEsc
+  JMP TAPE_BlockIO_EscHandler				; If escaping jump to the escape handler
+TAPE_SkipNonLoadEsc
   JSR F_TAPE_CheckHeaderID				; try again if not a valid header
   BCC TAPE_LOAD_Header_Silent_B
 
@@ -1190,13 +1208,27 @@ B_TAPE_NoRun
 TAPE_CS_Fail
   LDA V_TAPE_LOADSAVE_Type				; Is the Checksum for a BASIC program?
   CMP #C_TAPE_FType_BASIC
-  BNE CS_Fail_NoNew_B  
+  BNE CS_Fail_NoNew_B
   
-  JMP LAB_1463						; Perform NEW as Corrupt BASIC is bad for business.
+  LDA #<TMSG_TapeError					; Tell the user that the program failed to load and perform NEW.
+  STA TOE_MemptrLo
+  LDA #>TMSG_TapeError
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+  
+  JSR LAB_1463						; Perform NEW and CLEAR as Corrupt BASIC is bad for business.
+  
+  LDA #<TMSG_NewPerformed
+  STA TOE_MemptrLo
+  LDA #>TMSG_NewPerformed
+  STA TOE_MemptrHi
+  JSR TOE_PrintStr_vec
+  
+  JMP LAB_1274						; Warm Start
   
 CS_Fail_NoNew_B
-  LDA #<TMSG_TapeError					; Tell the user that we are have pressed Escape,
-  LDY #>TMSG_TapeError					; and what line number if appropriate and warm start.
+  LDA #<TMSG_TapeError					; Tell the user that we are have failed to load correctly,
+  LDY #>TMSG_TapeError					; what line number if appropriate and then warm start.
   JMP LAB_1269
   
 B_CheckBinary_Run

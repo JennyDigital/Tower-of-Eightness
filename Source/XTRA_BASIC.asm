@@ -16,8 +16,8 @@ XTRA_Limit		= $A1F
 V_XTRA_PlotMode		= XTRA_Start
 V_XTRA_Xcoord		= V_XTRA_PlotMode    + 1
 V_XTRA_Ycoord		= V_XTRA_Xcoord      + 1
-V_XTRA_PlotPattern	= V_XTRA_Ycoord      + 1
-V_XTRA_Config		= V_XTRA_PlotPattern + 1	; Not yet used. Future feature provision,
+V_XTRA_PlotPattern	= V_XTRA_Ycoord      + 1	; Not yet used. Future feature provision.
+V_XTRA_Config		= V_XTRA_PlotPattern + 1
 
 XTRA_End		= V_XTRA_Config
 

@@ -98,18 +98,12 @@ CEN_LPT_write
   PHA
 
   JSR STB_Ack_Wait				; Wait until Ack=1
-    
-;  JSR CEN_Delay
   
   STA CEN_Reg_A					; Write the char to output
-  
-;  JSR CEN_Delay
   
   LDA CEN_Reg_B					; Set the strobe bit low (Active)
   AND #~CEN_LPT_Stb_B				; and only the strobe bit.
   STA CEN_Reg_B
-  
-;  JSR CEN_Delay
   
   LDA CEN_Reg_B					; Now we return the strobe bit to it's
   ORA #CEN_LPT_Stb_B				; 'idle' state.
