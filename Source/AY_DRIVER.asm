@@ -144,13 +144,13 @@ AY_Init
   LDA #AY_CTRL_dir
   STA AY_DDR_CTRL  
 
-  LDX #$F					; Clear all the registers.
+  LDX #AY_PORTB_REG		; Clear all the registers.
 AY_Init_Loop
 
   LDA #0
   JSR AY_wr_to_reg
   DEX
-  BNE AY_Init_Loop
+  BPL AY_Init_Loop
 
   LDA #AY_NOT_ENABLE
   JSR AY_wr_to_reg

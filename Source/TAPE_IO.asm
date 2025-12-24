@@ -26,6 +26,10 @@
 ; 6/6/2023:	Changed a function label to better reflect its use cases. Was TAPE_BlockIn_EscHandler
 ; 			but is now TAPE_BlockIO_EscHandler.
 ; 7/6/2023:	Tape errors for Binary files now report line numbers if LOADed from within a running program.
+; 24/12/2025: Updated to v2.65 of the TowerTAPE filing system.
+;		    Fixed a bug in F_TAPE_CompareFileNames where it would not correctly compare 17 character filenames.
+;       Added TMSG_NewPerformed message string.
+;       Fixed CMP instruction in F_TAPE_CompareFileNames that was using the wrong addressing mode.
 
 
 
@@ -185,7 +189,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
-  .BYTE "V2.65",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.66",$0D,$0A,$0D,$0A,$00
 
 
 TMSG_Break
@@ -329,9 +333,9 @@ TAPE_CompareByte_L
   CMP TAPE_FileName,Y					; Branch on mismatch.
   BNE TAPE_CompareMismatch_B
   
-  TYA							; Decrement index and branch when done
+  TYA							; Increment index and branch when done
   INY
-  CMP #16
+  CMP #C_TAPE_Fname_BufferSize
   BEQ TAPE_CompareByte_Match_B
   BRA TAPE_CompareByte_L
   
@@ -1032,7 +1036,7 @@ F_TAPE_LOAD_BASIC
 
 ; Handle BINARY case.
   
-  CMP '$'						; Reload at original address if '$' is specified
+  CMP #'$'					; Reload at original address if '$' is specified
   BNE TAPE_LOAD_At_Address_B
   JSR LAB_IGBY
   
@@ -1967,6 +1971,7 @@ TAPE_NoCC_L
   CLC							;			2 now at 30
   RTS							;			6 now at 33
   
+
   
   RTS							;			6
 
