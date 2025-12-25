@@ -144,7 +144,7 @@ AY_Init
   LDA #AY_CTRL_dir
   STA AY_DDR_CTRL  
 
-  LDX #AY_PORTB_REG		; Clear all the registers.
+  LDX #$F					; Clear all the registers.
 AY_Init_Loop
 
   LDA #0
@@ -357,10 +357,8 @@ AY_SOUND
 
   JSR LAB_1C01					; scan for "," , else do syntax error then warm start
   
-  LDA AY_Channel				; Mug trap channel for over range values.
-;  BIT #~[AY_NoiseChBit_b | AY_SoundChBits_b]
-;  BNE AY_Parameter_FCER_B
-  AND #$7F
+  LDA AY_Channel				; Check our AY_Channel is in range.
+  ;AND #$7F
   SEC
   SBC #6
   BPL AY_Parameter_FCER_B

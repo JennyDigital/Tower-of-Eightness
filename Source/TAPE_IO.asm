@@ -335,7 +335,7 @@ TAPE_CompareByte_L
   
   TYA							; Increment index and branch when done
   INY
-  CMP #C_TAPE_Fname_BufferSize
+  CMP #C_TAPE_Fname_BufferSize-1
   BEQ TAPE_CompareByte_Match_B
   BRA TAPE_CompareByte_L
   
@@ -1035,15 +1035,6 @@ F_TAPE_LOAD_BASIC
   
 
 ; Handle BINARY case.
-  
-  CMP #'$'					; Reload at original address if '$' is specified
-  BNE TAPE_LOAD_At_Address_B
-  JSR LAB_IGBY
-  
-  LDA V_TAPE_Config					; Set loading at original address flag
-  ORA #TAPE_UseHdrAddr
-  STA V_TAPE_Config
-  
   
 TAPE_LOAD_At_Address_B
   JSR LAB_EVNM						; evaluate expression and check is numeric,
