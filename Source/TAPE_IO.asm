@@ -26,10 +26,11 @@
 ; 6/6/2023:	Changed a function label to better reflect its use cases. Was TAPE_BlockIn_EscHandler
 ; 			but is now TAPE_BlockIO_EscHandler.
 ; 7/6/2023:	Tape errors for Binary files now report line numbers if LOADed from within a running program.
-; 24/12/2025: Updated to v2.65 of the TowerTAPE filing system.
-;		    Fixed a bug in F_TAPE_CompareFileNames where it would not correctly compare 17 character filenames.
-;       Added TMSG_NewPerformed message string.
-;       Fixed CMP instruction in F_TAPE_CompareFileNames that was using the wrong addressing mode.
+; 24/12/2025: 	Updated to v2.65 of the TowerTAPE filing system.
+;             	Fixed a bug in F_TAPE_CompareFileNames where it would not correctly compare 17 character filenames.
+;       	Added TMSG_NewPerformed message string.
+;       	Fixed CMP instruction in F_TAPE_CompareFileNames that was using the wrong addressing mode.
+; 25/12/2025:   Stripped out the failed attempt at making BINARY loads occur at the file save address.
 
 
 

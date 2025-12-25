@@ -67,6 +67,7 @@
 ;      SWAP now works correctly, swapping only arguments of the same type as opposed to mismatched types.
 ;      FRE(O), DEEK, SADD and VARPTR now all return 16-bit unsigned integers.
 ;      5/6/2023: Commented out memory size check to see how things go.
+;      25/12/2025 Added Upper memory parameter capability to CLEAR command to safe faffing with POKEing the new value in.
 
 
 
@@ -1391,6 +1392,22 @@ LAB_14A6
 
 LAB_CLEAR
       BEQ LAB_147A            ; If no following token do clear.
+      
+      ; Start of TEST code
+      JSR LAB_EVNM				; evaluate expression and check is numeric,
+						; else do type mismatch
+      JSR LAB_F2FX				; save integer part of FAC1 in temporary integer
+      
+      LDA Itempl
+      STA Ememl
+      LDA Itemph
+      STA Ememh
+      
+      JSR LAB_GBYT
+      
+      BEQ LAB_147A
+      
+      ; End of TEST code.
 
                               ; else there was a following token (go do syntax error)
       RTS
@@ -1407,7 +1424,7 @@ LAB_LIST
       BNE   LAB_14A6          ; exit if not - (LIST -m)
 
                               ; LIST [[n][-m]]
-                              ; this bit sets the n , if present, as the start and end
+                              ; this bit sets the n and, if present, as the start and end
 LAB_14BD
       JSR   LAB_GFPN          ; get fixed-point number into temp integer
       JSR   LAB_SSLN          ; search BASIC for temp integer line number
@@ -1417,13 +1434,14 @@ LAB_14BD
 
                               ; this bit checks the - is present
       CMP   #TK_MINUS         ; compare with token for -
-      BNE   LAB_1460          ; return if not "-" (will be Syntax error)
-
-                              ; LIST [n]-m
+      BEQ   SKIP_RTS          ; return if not "-" (will be Syntax error)
+DO_RTS
+      RTS
+SKIP_RTS                              ; LIST [n]-m
                               ; the - was there so set m as the end value
       JSR   LAB_IGBY          ; increment and scan memory
       JSR   LAB_GFPN          ; get fixed-point number into temp integer
-      BNE   LAB_1460          ; exit if not ok
+      BNE   DO_RTS            ; exit if not ok
 
 LAB_14D4
       LDA   Itempl            ; get temporary integer low byte
@@ -7946,7 +7964,7 @@ LAB_MSZM
 
 LAB_SMSG
       .byte " Bytes free",$0D,$0A,$0A
-      .byte "TowerBASIC 2.22p5 EL4",$0A,$00
+      .byte "TowerBASIC 2.22p5 EL5",$0A,$00
 
 ; numeric constants and series
 
