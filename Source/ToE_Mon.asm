@@ -39,6 +39,10 @@
 ;			XTRA_CFG_capped_b   (b1).  Setting this means plots are restricted to 159 by 99 max.
 ;			XTRA_CFG_NoChecks_b (b2).  Setting this overrides the checks.
 ;		Fixed a bug where the NMI vector high byte was being stored to ROM.  Incorrect label used.
+; 25/12/2025  Updated version number to 24.12.2025.5
+;   Fixed a bug in the IRQ handler where the IRQ vector was not being initialised correctly on reset.
+;           This would have caused unpredictable behaviour with IRQs after a reset.
+;    Fixed ACIA initialisation so that both ACIAs are initialised at startup.
 ;
 
 
@@ -154,7 +158,7 @@ RES_vec
 
   LDA #<NMI_vec_dummy
   STA NMI_User_vec
-  LDA #>IRQH_ProcessIRQs
+  LDA #>NMI_vec_dummy
   STA NMI_User_vec + 1
 
 
@@ -405,7 +409,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 24.12.2025.4 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 24.12.2025.5 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 END_SOS
@@ -425,7 +429,7 @@ ACIA_INI_SYS_vec
 ACIA1_init_vec
   JMP INI_ACIA1            ; FF45
 ACIA2_init_vec
-  JMP INI_ACIA1            ; FF48
+  JMP INI_ACIA2            ; FF48
 ACIA1out_vec
   JMP ACIA1out             ; FF4B
 ACIA2out_vec
