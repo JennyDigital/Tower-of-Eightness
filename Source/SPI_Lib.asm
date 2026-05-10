@@ -392,6 +392,8 @@ SPI_GetSCKPin_B
   CMP Itempl
   BNE InitFCER
   
+  LDA Itempl
+  STA SPI_SS_Act
   LDA #0
   STA SPI_In
   STA SPI_Out
