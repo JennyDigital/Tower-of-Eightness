@@ -345,9 +345,8 @@ TOE_DonePrinting
 MON_CLS  
   JSR LAB_GBYT					; Find out if we have extra parameters or not.
   						; Firstly checking if we have a null.
-  BNE MON_AttribCLS				; Since we have nothing, we can continue with defaults
+  BEQ MON_DefaultCLS				; Since we have nothing, we can continue with defaults
   
-  BRA MON_DefaultCLS				; Else perform default CLS
 
 ; Handle attrib case
 ;
@@ -409,7 +408,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 24.12.2025.10 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 24.12.2025.11 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 END_SOS

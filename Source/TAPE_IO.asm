@@ -190,7 +190,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
-  .BYTE "V2.66",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.67",$0D,$0A,$0D,$0A,$00
 
 
 TMSG_Break
@@ -356,7 +356,6 @@ F_TAPE_PrintFound
   LDA #>TMSG_Found 
   STA TOE_MemptrHi
   JSR TOE_PrintStr_vec
-  
 
   LDA TAPE_FileType					; Check and print BASIC if necessary.
   CMP #C_TAPE_FType_BASIC
@@ -411,7 +410,6 @@ TAPE_DoPrintFname_B
   JSR   LAB_CRLF					; print CR/LF. 
   RTS
 
-
 F_TAPE_PrintStart
   LDA TAPE_LoadAddrHi
   JSR MON_PrintHexByte
@@ -425,9 +423,6 @@ F_TAPE_PrintSize
   LDA TAPE_FileSizeLo
   JSR MON_PrintHexByte
   RTS
-  
-
-  
   
 
 ; Write HEAD to the header ID field.  Yes, it's primitive but it really is the easiest way.
@@ -507,11 +502,11 @@ TAPE_Fill_Null_L					; At this point, we're putting the null characters in
 ; Copies V_TAPE_Fname_Buffer to the header
   
 F_TAPE_Fname_Buf_to_Header
-  LDY #0						; Set our index
+  LDY #0						; Set our character index.
 
 TAPE_Fname_Buf_to_Header_L
 
-  LDA V_TAPE_Fname_Buffer,Y				; Get our first byte
+  LDA V_TAPE_Fname_Buffer,Y				; Get our byte
   STA TAPE_FileName,Y					; And transfer it to the header.
   
   INY							; Increment and repeat until done.
@@ -543,17 +538,16 @@ F_TAPE_GetName
   
   LDA TAPE_temp2					; Recover our string length
   SEC
-  SBC #17
+  SBC #C_TAPE_Fname_BufferSize
   BMI TAPE_NameToBuffer_B
   BRA TAPE_LEN_ERR
 
 TAPE_LEN_ERR  
-  LDX #$24 ;ERR_BF					; Issue a Bad filename Error
+  LDX #$24 						; ERR_BF: Issue a Bad filename Error
   JSR LAB_XERR
   RTS							; Does LAB_XERR really return??
   
-TAPE_SYN_ERR
-; Syntax Error output
+TAPE_SYN_ERR						; Syntax Error output
   LDX #$2 ;ERR_SN					; Issue a Syntax Error.  
   JSR LAB_XERR
   RTS							; Does LAB_XERR really return??							
@@ -588,7 +582,6 @@ F_TAPE_PrintFname_in_Header
   LDA #34
   JSR V_OUTP
 
-  
   RTS
   
 
