@@ -390,11 +390,12 @@ TK_I2C_START      = TK_ENVELOPE+1   ; I2C_START token
 TK_I2C_STOP       = TK_I2C_START+1  ; I2C_STOP token
 TK_I2C_INIT       = TK_I2C_STOP+1   ; I2C_INIT token
 TK_SPI_INIT       = TK_I2C_INIT+1   ; SPI_INIT token
+TK_LINE           = TK_SPI_INIT+1   ; LINE token
 
 
 ; secondary command tokens, can't start a statement
 
-TK_TAB            = TK_SPI_INIT+1   ; TAB token
+TK_TAB            = TK_LINE+1       ; TAB token
 TK_ELSE           = TK_TAB+1        ; ELSE token
 TK_TO             = TK_ELSE+1       ; TO token
 TK_FN             = TK_TO+1         ; FN token
@@ -7964,7 +7965,7 @@ LAB_MSZM
 
 LAB_SMSG
       .byte " Bytes free",$0D,$0A,$0A
-      .byte "TowerBASIC 2.22p5 EL5",$0A,$00
+      .byte "TowerBASIC 2.22p5 EL6",$0A,$00
 
 ; numeric constants and series
 
@@ -8133,6 +8134,7 @@ LAB_CTBL
       .word I2C_Stop_BAS-1    ; I2C_STOP        new command
       .word I2C_Init-1        ; I2C_INIT        new command
       .word SPI_Init_BASIC-1  ; SPI_INIT        new command
+      .word XTRA_LINE_F-1     ; LINE            new command
       
 
 ; function pre process routine table
@@ -8474,6 +8476,8 @@ LBB_LEN
       .byte "EN(",TK_LEN            ; LEN(
 LBB_LET
       .byte "ET",TK_LET             ; LET
+LBB_LINE
+      .byte "INE",TK_LINE           ; LINE
 LBB_LIST
       .byte "IST",TK_LIST           ; LIST
 LBB_LOAD
@@ -8705,6 +8709,8 @@ LAB_KEYT
       .word LBB_CLS           ; CLS
       .byte 6,'L'
       .word LBB_LOCATE        ; LOCATE
+      .byte 4,'L'
+      .word LBB_LINE          ; LINE
       .byte 4,'P'
       .word LBB_PLOT          ; PLOT
       .byte 5,'S'

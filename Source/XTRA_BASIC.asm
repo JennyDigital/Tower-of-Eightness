@@ -19,7 +19,20 @@ V_XTRA_Ycoord		= V_XTRA_Xcoord      + 1
 V_XTRA_PlotPattern	= V_XTRA_Ycoord      + 1	; Not yet used. Future feature provision.
 V_XTRA_Config		= V_XTRA_PlotPattern + 1
 
-XTRA_End		= V_XTRA_Config
+; Variables for the LINE command
+
+V_LINE_x1		= V_XTRA_Config      + 1
+V_LINE_y1		= V_LINE_x1          + 1
+V_LINE_x2		= V_LINE_y1          + 1
+V_LINE_y2		= V_LINE_x2          + 1
+V_LINE_dx		= V_LINE_y2          + 1
+V_LINE_dy		= V_LINE_dx          + 1
+V_LINE_sx		= V_LINE_dy          + 1
+V_LINE_sy		= V_LINE_sx          + 1
+V_LINE_errL		= V_LINE_sy          + 1
+V_LINE_errH		= V_LINE_errL        + 1
+
+XTRA_End		= V_LINE_errH
 
 
   .IF [ XTRA_End>XTRA_Limit ]
@@ -173,8 +186,171 @@ XTRA_PLOT_OutOfBounds
   JMP LAB_FCER
   
 
+; Function to draw a line from (x1,y1) to (x2,y2)
 
-; BASIC CommandS for SPI.
+XTRA_LINE_F
+
+  LDA #XTRA_DefaultPlot_C
+  STA V_XTRA_Config
+  LDA #5
+  STA V_XTRA_PlotMode
+
+  JSR LAB_EVNM
+  JSR LAB_F2FX
+  LDA Itempl
+  STA V_LINE_x1
+
+  JSR LAB_1C01
+
+  JSR LAB_EVNM
+  JSR LAB_F2FX
+  LDA Itempl
+  STA V_LINE_y1
+
+  JSR LAB_1C01
+
+  JSR LAB_EVNM
+  JSR LAB_F2FX
+  LDA Itempl
+  STA V_LINE_x2
+
+  JSR LAB_1C01
+
+  JSR LAB_EVNM
+  JSR LAB_F2FX
+  LDA Itempl
+  STA V_LINE_y2
+
+  LDA V_LINE_x2
+  SEC
+  SBC V_LINE_x1
+  BCS XTRA_LINE_dx_pos
+  EOR #$FF
+  ADC #1
+  LDX #$FF
+  .byte $2C
+XTRA_LINE_dx_pos
+  LDX #1
+  STA V_LINE_dx
+  STX V_LINE_sx
+
+  LDA V_LINE_y2
+  SEC
+  SBC V_LINE_y1
+  BCS XTRA_LINE_dy_pos
+  EOR #$FF
+  ADC #1
+  LDX #$FF
+  .byte $2C
+XTRA_LINE_dy_pos
+  LDX #1
+  STA V_LINE_dy
+  STX V_LINE_sy
+
+  LDA V_LINE_dx
+  CMP V_LINE_dy
+  BCS XTRA_LINE_not_steep
+
+  LDA V_LINE_dy
+  LSR
+  STA V_LINE_errL
+  LDA #0
+  STA V_LINE_errH
+
+XTRA_LINE_steep_loop
+  LDA V_LINE_x1
+  STA V_XTRA_Xcoord
+  LDA V_LINE_y1
+  STA V_XTRA_Ycoord
+  JSR XTRA_SystemPlot_F
+
+  LDA V_LINE_y1
+  CMP V_LINE_y2
+  BNE XTRA_LINE_steep_cont
+  JMP XTRA_LINE_done
+XTRA_LINE_steep_cont
+
+  CLC
+  LDA V_LINE_y1
+  ADC V_LINE_sy
+  STA V_LINE_y1
+
+  SEC
+  LDA V_LINE_errL
+  SBC V_LINE_dx
+  STA V_LINE_errL
+  LDA V_LINE_errH
+  SBC #0
+  STA V_LINE_errH
+  BPL XTRA_LINE_steep_loop
+
+  CLC
+  LDA V_LINE_x1
+  ADC V_LINE_sx
+  STA V_LINE_x1
+
+  CLC
+  LDA V_LINE_errL
+  ADC V_LINE_dy
+  STA V_LINE_errL
+  LDA V_LINE_errH
+  ADC #0
+  STA V_LINE_errH
+
+  JMP XTRA_LINE_steep_loop
+
+XTRA_LINE_not_steep
+  LDA V_LINE_dx
+  LSR
+  STA V_LINE_errL
+  LDA #0
+  STA V_LINE_errH
+
+XTRA_LINE_flat_loop
+  LDA V_LINE_x1
+  STA V_XTRA_Xcoord
+  LDA V_LINE_y1
+  STA V_XTRA_Ycoord
+  JSR XTRA_SystemPlot_F
+
+  LDA V_LINE_x1
+  CMP V_LINE_x2
+  BEQ XTRA_LINE_done
+
+  CLC
+  LDA V_LINE_x1
+  ADC V_LINE_sx
+  STA V_LINE_x1
+
+  SEC
+  LDA V_LINE_errL
+  SBC V_LINE_dy
+  STA V_LINE_errL
+  LDA V_LINE_errH
+  SBC #0
+  STA V_LINE_errH
+  BPL XTRA_LINE_flat_loop
+
+  CLC
+  LDA V_LINE_y1
+  ADC V_LINE_sy
+  STA V_LINE_y1
+
+  CLC
+  LDA V_LINE_errL
+  ADC V_LINE_dx
+  STA V_LINE_errL
+  LDA V_LINE_errH
+  ADC #0
+  STA V_LINE_errH
+
+  JMP XTRA_LINE_flat_loop
+
+XTRA_LINE_done
+  RTS
+
+
+; BASIC Commands for SPI.
 
 I2C_Start_BAS
   JMP I2C_Start
