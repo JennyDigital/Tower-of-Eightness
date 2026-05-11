@@ -1,0 +1,1 @@
+10 REM nmol to pg/mL convertor15 :20 CLS 330 WIDTH 8040 PRINT "nmol to pg/mL convertor"50 PRINT "-----------------------"60 PRINT70 INPUT "Enter nmol value: ";nm80 pg = nm * 0.288590 PRINT100 PRINT nm;" =";pg;"."110 PRINT120 PRINT "Reccomended E levels are 300-400 pg/mL"

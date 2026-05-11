@@ -1759,9 +1759,7 @@ LAB_1651
                               ; else ..
       LDA   #<LAB_BMSG        ; point to "Break" low byte
       LDY   #>LAB_BMSG        ; point to "Break" high byte
-      
-; FINDME_PRN_OFF
-;      
+          
       JMP   LAB_1269          ; print "Break" and do warm start
 
 LAB_165E
@@ -8709,8 +8707,6 @@ LAB_KEYT
       .word LBB_CLS           ; CLS
       .byte 6,'L'
       .word LBB_LOCATE        ; LOCATE
-      .byte 4,'L'
-      .word LBB_LINE          ; LINE
       .byte 4,'P'
       .word LBB_PLOT          ; PLOT
       .byte 5,'S'
@@ -8725,6 +8721,8 @@ LAB_KEYT
       .word LBB_I2C_INIT      ; I2C_INIT
       .byte 8,'S'
       .word LBB_SPI_INIT      ; SPI_INIT
+      .byte 4,'L'
+      .word LBB_LINE          ; LINE
 
 
 ; secondary commands (can't start a statement)

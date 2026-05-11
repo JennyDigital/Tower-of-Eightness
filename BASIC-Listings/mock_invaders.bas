@@ -1,0 +1,39 @@
+1 SOUND 1,2000,16
+2 a=0: xl=30
+5 id=1: l=3: CLS
+6 PRINT CHR$(2);CHR$(0);
+7 LOCATE 12,0:PRINT "SCORE: 1000        SHIPS: ^ ^ ^        LEVEL: 1"
+8 LOCATE 31,23:PRINT"^":LOCATE 30,24:PRINT "/ \";
+10 I$=" <*> "
+20 DIM i(7,3)
+30 FOR x=0 TO 7
+40 i(x,0)=1: i(x,1)=1: i(x,2)=1: i(x,3)=1
+50 NEXT x
+60 GOTO 1000
+70 FOR iy=0 TO 3: PRINT SPC(io);
+75 FOR ix=0 TO 7
+80 IF i(ix,iy)=1 THEN PRINT I$; ELSE PRINT "     ";
+90 NEXT ix
+100 PRINT:PRINT
+110 NEXT iy
+120 RETURN
+997 :
+998 REM Animate space invaders
+999 :
+1000 io=2
+1002 LOCATE 0,l*2-2: PRINT CHR$(17):LOCATE 0,l*2
+1005 GOSUB 70
+1007 io=io+id
+1010 IF io>xl THEN io=xl: l=l+1:id=-id
+1020 IF io<2 THEN io=2: l=l+1: id=-id
+1030 IF l>8 THEN l=8
+1040 a=NOT a
+1050 IF a THEN I$=" >*< " ELSE I$=" -*- "
+1060 GOSUB 2000
+1070 GOTO 1002
+1997 :
+1998 REM Delay
+1999 :
+2000 FOR d=1 TO 1602-(l*200): NEXT d
+2010 ENVELOPE 600,0
+2020 RETURN
