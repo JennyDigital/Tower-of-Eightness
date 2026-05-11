@@ -1502,22 +1502,21 @@ L_TAPE_BlockOut
   ADC #0
   STA TAPE_BlockHi  
 
-  
-TAPE_BlockOut_CheckZero_B
-  CPY #0
-  BNE B_TAPE_BlockOut_Decrement
-  CPX #0
-  BNE B_TAPE_BlockOut_Decrement
-
-  PLP
-  RTS
-
+   
 B_TAPE_BlockOut_Decrement
   DEX
   CPX #$FF
-  BNE L_TAPE_BlockOut
+  BNE TAPE_BlockOut_CheckZero_B
   DEY
-  BRA L_TAPE_BlockOut
+
+TAPE_BlockOut_CheckZero_B
+  CPY #0
+  BNE L_TAPE_BlockOut
+  CPX #0
+  BNE L_TAPE_BlockOut
+
+  PLP
+  RTS
 
   
 
