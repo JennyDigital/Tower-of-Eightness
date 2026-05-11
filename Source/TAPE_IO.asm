@@ -91,8 +91,8 @@ TAPE_BlockHi		= $E6
 
 
 C_TAPE_Phasetime	= 8				; How long to wait between phases.  Bigger is slower
-C_TAPE_Sample_Offset	= 20				; How far is the middle of the bit. Note: timing errors will cause this to stretch
-C_TAPE_Bitlength	= 54				; How many passes for a full bit
+C_TAPE_Sample_Offset	= 27				; How far is the middle of the bit. Note: timing errors will cause this to stretch
+C_TAPE_Bitlength	= 55				; How many passes for a full bit
 C_TAPE_bitcycles	= 8				; Number of cycles to a bit
 C_TAPE_BitsPerFrame	= 10				; Total number of bits per frame including start and stop bits.
 C_TAPE_LeaderByte	= $AA				; Leader byte
