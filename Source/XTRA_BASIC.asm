@@ -52,24 +52,25 @@ XTRA_End		= V_LINE_PlotMode
 XTRA_DefaultPlot_C = XTRA_CFG_silent_b
 
 
+XTRA_NextParam
+  JSR LAB_1C01
+XTRA_EVNM_F2FX
+  JSR LAB_EVNM
+  JMP LAB_F2FX
+
+
 ; Function to set the cursor location.
 
 XTRA_LOCATE_F
 
-  JSR LAB_EVNM						; evaluate expression and check is numeric,
-							; else do type mismatch
-  JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
+  JSR XTRA_EVNM_F2FX
   
   LDA #14						; Set our column
   JSR V_OUTP  
   LDA Itempl
   jsr V_OUTP
   
-  JSR LAB_1C01						; scan for "," , else do syntax error then warm start
- 
-  JSR LAB_EVNM						; evaluate expression and check is numeric,
-							; else do type mismatch
-  JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
+  JSR XTRA_NextParam
   
   LDA #15						; Set our row
   JSR V_OUTP  
@@ -86,9 +87,7 @@ XTRA_PLOT_F
   LDA #5						; Start with plot mode
   STA V_XTRA_PlotMode
   
-  JSR LAB_EVNM						; evaluate expression and check is numeric,
-							; else do type mismatch
-  JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
+  JSR XTRA_EVNM_F2FX
   
   LDA Itempl						; Get our plot/unplot value
 
@@ -116,20 +115,12 @@ XTRA_SetUnplotting
   STA V_XTRA_PlotMode
  
 XTRA_StartPlot_B
-  JSR LAB_1C01						; scan for "," , else do syntax error then warm start
- 
-  JSR LAB_EVNM						; evaluate expression and check is numeric,
-							; else do type mismatch
-  JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
+  JSR XTRA_NextParam
   
   LDA Itempl						; Save our X coordinate
   STA V_XTRA_Xcoord
   
-  JSR LAB_1C01						; scan for "," , else do syntax error then warm start
- 
-  JSR LAB_EVNM						; evaluate expression and check is numeric,
-							; else do type mismatch
-  JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
+  JSR XTRA_NextParam
   
   LDA Itempl						; Save our Y coordinate
   STA V_XTRA_Ycoord
@@ -211,29 +202,19 @@ XTRA_LINE_F
   LDA #1
   STA V_LINE_PlotMode
 
-  JSR LAB_EVNM
-  JSR LAB_F2FX
+  JSR XTRA_EVNM_F2FX
   LDA Itempl
   STA V_LINE_x1
 
-  JSR LAB_1C01
-
-  JSR LAB_EVNM
-  JSR LAB_F2FX
+  JSR XTRA_NextParam
   LDA Itempl
   STA V_LINE_y1
 
-  JSR LAB_1C01
-
-  JSR LAB_EVNM
-  JSR LAB_F2FX
+  JSR XTRA_NextParam
   LDA Itempl
   STA V_LINE_x2
 
-  JSR LAB_1C01
-
-  JSR LAB_EVNM
-  JSR LAB_F2FX
+  JSR XTRA_NextParam
   LDA Itempl
   STA V_LINE_y2
 
@@ -243,8 +224,7 @@ XTRA_LINE_F
   BNE XTRA_LINE_NoMode
 
   JSR LAB_IGBY
-  JSR LAB_EVNM
-  JSR LAB_F2FX
+  JSR XTRA_EVNM_F2FX
   LDA Itempl
   STA V_LINE_PlotMode
   BRA XTRA_LINE_ModeSet
