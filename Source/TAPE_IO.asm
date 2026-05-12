@@ -190,7 +190,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
-  .BYTE "V2.69",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.70",$0D,$0A,$0D,$0A,$00
 
 
 TMSG_Break
@@ -289,6 +289,11 @@ TMSG_TypeOTHER
 ;**                                                                                     **
 ;*****************************************************************************************
 
+TAPE_PrintStr
+  STA TOE_MemptrLo
+  STY TOE_MemptrHi
+  JMP TOE_PrintStr_vec
+
 F_TAPE_Init
   LDA #TAPE_out | JOYSTICK_sel				; Setup tape and joystick 6522 DDR Bits.
   STA TAPE_DDRB
@@ -297,10 +302,8 @@ F_TAPE_Init
   STA V_TAPE_Config
 
   LDA #<TMSG_init_msg
-  STA TOE_MemptrLo
-  LDA #>TMSG_init_msg
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_init_msg
+  JSR TAPE_PrintStr
   
 TAPE_msg_done
   RTS
@@ -352,20 +355,16 @@ TAPE_CompareMismatch_B
 
 F_TAPE_PrintFound
   LDA #<TMSG_Found					; Print 'Found '
-  STA TOE_MemptrLo
-  LDA #>TMSG_Found 
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_Found
+  JSR TAPE_PrintStr
 
   LDA TAPE_FileType					; Check and print BASIC if necessary.
   CMP #C_TAPE_FType_BASIC
   BNE TAPE_Skip_RepBASIC_B
   
   LDA #<TMSG_TypeBASIC
-  STA TOE_MemptrLo
-  LDA #>TMSG_TypeBASIC
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_TypeBASIC
+  JSR TAPE_PrintStr
   
   BRA TAPE_DoPrintFname_B
    
@@ -376,10 +375,8 @@ TAPE_Skip_RepBASIC_B
   BNE TAPE_Skip_RepBinary_B
   
   LDA #<TMSG_TypeBINARY
-  STA TOE_MemptrLo
-  LDA #>TMSG_TypeBINARY
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_TypeBINARY
+  JSR TAPE_PrintStr
   
   BRA TAPE_DoPrintFname_B
   
@@ -390,20 +387,16 @@ TAPE_Skip_RepBinary_B
   BNE TAPE_Skip_RepText_B
   
   LDA #<TMSG_TypeTEXT
-  STA TOE_MemptrLo
-  LDA #>TMSG_TypeTEXT
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_TypeTEXT
+  JSR TAPE_PrintStr
 
   BRA TAPE_DoPrintFname_B
   
 TAPE_Skip_RepText_B
 
   LDA #<TMSG_TypeOTHER
-  STA TOE_MemptrLo
-  LDA #>TMSG_TypeOTHER
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_TypeOTHER
+  JSR TAPE_PrintStr
 
 TAPE_DoPrintFname_B
   JSR F_TAPE_PrintFname_in_Header			; Print our filename.
@@ -575,10 +568,8 @@ F_TAPE_PrintFname_in_Header
   LDA #34
   JSR V_OUTP
   LDA #<TAPE_FileName					; Print our Filename in the header space
-  STA TOE_MemptrLo
-  LDA #>TAPE_FileName 
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TAPE_FileName
+  JSR TAPE_PrintStr
   LDA #34
   JSR V_OUTP
 
@@ -655,10 +646,8 @@ B_TAPE_SAVE_BINARY
 B_TAPE_SAVE_BASIC
 
   LDA #<TMSG_Saving					; Tell the user that we are saving.
-  STA TOE_MemptrLo
-  LDA #>TMSG_Saving
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_Saving
+  JSR TAPE_PrintStr
 
 ; Provide the necessary parameters for the F_TAPE_CalcChecksum to work
   
@@ -797,10 +786,8 @@ TAPE_VERIFY_UseHdrAddr
 TAPE_VERIFY_Searching_B
 
   LDA #<TMSG_Searching					; Tell the user that we are searching.
-  STA TOE_MemptrLo
-  LDA #>TMSG_Searching
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_Searching
+  JSR TAPE_PrintStr
 
 TAPE_VERIFY_Header_B
 
@@ -829,10 +816,8 @@ TAPE_BlockIn_EscNotPressed_B
   BNE TAPE_VERIFY_Fname_Check
 
   LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
-  STA TOE_MemptrLo
-  LDA #>TMSG_HeaderError
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_HeaderError
+  JSR TAPE_PrintStr
   
   JMP TAPE_VERIFY_Header_B				; Keep coming back until the header is read valid or the user presses escape
 
@@ -894,10 +879,8 @@ TAPE_Verify_UseAddressBuff
   STA TAPE_BlockHi
   
   LDA #<TMSG_Verifying					; Tell the user that we are verifying.
-  STA TOE_MemptrLo
-  LDA #>TMSG_Verifying
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec 
+  LDY #>TMSG_Verifying
+  JSR TAPE_PrintStr
     
   JSR F_TAPE_VerifyBlock				; Verify the data in memory against the block on tape.
 
@@ -912,18 +895,14 @@ TAPE_Skip_BlockIO_EscHandler
   
 TAPE_Verify_Error_B  
   LDA #<TMSG_VerifyError				; Inform the user of the verification error.
-  STA TOE_MemptrLo
-  LDA #>TMSG_VerifyError
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_VerifyError
+  JSR TAPE_PrintStr
   RTS
   
 TAPE_Verify_OK
   LDA #<TMSG_Verified					; Inform the user of verification success.
-  STA TOE_MemptrLo
-  LDA #>TMSG_Verified
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_Verified
+  JSR TAPE_PrintStr
 
 TAPE_Verify_Done  
   RTS
@@ -931,10 +910,8 @@ TAPE_Verify_Done
 F_TAPE_CAT
 
   LDA #<TMSG_Searching					; Tell the user that we are searching.
-  STA TOE_MemptrLo
-  LDA #>TMSG_Searching
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_Searching
+  JSR TAPE_PrintStr
 
 TAPE_CAT_Header_B
 
@@ -959,10 +936,8 @@ TAPE_CAT_Header_B
   BNE TAPE_CAT_Fname_Report
   
   LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
-  STA TOE_MemptrLo
-  LDA #>TMSG_HeaderError
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_HeaderError
+  JSR TAPE_PrintStr
   
   BRA TAPE_CAT_Header_B
   
@@ -984,19 +959,15 @@ TAPE_BlockIn_LoadErr
   BNE B_TAPE_NoNew
   
   LDA #<TMSG_TapeError					; Handle BASIC case.
-  STA TOE_MemptrLo
-  LDA #>TMSG_TapeError
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_TapeError
+  JSR TAPE_PrintStr
 
   JSR LAB_CRLF
   ; JSR LAB_CRLF
   
   LDA #<TMSG_NewPerformed
-  STA TOE_MemptrLo
-  LDA #>TMSG_NewPerformed
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_NewPerformed
+  JSR TAPE_PrintStr
   
   JSR LAB_1463						; Perform New
   JMP LAB_1274						; Break and WARM Start.   
@@ -1015,17 +986,13 @@ TAPE_BlockIO_EscHandler
   
 TAPE_BASICLOAD_EscHandler
   LDA #<LAB_BMSG					; Tell the user that we are have pressed Escape.
-  STA TOE_MemptrLo
-  LDA #>LAB_BMSG
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>LAB_BMSG
+  JSR TAPE_PrintStr
   
 TAPE_NewMSG_WS  
   LDA #<TMSG_NewPerformed				; Tell the user that we are have pressed Escape.
-  STA TOE_MemptrLo
-  LDA #>TMSG_NewPerformed
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_NewPerformed
+  JSR TAPE_PrintStr
 
   JSR LAB_1463						; Perform a NEW
   JMP LAB_1274						; and WARM start.
@@ -1096,10 +1063,8 @@ TAPE_LOAD_UseHdrAddr
 TAPE_LOAD_Header_B  
 
   LDA #<TMSG_Searching					; Tell the user that we are searching.
-  STA TOE_MemptrLo
-  LDA #>TMSG_Searching
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_Searching
+  JSR TAPE_PrintStr
 
 TAPE_LOAD_Header_Silent_B
 
@@ -1127,10 +1092,8 @@ TAPE_SkipNonLoadEsc
   BNE TAPE_BASLOAD_Fname_Check
 
   LDA #<TMSG_HeaderError				; Tell the user of the header error and retry
-  STA TOE_MemptrLo
-  LDA #>TMSG_HeaderError
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_HeaderError
+  JSR TAPE_PrintStr
   JMP TAPE_LOAD_Header_B
   
 
@@ -1166,10 +1129,8 @@ TAPE_Load_UseAddressBuff
   STA TAPE_BlockHi
   
   LDA #<TMSG_Loading					; Tell the user that we are loading.
-  STA TOE_MemptrLo
-  LDA #>TMSG_Loading
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_Loading
+  JSR TAPE_PrintStr
   
   JSR F_TAPE_BlockIn					; Load the code block that follows
   
@@ -1241,10 +1202,8 @@ B_Setup_NEWBASIC_Prog
 B_TAPE_NoRun
 
   LDA #<TMSG_Ready					; Tell the user that we are Ready.
-  STA TOE_MemptrLo
-  LDA #>TMSG_Ready
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_Ready
+  JSR TAPE_PrintStr
 
   JMP LAB_1319						; Tidy up system.
   
@@ -1254,18 +1213,14 @@ TAPE_CS_Fail
   BNE CS_Fail_NoNew_B
   
   LDA #<TMSG_TapeError					; Tell the user that the program failed to load and perform NEW.
-  STA TOE_MemptrLo
-  LDA #>TMSG_TapeError
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_TapeError
+  JSR TAPE_PrintStr
   
   JSR LAB_1463						; Perform NEW and CLEAR as Corrupt BASIC is bad for business.
   
   LDA #<TMSG_NewPerformed
-  STA TOE_MemptrLo
-  LDA #>TMSG_NewPerformed
-  STA TOE_MemptrHi
-  JSR TOE_PrintStr_vec
+  LDY #>TMSG_NewPerformed
+  JSR TAPE_PrintStr
   
   JMP LAB_1274						; Warm Start
   
@@ -1507,14 +1462,8 @@ TAPE_Nextbit
   JSR F_TAPE_BitGen
   LDA #0							; Generate second guard bit
   JSR F_TAPE_BitGen
-;  LDA #0							; Generate third guard bit!
-;  JSR F_TAPE_BitGen
-;  LDA #0							; Generate fourth guard bit!
-;  JSR F_TAPE_BitGen
 
-; FINDME GUARDBITS
-  PLA
-  
+  PLA  
   PLP								; Restore IRQ status
   
   RTS
@@ -1545,8 +1494,6 @@ L_TAPE_BlockOut
   JSR F_TAPE_ByteOut						; Transmit the byte.
   PLY
   PLX
-
-
   
   LDA TAPE_BlockLo						; Increment our byte pointer
   CLC
