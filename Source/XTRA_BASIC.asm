@@ -31,8 +31,9 @@ V_LINE_sx		= V_LINE_dy          + 1
 V_LINE_sy		= V_LINE_sx          + 1
 V_LINE_errL		= V_LINE_sy          + 1
 V_LINE_errH		= V_LINE_errL        + 1
+V_LINE_PlotMode		= V_LINE_errH        + 1
 
-XTRA_End		= V_LINE_errH
+XTRA_End		= V_LINE_PlotMode
 
 
   .IF [ XTRA_End>XTRA_Limit ]
@@ -207,8 +208,8 @@ XTRA_LINE_F
 
   LDA #XTRA_DefaultPlot_C
   STA V_XTRA_Config
-  LDA #5
-  STA V_XTRA_PlotMode
+  LDA #1
+  STA V_LINE_PlotMode
 
   JSR LAB_EVNM
   JSR LAB_F2FX
@@ -235,6 +236,38 @@ XTRA_LINE_F
   JSR LAB_F2FX
   LDA Itempl
   STA V_LINE_y2
+
+  LDY #0
+  LDA (Bpntrl),Y
+  CMP #$2C
+  BNE XTRA_LINE_NoMode
+
+  JSR LAB_IGBY
+  JSR LAB_EVNM
+  JSR LAB_F2FX
+  LDA Itempl
+  STA V_LINE_PlotMode
+  BRA XTRA_LINE_ModeSet
+
+XTRA_LINE_NoMode
+  LDA #1
+  STA V_LINE_PlotMode
+
+XTRA_LINE_ModeSet
+  LDA V_LINE_PlotMode
+  CMP #2
+  BEQ XTRA_LINE_AfterMode
+  CMP #1
+  BNE XTRA_LINE_SetUnplot
+  LDA #5
+  BRA XTRA_LINE_SetPlotMode
+XTRA_LINE_SetUnplot
+  LDA #6
+XTRA_LINE_SetPlotMode
+  STA V_XTRA_PlotMode
+  BRA XTRA_LINE_AfterMode
+
+XTRA_LINE_AfterMode
 
   LDA V_LINE_x2
   SEC
@@ -277,7 +310,7 @@ XTRA_LINE_steep_loop
   STA V_XTRA_Xcoord
   LDA V_LINE_y1
   STA V_XTRA_Ycoord
-  JSR XTRA_SystemPlot_F
+  JSR XTRA_LINE_PlotPixel_F
 
   LDA V_LINE_y1
   CMP V_LINE_y2
@@ -326,7 +359,7 @@ XTRA_LINE_flat_loop
   STA V_XTRA_Xcoord
   LDA V_LINE_y1
   STA V_XTRA_Ycoord
-  JSR XTRA_SystemPlot_F
+  JSR XTRA_LINE_PlotPixel_F
 
   LDA V_LINE_x1
   CMP V_LINE_x2
@@ -363,6 +396,32 @@ XTRA_LINE_flat_loop
 
 XTRA_LINE_done
   RTS
+
+
+; Plot a pixel during LINE command, handling mode 2 (bit pattern)
+;
+XTRA_LINE_PlotPixel_F
+  LDA V_LINE_PlotMode
+  CMP #2
+  BEQ XTRA_LINE_PatternPlot
+  JMP XTRA_SystemPlot_F
+
+XTRA_LINE_PatternPlot
+  LDA V_XTRA_PlotPattern
+  CMP #$80
+  ROL
+  STA V_XTRA_PlotPattern
+  BIT #1
+  BEQ XTRA_LINE_PatUnplot
+  LDA #5
+  BRA XTRA_LINE_PatStore
+
+XTRA_LINE_PatUnplot
+  LDA #6
+
+XTRA_LINE_PatStore
+  STA V_XTRA_PlotMode
+  JMP XTRA_SystemPlot_F
 
 
 ; BASIC Commands for SPI.
