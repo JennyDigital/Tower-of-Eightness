@@ -190,13 +190,13 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
-  .BYTE "V2.67",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.68",$0D,$0A,$0D,$0A,$00
 
 
 TMSG_Break
   
   .BYTE $D,$A,$A
-  .BYTE "Break",$D,$A,0
+  .BYTE "Break",0
   
 TMSG_Ready
 

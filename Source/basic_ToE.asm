@@ -1,5 +1,5 @@
 
-; TowerBASIC to assemble under 6502 simulator, $ver 2.22p5 EL4
+; TowerBASIC to assemble under 6502 simulator, $ver 2.22p5 EL6
 ; This is a derivative work of EhBASIC
 
 ; $E7E1 $E7CF $E7C6 $E7D3 $E7D1 $E7D5 $E7CF $E81E $E825
@@ -8720,10 +8720,10 @@ LAB_KEYT
       .byte 8,'I'
       .word LBB_I2C_INIT      ; I2C_INIT
       .byte 8,'S'
-      .word LBB_SPI_INIT      ; SPI_INIT
-      .byte 4,'L'
-      .word LBB_LINE          ; LINE
-
+      .WORD LBB_SPI_INIT      ; SPI_INIT
+      .BYTE 4,'L'
+      .WORD LBB_LINE          ; LINE
+      
 
 ; secondary commands (can't start a statement)
 

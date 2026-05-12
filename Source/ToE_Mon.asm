@@ -43,7 +43,7 @@
 ;		Fixed a bug in the IRQ handler where the IRQ vector was not being initialised correctly on reset.
 ;           	This would have caused unpredictable behaviour with IRQs after a reset.
 ;    		Fixed ACIA initialisation so that both ACIAs are initialised at startup.
-; 10/5/2026	Added LINE command to TowerBASIC.  Every good retrocomputer should now how to draw.
+; 10/5/2026	Added LINE command to TowerBASIC.  Every good retrocomputer should know how to draw.
 
 
 ROMSTART = $C100
@@ -407,7 +407,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 20.05.2026.2 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 12.05.2026.1 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 END_SOS
