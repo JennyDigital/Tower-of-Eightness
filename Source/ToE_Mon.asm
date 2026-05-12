@@ -330,15 +330,39 @@ MON_EndWRITE_B2
 ; Tower string printing routine.
 
 TOE_PrintStr
-  LDY #0					; Initialise loop index.
+  LDY #0
 TOE_PrintStr_L
-  LDA (TOE_MemptrLo),Y				; Print character.
+  LDA (TOE_MemptrLo),Y
   BEQ TOE_DonePrinting
   JSR V_OUTP
   INY
   BRA TOE_PrintStr_L
 
 TOE_DonePrinting
+  RTS
+
+TOE_PrintStr_Inl
+  PLA
+  STA TOE_MemptrLo
+  PLA
+  STA TOE_MemptrHi
+  LDY #0
+TOE_PrintStr_Inl_L
+  LDA (TOE_MemptrLo),Y
+  BEQ TOE_PrintStr_Inl_Done
+  JSR V_OUTP
+  INY
+  BRA TOE_PrintStr_Inl_L
+TOE_PrintStr_Inl_Done
+  TYA
+  CLC
+  ADC TOE_MemptrLo
+  TAX
+  LDA #0
+  ADC TOE_MemptrHi
+  PHA
+  TXA
+  PHA
   RTS
   
 MON_CLS  
