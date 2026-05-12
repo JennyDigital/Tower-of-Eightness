@@ -190,7 +190,7 @@ TMSG_init_msg						; Filing System initialisation string.
  
   .BYTE $0C,1,$18,$03,$0D,$0A
   .BYTE "TowerTAPE Filing System "
-  .BYTE "V2.68",$0D,$0A,$0D,$0A,$00
+  .BYTE "V2.69",$0D,$0A,$0D,$0A,$00
 
 
 TMSG_Break
@@ -732,6 +732,10 @@ B_TAPE_SAVE_BASIC
 ; --------------------
 
 F_TAPE_VERIFY_BASIC
+
+  LDA V_TAPE_Config					; Clear loading at original address flag
+  AND #$F7						; Clear TAPE_UseHdrAddr bit
+  STA V_TAPE_Config
   
   JSR F_TAPE_GetName					; Get the filename string into our buffer
 
@@ -757,14 +761,17 @@ F_TAPE_VERIFY_BASIC
    
   JSR LAB_GBYT						; Find out if we have extra parameters or not,
   							; firstly checking if we have a null.
-  BEQ TAPE_VERIFY_Searching_B				; If we have null, we can continue as SAVEing BASIC otherwise it's binary.
+  BEQ TAPE_VERIFY_Searching_B				; If we have null, we can continue as VERIFYing BASIC otherwise it's binary.
   
-  ; BINARY case.
+  CMP #'#'						; Check for '#' - use header address
+  BEQ TAPE_VERIFY_UseHdrAddr
+  
+  ; BINARY case with explicit address.
   
   JSR LAB_EVNM						; evaluate expression and check is numeric,
-							; else do type mismatch
+  							; else do type mismatch
   JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
-    							
+     							
   LDA Itempl						; save our specified base address
   STA V_TAPE_Address_Buff
   LDA Itemph
@@ -772,7 +779,18 @@ F_TAPE_VERIFY_BASIC
   
   LDA #C_TAPE_FType_BINARY				; Set the type to BINARY
   STA V_TAPE_LOADSAVE_Type
+  JMP TAPE_VERIFY_Searching_B				; Go search for header
+
+TAPE_VERIFY_UseHdrAddr
+  LDA V_TAPE_Config
+  ORA #$08						; Set TAPE_UseHdrAddr bit
+  STA V_TAPE_Config
   
+  LDA #C_TAPE_FType_BINARY				; Set the type to BINARY
+  STA V_TAPE_LOADSAVE_Type
+  
+  JSR LAB_IGBY						; Consume the '#' character
+  JMP TAPE_VERIFY_Searching_B				; Go search for header
   
   ; Now go verify!
   
@@ -859,7 +877,17 @@ B_TAPE_Verify_SkipBASIC_Sizing
   STA V_TAPE_BlockSize
   LDA TAPE_FileSizeHi
   STA V_TAPE_BlockSize + 1
-  
+
+  LDA V_TAPE_Config					; Check if we should use the header address
+  AND #$08						; Test TAPE_UseHdrAddr bit
+  BEQ TAPE_Verify_UseAddressBuff
+
+  LDA TAPE_LoadAddrLo					; Use the address from the header
+  STA V_TAPE_Address_Buff
+  LDA TAPE_LoadAddrHi
+  STA V_TAPE_Address_Buff + 1
+
+TAPE_Verify_UseAddressBuff
   LDA V_TAPE_Address_Buff				; Tell the system where to start verifying the data,
   STA TAPE_BlockLo					; this should point to Ram_base for BASIC or as specified for binary.
   LDA V_TAPE_Address_Buff + 1
@@ -1026,18 +1054,20 @@ F_TAPE_LOAD_BASIC
   JSR LAB_GBYT						; Find out if we have extra parameters or not.
 							; Firstly checking if we have a null.
   BEQ TAPE_LOAD_Header_B				; Since we have nothing, we can continue as LOADing BASIC
-  
 
-; Handle BINARY case.
-  
+  CMP #'#'						; Check for '#' - use header address
+  BEQ TAPE_LOAD_UseHdrAddr
+
+; Handle BINARY case with explicit address.
+
 TAPE_LOAD_At_Address_B
   JSR LAB_EVNM						; evaluate expression and check is numeric,
-							; else do type mismatch
+  							; else do type mismatch
   JSR LAB_F2FX						; save integer part of FAC1 in temporary integer
-      							
+  							
 
 ; Setup for a binary LOAD
-      							
+  							
   LDA Itempl						; save our specified base address
   STA V_TAPE_Address_Buff
   LDA Itemph
@@ -1045,7 +1075,21 @@ TAPE_LOAD_At_Address_B
   
   LDA #C_TAPE_FType_BINARY				; Set the type to BINARY
   STA V_TAPE_LOADSAVE_Type
+  
+  JMP TAPE_LOAD_Header_B				; Go search for header
 
+; Use header address for binary LOAD
+
+TAPE_LOAD_UseHdrAddr
+  LDA V_TAPE_Config
+  ORA #$08						; Set TAPE_UseHdrAddr bit
+  STA V_TAPE_Config
+  
+  LDA #C_TAPE_FType_BINARY				; Set the type to BINARY
+  STA V_TAPE_LOADSAVE_Type
+  
+  JSR LAB_IGBY						; Consume the '#' character
+  JMP TAPE_LOAD_Header_B				; Go search for header
 
 ; Handle the Header
 
@@ -1105,8 +1149,18 @@ TAPE_BASIC_Load_Stage
   STA V_TAPE_BlockSize
   LDA TAPE_FileSizeHi
   STA V_TAPE_BlockSize + 1
-  
-  LDA V_TAPE_Address_Buff				; Tell the system where to load to. This should point to Ram_base for BASIC
+
+  LDA V_TAPE_Config					; Check if we should use the header address
+  AND #$08						; Test TAPE_UseHdrAddr bit
+  BEQ TAPE_Load_UseAddressBuff
+
+  LDA TAPE_LoadAddrLo					; Use the address from the header
+  STA V_TAPE_Address_Buff
+  LDA TAPE_LoadAddrHi
+  STA V_TAPE_Address_Buff + 1
+
+TAPE_Load_UseAddressBuff
+  LDA V_TAPE_Address_Buff				; Tell the system where to load to.
   STA TAPE_BlockLo
   LDA V_TAPE_Address_Buff + 1
   STA TAPE_BlockHi
