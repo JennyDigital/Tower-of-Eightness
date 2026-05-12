@@ -91,13 +91,36 @@ XTRA_PLOT_F
   
   LDA Itempl						; Get our plot/unplot value
 
-  BIT #1
-  BNE XTRA_NOT_Plotting_B
+  CMP #2						; Handle special bit pattern case
+  BNE XTRA_NOT_Pattern_B
+  
+  LDA V_XTRA_PlotPattern
+  CMP #$80						; Push bit 7 into the Carry flag
+  ROL							; Rotate left: bits shift, Carry goes to b0
+  STA V_XTRA_PlotPattern
+  
+  BIT #1						; Use bit to decide if we are plotting or not on this pass.
+  BNE XTRA_SetUnplotting				; Plot if 1 otherwise unplot
+  
+  LDA #5						; Plotting case
+  BRA XTRA_BitPlotting_B
+  
+XTRA_SetUnplotting
+  LDA #6						; Unplotting case
+  STA V_XTRA_PlotMode
+  BRA XTRA_BitPlotting_B
+  
+  
+XTRA_NOT_Pattern_B					; Non bit-pattern plotting
+  LDA Itempl						; Get our plot/unplot value again
+  CMP #1						; Check if 1 or not
+  BNE XTRA_NOT_Plotting_B				; If not 1, we aren't plotting, we're unplotting.
   
   LDA #6						; Set for unplot mode.
   STA V_XTRA_PlotMode
  
 XTRA_NOT_Plotting_B
+XTRA_BitPlotting_B
   
   
   JSR LAB_1C01						; scan for "," , else do syntax error then warm start
