@@ -1,6 +1,9 @@
 ; AY-3-891x Register Driver
 ;
 ; By Jennifer Gunn.
+;
+; Note: This assembler treats ASL, LSR, ROL, and ROR as implied-accumulator
+; instructions — do not write "ASL A", "LSR A", etc.  The operand is implied.
 
 
 ; AY_6522 Registers
@@ -163,57 +166,50 @@ AY_Init_Loop
   RTS
 
 
-; Channel enable function.
+; Enables or disables a channel in the AY_NOT_ENABLE shadow register (AY_Mask).
+; On entry A holds the channel selection (bits 0-2 = noise/channel bits).
+;   Carry = 0 to enable (clear the disable bit in the mask)
+;   Carry = 1 to disable (set the disable bit in the mask)
+; When enabling, the paired component (tone vs. noise on the same output) is
+; also disabled so that e.g. enabling Tone A silences Noise A and vice versa.
 ;
-AY_EnableCh
-  AND #AY_NoiseAndChBits			; Get our channel selection, this includes noise.
-  
-  TAX						; Put our shift counter in X.
-  LDA #1					; and set our enable bit to 1.
-  
-  CLC
-AY_Enable_L					; Loop while X > 0.
-  CPX #0
-  BEQ AY_Enable_B				; including 0 times for channel A (0).
-  
-  DEX						; Moving the 0.
+AY_SetCh
+  AND #AY_NoiseAndChBits
+  TAX
+  LDA #1
+AY_SetCh_Shift
+  DEX
+  BMI AY_SetCh_Done
   ASL
-  BRA AY_Enable_L
-
-AY_Enable_B
-  EOR #$FF					; Make sure our enable bit is 0.
+  BRA AY_SetCh_Shift
+AY_SetCh_Done
+  BCS AY_SetCh_Off
+  ; Enable: clear primary bit, set paired bit to isolate the channel.
+  PHA
+  EOR #$FF
   AND AY_Mask
   STA AY_Mask
-  
-  LDX #AY_NOT_ENABLE
-  JSR AY_wr_to_reg
-  RTS
-  
-  
-; Channel disable function.
-
-AY_DisableCh
-  AND #AY_NoiseAndChBits			; Get our channel selection, this includes noise.
-  
-  TAX						; Put our shift counter in X.
-  LDA #1					; and set our enable bit to 1.
-  
-  CLC
-AY_Disable_L					; Loop while X > 0.
-  CPX #0
-  BEQ AY_Disable_B				; including 0 times for channel A (0).
-  
-  DEX						; Moving the 0.
+  PLA
+  CMP #8
+  BCC AY_SetCh_ShL
+  LSR
+  LSR
+  LSR
+  BRA AY_SetCh_DoPair
+AY_SetCh_ShL
   ASL
-  BRA AY_Disable_L
-
-AY_Disable_B
+  ASL
+  ASL
+AY_SetCh_DoPair
   ORA AY_Mask
   STA AY_Mask
-  
   LDX #AY_NOT_ENABLE
-  JSR AY_wr_to_reg
-  RTS
+  JMP AY_wr_to_reg
+AY_SetCh_Off
+  ORA AY_Mask
+  STA AY_Mask
+  LDX #AY_NOT_ENABLE
+  JMP AY_wr_to_reg
 
 
 
@@ -263,19 +259,18 @@ AY_wr_data
 AY_rd_data
   LDA #AY_DATA_in		; Make our bus an input so that the AY can drive it.
   STA AY_DDR_DATA
-  
-  LDA #AY_READ			; Set our AY to output it's register contents.
+
+  LDA #AY_READ			; Set our AY to output its register contents.
   STA AY_CTRLPORT
-  
-  LDA AY_DATAPORT		; Grab those contents and put them in Y.
-  TAY
-  
-  LDA #AY_INACK			; Put our AY but back inactive.
+
+  LDA AY_DATAPORT		; Grab those contents.
+  PHA
+
+  LDA #AY_INACK			; Put our AY bus back inactive.
   STA AY_CTRLPORT
-  
-  TYA				; Put our result back into A.
-  
-  RTS				; Were finished.
+
+  PLA				; Put our result back into A.
+  RTS
   
   
 ; The 'All in one' function.  A contains the value, and X the register to write to.
@@ -293,10 +288,9 @@ AY_wr_to_reg
 ; For the users of BASIC, here's the easier read/write functions. 
 ;
 AY_Userwrite
-  LDA AY_Data
   LDX AY_Reg
-  JSR AY_wr_to_reg
-  RTS
+  LDA AY_Data
+  JMP AY_wr_to_reg
   
 AY_Userread
   LDA AY_Reg				; Select our register of interest.
@@ -307,27 +301,25 @@ AY_Userread
   RTS
   
 AY_Userwrite_16
-  LDA AY_Data
   LDX AY_Reg
+  LDA AY_Data
   JSR AY_wr_to_reg
   INX
   LDA AY_Data + 1
-  JSR AY_wr_to_reg
-  RTS
+  JMP AY_wr_to_reg
   
 AY_Userread_16
-  LDA AY_Reg				; Select our register of interest.
+  LDX AY_Reg				; Select our register of interest.
+  TXA
   JSR AY_wr_reg
-  
+
   JSR AY_rd_data			; Get the contents of the register of interest.
   STA AY_Data
-  LDA AY_Reg				; Select our register of interest.
 
-  SEC
-  ADC #0
-  
+  INX					; Move to the paired coarse register.
+  TXA
   JSR AY_wr_reg
-  
+
   JSR AY_rd_data			; Get the contents of the register of interest.
   STA AY_Data + 1
   RTS
@@ -438,18 +430,14 @@ AY_DoVol_B
   LDA AY_Volume
   JSR AY_wr_to_reg
   
-  LDA AY_Channel				; Decide if we are enbling a channel or not.
+  LDA AY_Channel				; Decide if we are enabling a channel or not.
   LDX AY_Volume
   CPX #0
-  BNE AY_EnableCh_B
-  
-  JSR AY_DisableCh
-  
-  RTS
-  
-AY_EnableCh_B
-  JSR AY_EnableCh
-  RTS
+  SEC
+  BEQ AY_Snd_SetCh
+  CLC
+AY_Snd_SetCh
+  JMP AY_SetCh
  
 AY_Parameter_FCER_B
   JMP LAB_FCER  

@@ -407,7 +407,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 12.05.2026.4 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 13.05.2026.3 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 END_SOS
