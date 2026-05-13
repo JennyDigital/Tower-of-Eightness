@@ -2493,6 +2493,9 @@ LAB_182C
 
 LAB_PRINT
       BEQ   LAB_CRLF          ; if nothing following just print CR/LF
+      CMP   #'#'              ; compare with "#"
+      BNE   LAB_1831          ; if not #, normal processing
+      JMP   XTRA_PRINT_N_F    ; handle PRINT #n,...
 
 LAB_1831
       CMP   #TK_TAB           ; compare with TAB( token
@@ -7963,7 +7966,7 @@ LAB_MSZM
 
 LAB_SMSG
       .byte " Bytes free",$0D,$0A,$0A
-      .byte "TowerBASIC 2.22p5 EL6",$0A,$00
+      .byte "TowerBASIC 2.22p6 EL6",$0A,$00
 
 ; numeric constants and series
 

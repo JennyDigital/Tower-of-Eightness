@@ -447,7 +447,48 @@ I2C_In_BAS						; This is a *function* as it returns ACK/NAK
 
   TAY							; Copy status byte to Y
   JMP   LAB_1FD0                                	; convert Y to byte in FAC1 and return
- 
 
-  
-  
+
+; PRINT # channel handler
+; Syntax: PRINT #n,<expression>
+; Temporarily sets os_outsel to the value of n, then restores it
+; after printing completes (successful or otherwise).
+
+XTRA_PRINT_N_F
+  JSR   LAB_IGBY          ; consume #, get next byte
+  JSR   LAB_EVEX          ; evaluate n
+  JSR   LAB_F2FX          ; convert to integer in Itempl
+
+  LDA   os_outsel
+  PHA                     ; save old os_outsel on stack
+  LDA   Itempl
+  STA   os_outsel         ; set new os_outsel
+
+  JSR   LAB_GBYT          ; get byte after n (don't advance)
+  CMP   #','              ; must be comma
+  BNE   XTRA_PRINT_N_ERR
+
+  ; Stack: [os_outsel, orig_ret_high, orig_ret_low]
+  ; Push restore routine address on top so PRINT's RTS returns there.
+  ; RTS adds 1 to popped address, so push actual address (not addr-1)
+  ; and pad with a leading NOP to absorb the +1.
+  LDA   #>XTRA_PRINT_N_RET
+  PHA
+  LDA   #<XTRA_PRINT_N_RET
+  PHA
+
+  ; Stack: [restore_low, restore_high, os_outsel, orig_ret_high, orig_ret_low]
+
+  JSR   LAB_IGBY          ; consume comma, get next byte
+  JMP   LAB_1831          ; continue normal PRINT processing
+
+XTRA_PRINT_N_ERR
+  PLA                     ; pop saved os_outsel
+  STA   os_outsel         ; restore it
+  JMP   LAB_1910          ; syntax error
+
+XTRA_PRINT_N_RET
+  NOP                     ; absorb the +1 from RTS
+  PLA                     ; pop saved os_outsel
+  STA   os_outsel         ; restore it
+  RTS                     ; return to original caller
