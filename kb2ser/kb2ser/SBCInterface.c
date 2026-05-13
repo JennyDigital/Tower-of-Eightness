@@ -561,8 +561,8 @@ unsigned char getInChar()
 	}
 	retVal=serBuffer[tempPointer];
 	serOutPointer=tempPointer;
-	sei();
 	setRTS();
+	sei();
 
 	return retVal;
 }
@@ -857,8 +857,11 @@ int main(void)
 	sei();
 
 	setKeyboardToSendMode();
+
+	// Wait for keyboard to finish power-on self-test before sending commands
+	for (unsigned int i = 0; i < 500; i++) _delay_ms(1);
+
 	updateKeyboardLEDs();
-	setKeyboardToReceiveMode();
 
 	// Loop forever
 	while (1==1)
