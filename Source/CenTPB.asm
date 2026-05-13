@@ -51,10 +51,10 @@ CEN_CA1_PE_B		= @00000001
 CEN_Mem_Start		= $600
 CEN_Mem_End		= CEN_Mem_Start
 
-CEN_Men_Lim		= $610
+CEN_Mem_Lim		= $610
 
 
- .IF [ CEN_Mem_End>CEN_Men_Lim ]
+ .IF [ CEN_Mem_End>CEN_Mem_Lim ]
     .ERROR "Memory overrun in CenTPB.asm Centronics Module"
   .ENDIF
 
@@ -97,51 +97,36 @@ CEN_LPT_write
   PHP						; Save Register States
   PHA
 
-  JSR STB_Ack_Wait				; Wait until Ack=1
-  
   STA CEN_Reg_A					; Write the char to output
-  
-  LDA CEN_Reg_B					; Set the strobe bit low (Active)
-  AND #~CEN_LPT_Stb_B				; and only the strobe bit.
+
+  LDA CEN_Reg_B					; Strobe the data into the printer.
+  AND #~CEN_LPT_Stb_B				; low (active)...
   STA CEN_Reg_B
-  
-  LDA CEN_Reg_B					; Now we return the strobe bit to it's
-  ORA #CEN_LPT_Stb_B				; 'idle' state.
+  ORA #CEN_LPT_Stb_B				; ...then back to idle.
   STA CEN_Reg_B
-  
+
+  JSR STB_Ack_Wait				; Wait for ACK from the peripheral.
+
   PLA						; Tidy up after ourselves.
   PLP
-  
-  RTS						; Return contol to the caller.
+
+  RTS						; Return control to the caller.
 
   
 CEN_Delay
-  PHP
-  PHX						; Preserve X						3
-  
-  LDX #6					;							2 = 5
-  
+  LDX #6
 CEN_Delay_L
-  DEX						;							2
-  BNE CEN_Delay_L				;							3, 2 when exit. 25 + 4 = 29
-  
-  PLX						; Return control to the caller with X restored.		3
-  PLP
-  RTS						;							12 with JSR considered.
-  
-  						; 5 + 29 + 3 + 12 = 49 cyc = 12.25uS @4MHz
+  DEX
+  BNE CEN_Delay_L
+  RTS
 
 
 STB_Ack_Wait
-  PHA
-  
 STB_Wait_L
   LDA CEN_IFR					; Check IFR for interrupt flag on CB1 set
   AND #CEN_ACK_CA1_B
   BEQ STB_Wait_L				; Until they match,
-  
-  PLA
-  RTS 
+  RTS
   
 CEN_CODE_End
 
@@ -150,10 +135,10 @@ CEN_CODE_End
 TPB_Mem_Start		= $600
 TPB_Mem_End		= CEN_Mem_Start
 
-TPB_Men_Lim		= $610
+TPB_Mem_Lim		= $610
 
 
- .IF [ TPB_Mem_End>TPB_Men_Lim ]
+ .IF [ TPB_Mem_End>TPB_Mem_Lim ]
     .ERROR "Memory overrun in CenTPB.asm TPB Module."
   .ENDIF
 
@@ -182,15 +167,10 @@ TPB_BUS_AtnOut  = @00000001			; ATN signal output.  When used, tells a device th
 
 
 TPB_Check_ATN
-
   LDA CEN_Reg_B					; Check if ATN is asserted.
   AND #TPB_BUS_AtnIn
-  SEC
-  BEQ ATN_Asserted_B				; Skip clearing C if ATN is asserted.
-  CLC						; Carry is cleared as ATN isn't asserted.
-
-ATN_Asserted_B
-  RTS 
+  CMP #1					; Carry set when asserted, cleared otherwise.
+  RTS
 
 
 ; TPB transmit byte
@@ -204,49 +184,39 @@ ATN_Asserted_B
 TPB_TX_Byte
   PHA						; Preserve our working registers
   PHY
-  
+
   TAY						; Start by preserving A in Y
+  LDX #8					; Set our counter for 8 data bits.
 
-  LDX #8					; Set our counter for 1 start bit, 8 data bits and 1 stop bit.
-    
 TPB_BitOut
-  CPX #0					; Keep going till we've transmitted 8 bits.
-  
-  BNE TPB_NextBit_B
-  
-  PLY						; Restore our working registers
-  PLA
-  
-  RTS						; Return control to caller.
-  
-TPB_NextBit_B  
-  DEX						; Decrement our bit counter.
-  
-  TYA						; Get our working copy of our byte back from A.
-  ROL						; Place our MSb into carry.
-  TAY						; Save our modified copy
-    
-  BCC TPB_OutZero				; Determine whether a 1 or 0 to be sent.
-  
+  DEX
+  BMI TPB_Done
 
-  LDA CEN_Reg_B					; output 1 on TPB data by setting
+  TYA						; Rotate MSb into carry.
+  ROL
+  TAY
+
+  BCC TPB_OutZero
+
+  LDA CEN_Reg_B					; Output 1 on TPB data.
   ORA #TPB_BUS_DatOut
   STA CEN_Reg_B
-  NOP						; This NOP compensates for the branch timing.
-  JSR TPB_PulseClk
-  
-  BRA TPB_BitOut
-   
-; output 0 on TPB data
-;  
-TPB_OutZero
+  NOP						; Compensates for the branch timing difference.
+  BRA TPB_DoClk
 
-  LDA CEN_Reg_B
+TPB_OutZero
+  LDA CEN_Reg_B					; Output 0 on TPB data.
   AND #~TPB_BUS_DatOut
   STA CEN_Reg_B
+
+TPB_DoClk
   JSR TPB_PulseClk
-   
   BRA TPB_BitOut
+
+TPB_Done
+  PLY						; Restore our working registers
+  PLA
+  RTS
 
 
 ; Clock line Pulse function
@@ -259,19 +229,14 @@ TPB_OutZero
 ; **********************************
 
 TPB_PulseClk
-  
   LDA CEN_Reg_B
   ORA #TPB_BUS_ClkOut				; Set the clock line output.
   STA CEN_Reg_B
-  
-  JSR CEN_Delay					; Wait for a slight while.
+  JSR CEN_Delay
 
-  LDA CEN_Reg_B
   AND #~TPB_BUS_ClkOut				; Clear the clock line output.
   STA CEN_Reg_B
-  
-  JSR CEN_Delay					; Wait for a slight while.
-  
-  RTS						; Done.
+  JSR CEN_Delay
+  RTS
 
 TPB_CODE_End

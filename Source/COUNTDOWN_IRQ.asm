@@ -55,13 +55,14 @@ TIM_IER				= TAPE_IOBASE + $E
 
 ; Hardware bits constants
 ;
-TIM_IFR_IRQ_FLAG		= @10000000
-TIM_IFR_TIM1_FLAG		= @01000000
+TIM_IFR_IRQ_FLAG		= @10000000	; Indicates the state of IRQ flag
+TIM_IFR_TIM1_FLAG		= @01000000	; Indicates the TIM1 IRQ state.
 
 TIM_ACR_T1_DIS			= @00000000	; Timer 1 disabled
 TIM_ACR_T1_CONT			= @01000000	; Timer 1 continuous interrupts
 TIM_ACR_T1_TIMED		= @10000000	; Timer 1 Timed interrupt with each reload
 TIM_ACR_T1_CONT_SQW_OUT		= @11000000	; Timer 1 Continuous interrupts with square wave output at PB7
+TIM_ACR_T1_CLR			= @00111111	; Clears T1 control bits (bits 7-6) preserving the rest.
 
 TIM_IER_SET			= @10000000	; Specify the setting of an interrupt
 TIM_IER_CLR			= @00000000	; Specify the clearing of an interrupt
@@ -76,17 +77,17 @@ INIT_COUNTDOWN_IRQ
   ORA IRQH_MaskByte				; Mark our IRQ as active.
   STA IRQH_MaskByte
   
-;  LDA CTR_RELOAD_V				; Load timer reload value to our counter variable.
-;  STA CTR_V
-;  LDA CTR_RELOAD_V+1
-;  STA CTR_V + 1
+  LDA CTR_RELOAD_V				; Load timer reload value to our counter variable.
+  STA CTR_V
+  LDA CTR_RELOAD_V+1
+  STA CTR_V + 1
   
   LDA TIM_ACR
-  ORA #TIM_IFR_TIM1_FLAG			; Load Auxilliary Control Register with continuous interrupts on
-  						; T1 with latching.
+  AND #TIM_ACR_T1_CLR				; Clear T1 control bits, then set continuous interrupts on T1.
+  ORA #TIM_ACR_T1_CONT
   STA TIM_ACR
   
-  LDA TIM_IER				; Start our interrupts running.
+  LDA TIM_IER				;	 Start our interrupts running.
   ORA #TIM_IER_SET | TIM_IER_TIM1
   STA TIM_IER
   
@@ -147,7 +148,7 @@ CTR_Ext_vec_Chk					; Check if we want to service an external vector.
   PHA  
   JMP (CTR_External_vec)
   
-CTR_IRQ_ReloadChk						; IRQ Handler done
+CTR_IRQ_ReloadChk				; IRQ Handler done
   LDA CTR_Options
   BIT #CTR_Reload_En
   BEQ COUNTDOWN_IRQ_SHUTDOWN
