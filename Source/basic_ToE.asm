@@ -68,6 +68,7 @@
 ;      FRE(O), DEEK, SADD and VARPTR now all return 16-bit unsigned integers.
 ;      5/6/2023: Commented out memory size check to see how things go.
 ;      25/12/2025 Added Upper memory parameter capability to CLEAR command to safe faffing with POKEing the new value in.
+;      13/05/2026 LIST now accepts optional #n output selector prefix; os_outsel is always restored on LIST completion or LIST syntax error.
 
 
 
@@ -1421,8 +1422,81 @@ LAB_LIST
 
       BEQ   LAB_14BD          ; branch if next character [NULL] (LIST)
 
+      CMP   #'#'              ; compare with selector prefix
+      BEQ   LAB_LIST_SEL      ; branch if LIST #n...
+
       CMP   #TK_MINUS         ; compare with token for -
       BNE   LAB_14A6          ; exit if not - (LIST -m)
+      JMP   LAB_14BD          ; LIST -m uses the original parser path
+
+LAB_LIST_SEL
+      LDA   os_outsel         ; save current output selector
+      PHA
+      LDA   #>LAB_LIST_RET
+      PHA
+      LDA   #<LAB_LIST_RET
+      PHA
+
+      JSR   LAB_IGBY          ; consume #, get next byte
+      JSR   LAB_GBYT          ; peek at first selector digit
+      CMP   #'0'              ; must be a digit
+      BCC   LAB_LIST_ERR
+      CMP   #'9'+1
+      BCS   LAB_LIST_ERR
+
+      JSR   LAB_GFPN          ; get selector value into temp integer
+      TAX                     ; save character after selector for post-parse checks
+      LDA   Itemph            ; selector must fit in a byte
+      BNE   LAB_LIST_ERR
+      LDA   Itempl
+      STA   os_outsel         ; set output selector for LIST
+      TXA                     ; restore character after #n for post-parse checks
+
+LAB_LIST_POSTSEL
+      CMP   #$00              ; no more text, use default LIST start
+      BEQ   LAB_LIST_POSTEND
+
+      CMP   #','              ; allow a separator before the range
+      BEQ   LAB_LIST_SKIP     ; skip it and re-check
+
+      CMP   #' '              ; allow spaces before the range
+      BEQ   LAB_LIST_SKIP     ; skip it and re-check
+
+      CMP   #TK_MINUS         ; LIST #n-m keeps the existing omitted-start form
+      BEQ   LAB_LIST_CONT     ; carry must be set for LAB_GFPN
+
+      CMP   #'0'              ; must now be a digit
+      BCC   LAB_LIST_ERR
+      CMP   #'9'+1
+      BCS   LAB_LIST_ERR
+
+      CLC                     ; digit present, let LAB_GFPN parse it normally
+      JMP   LAB_14BD
+
+LAB_LIST_SKIP
+      JSR   LAB_IGBY          ; consume the separator and re-check
+      JMP   LAB_LIST_POSTSEL
+
+LAB_LIST_POSTEND
+      SEC                     ; no start line follows, so LAB_GFPN returns empty
+      JMP   LAB_14BD
+
+LAB_LIST_CONT
+      SEC                     ; omitted start line, preserve the existing LIST -m form
+      JMP   LAB_14BD
+
+LAB_LIST_ERR
+      PLA                     ; discard restore vector low byte
+      PLA                     ; discard restore vector high byte
+      PLA                     ; restore previous output selector
+      STA   os_outsel
+      JMP   LAB_SNER          ; syntax error then warm start
+
+LAB_LIST_RET
+      NOP                     ; absorb the +1 from RTS
+      PLA                     ; restore previous output selector
+      STA   os_outsel
+      RTS
 
                               ; LIST [[n][-m]]
                               ; this bit sets the n and, if present, as the start and end
