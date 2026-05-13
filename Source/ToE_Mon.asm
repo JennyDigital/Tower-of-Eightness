@@ -179,7 +179,7 @@ RES_vec
   LDA #OUTSEL_DEFAULT			; Set our default output options. See config section at the top
 
   STA os_outsel				; Save our preference of output option.
-  LDA #LF_filt_sw1
+  LDA #EXT_filt_sw1
   STA os_infilt				; Switch on $A filtering on the ACIA.
   
   LDA #INSEL_DEFAULT			; Specify input source as ACIA1
@@ -407,7 +407,7 @@ MON_HexDigits_T
 LAB_mess
                                       ; sign on string
 
-  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 13.05.2026.7 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
+  .byte $0D,$0A,$B0,$B1,$B2,$DB," Tower of Eightness OS 13.05.2026.4 ",$DB,$B2,$B1,$B0,$0D,$0A,$0D,$0A
   .byte "[C]old/[W]arm?",$00
 
 END_SOS

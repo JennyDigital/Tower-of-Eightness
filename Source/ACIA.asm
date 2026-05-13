@@ -102,6 +102,8 @@ ACIA_INT	    = @10000000
 
 LF_filt_sw1	    = @00000001
 LF_filt_sw2	    = @00000010
+EXT_filt_sw1	    = @00000100
+EXT_filt_sw2	    = @00001000
 
 ; Baud rate registers
 ;
@@ -206,6 +208,8 @@ ACIA1in
   LDA #LF_filt_sw1			;				2
   BIT os_infilt				;				4
   BEQ filter_inp			;				4
+  LDA #EXT_filt_sw1
+  BEQ ext_filter_inp
   PLA					;				4
   RTS					;				6 +
   					;			      -----
@@ -227,11 +231,34 @@ ACIA2in
   LDA #LF_filt_sw2
   BIT os_infilt
   BEQ filter_inp
+  LDA #EXT_filt_sw2
+  BEQ ext_filter_inp
   PLA
   RTS
 
 ; Byte filter feature.  Applicable to both ACIAs.
+; It seems reasonable to filter out $A so that when sending from the PC over serial, the extra
+; undesireable $A character is thrown out.  The ToE uses $D like older systems and mac format.
 
+ext_filter_inp
+  PLA
+  CMP #$20
+  BCS filter_pass       ; >= $20 passes cleanly
+  CMP #$08
+  BCC no_exception      ; < $08 jumps away
+  CMP #$09
+  BCC filter_pass       ; == $08 passes cleanly
+  CMP #$0C
+  BCC no_exception      ; $09-$0B jumps away
+  CMP #$0E
+  BCC filter_pass       ; $0C-$0D passes cleanly
+
+no_exception
+  JMP LAB_nobyw         ; Failed the filter checks
+
+filter_pass
+  SEC
+  RTS
 
 filter_inp  
   PLA
@@ -240,7 +267,7 @@ filter_inp
   SEC
   RTS
   
-LAB_nobyw
+LAB_nobyw 
   LDA #0
   CLC
   RTS                             ; flag no byte received
