@@ -218,7 +218,6 @@ TPB_Done
   PLA
   RTS
 
-
 ; Clock line Pulse function
 ; **********************************
 ; *                                *
