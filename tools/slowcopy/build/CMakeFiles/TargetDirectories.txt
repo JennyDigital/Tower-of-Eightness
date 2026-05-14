@@ -1,0 +1,7 @@
+/home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/build/CMakeFiles/slowcopy.dir
+/home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/build/CMakeFiles/edit_cache.dir
+/home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/build/CMakeFiles/rebuild_cache.dir
+/home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/build/CMakeFiles/list_install_components.dir
+/home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/build/CMakeFiles/install.dir
+/home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/build/CMakeFiles/install/local.dir
+/home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/build/CMakeFiles/install/strip.dir

@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/build",
+  "command": "/usr/bin/gcc -g -std=gnu99 -o CMakeFiles/slowcopy.dir/slowcopy.c.o -c /home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/slowcopy.c",
+  "file": "/home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/slowcopy.c",
+  "output": "/home/jennifer/repos/Tower-of-Eightness/tools/slowcopy/build/CMakeFiles/slowcopy.dir/slowcopy.c.o"
+}
+]
